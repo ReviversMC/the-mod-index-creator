@@ -8,6 +8,11 @@ import okhttp3.Request
 import okhttp3.Response
 import java.io.IOException
 
+/**
+ * V2 Modrinth API calls
+ * @author ReviversMC
+ * @since 1.0.0-1.0.0
+ */
 class ModrinthV2ApiCall(private val json: Json, private val okHttpClient: OkHttpClient) : ModrinthApiCall {
 
     private val endpoint = "https://api.modrinth.com/v2"
