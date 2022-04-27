@@ -14,12 +14,12 @@ subprojects {
 
     repositories {
         mavenCentral()
+        maven("https://jitpack.io")
     }
 
     dependencies {
         api("io.insert-koin:koin-core:3.2.0-beta-1")
-        testImplementation("io.insert-koin:koin-test:3.2.0-beta.1")
-        testImplementation(kotlin("test"))
+        testImplementation("io.insert-koin:koin-test-jvm:3.2.0-beta-1")
     }
 
     sourceSets.main {
@@ -51,4 +51,10 @@ subprojects {
             }
         }
     }
+}
+dependencies {
+    implementation("io.insert-koin:koin-test-junit5:3.1.6")
+}
+repositories {
+    mavenCentral()
 }
