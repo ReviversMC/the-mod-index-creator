@@ -170,9 +170,12 @@ class ModIndexCreator(
         val indexFiles = indexToModify.files.toMutableList()
 
         for (manifestFile in manifest.files) {
-            val indexFile = IndexJson.IndexFile(genericIdentifier, manifestFile.sha1Hash ?: continue)
+            val indexFile = IndexJson.IndexFile(
+                "$genericIdentifier:${manifestFile.fileName ?: continue}", manifestFile.sha1Hash ?: continue
+            )
             indexFiles.add(indexFile)
         }
+
         return indexToModify.copy(files = indexFiles.toImmutableList().sortedBy { it.identifier })
 
     }
