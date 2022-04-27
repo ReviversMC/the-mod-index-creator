@@ -31,6 +31,10 @@ subprojects {
             options.release.set(17)
         }
 
+        compileKotlin {
+            kotlinOptions.jvmTarget = "17"
+        }
+
         java {
             withJavadocJar()
             withSourcesJar()
