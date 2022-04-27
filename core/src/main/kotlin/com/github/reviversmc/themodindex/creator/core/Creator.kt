@@ -17,10 +17,12 @@ interface Creator {
 
     /**
      * Adds entries to the index.json file if entries are new.
+     * @param indexToModify The index.json file to modify.
      * @param manifest The manifest with entries to add to the index.
+     * @param genericIdentifier The identifier of the mod in the index (i.e. modLoader:modName).
      * @return A [IndexJson] object, with the key being the mod loader.
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
-    fun modifyIndex(manifest: ManifestJson): IndexJson?
+    fun modifyIndex(indexToModify: IndexJson, manifest: ManifestJson, genericIdentifier: String): IndexJson
 }
