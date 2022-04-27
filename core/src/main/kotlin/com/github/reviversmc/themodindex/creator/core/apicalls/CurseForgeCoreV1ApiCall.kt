@@ -31,12 +31,12 @@ class CurseForgeCoreV1ApiCall(
         return pojoResponse
     }
 
-    override fun files(modId: String, maxResult: Int): CurseForgeResponse.FilesResponse? {
+    override fun files(modId: String, modLoaderType: CurseForgeApiCall.ModLoaderType, maxResult: Int): CurseForgeResponse.FilesResponse? {
         val response =
             okHttpClient.newCall(
                 Request.Builder()
                     .header("x-api-key", apiKey)
-                    .url("$endpoint/v1/mods/$modId/files?pageSize=$maxResult")
+                    .url("$endpoint/v1/mods/$modId/files?modLoaderType=${modLoaderType.curseNumber}&pageSize=$maxResult")
                     .build()
             ).execute()
 
@@ -44,5 +44,4 @@ class CurseForgeCoreV1ApiCall(
         response.close()
         return pojoResponse
     }
-
 }

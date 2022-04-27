@@ -30,6 +30,14 @@ interface CurseForgeApiCall {
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
-    fun files(modId: String, maxResult: Int): CurseForgeResponse.FilesResponse?
+    fun files(modId: String, modLoaderType: ModLoaderType = ModLoaderType.ANY, maxResult: Int = Int.MAX_VALUE): CurseForgeResponse.FilesResponse?
 
+    enum class ModLoaderType(val curseNumber: Int) {
+        ANY(0),
+        FORGE(1),
+        CAULDRON(2),
+        LITELOADER(3),
+        FABRIC(4)
+        //TODO Create for quilt when it is added
+    }
 }
