@@ -22,7 +22,7 @@ class CurseForgeResponse {
         val name: String,
         //We can't get the license! :(
         val links: ModLinks,
-        val authors: List<String>,
+        val authors: List<ModAuthor>,
         val allowModDistribution: Boolean?,
     ) {
         /**
