@@ -1,0 +1,24 @@
+name: Java CI with Gradle
+
+on:
+  push:
+    branches: [ main, next/* ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Test if core works
+      run: ./gradlew :core:test
+    - name: ShadowJar core
+      run: ./gradlew :core:shadowJar
+    - name: Test if cli works
+      run: ./gradlew :cli:test
+    - name: ShadowJar cli
+      run: ./gradlew :cli:shadowJar
