@@ -1,6 +1,7 @@
 plugins {
     id ("com.github.johnrengelman.shadow") version "7.1.2"
     kotlin("jvm") version "1.6.21"
+    kotlin("plugin.serialization") version "1.6.21"
 }
 
 group = "com.github.reviversmc.themodindex.creator"
@@ -10,6 +11,7 @@ subprojects {
     apply {
         plugin("com.github.johnrengelman.shadow")
         plugin("org.jetbrains.kotlin.jvm")
+        plugin("org.jetbrains.kotlin.plugin.serialization")
     }
 
     repositories {
@@ -19,7 +21,10 @@ subprojects {
 
     dependencies {
         api("io.insert-koin:koin-core:3.2.0-beta-1")
-        testImplementation("io.insert-koin:koin-test-jvm:3.2.0-beta-1")
+        testApi("org.junit.jupiter:junit-jupiter:5.8.2")
+        testApi("io.insert-koin:koin-test-junit5:3.2.0-beta-1")
+        testApi("io.insert-koin:koin-test:3.2.0-beta-1")
+        testApi("io.mockk:mockk:1.12.3")
     }
 
     sourceSets.main {
@@ -32,6 +37,14 @@ subprojects {
         }
 
         compileKotlin {
+            kotlinOptions.jvmTarget = "17"
+        }
+
+        compileTestJava {
+            options.release.set(17)
+        }
+
+        compileTestKotlin {
             kotlinOptions.jvmTarget = "17"
         }
 

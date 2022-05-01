@@ -46,9 +46,10 @@ class ModrinthV2ApiCall(private val json: Json, private val okHttpClient: OkHttp
 
         val response = doApiCall("$endpoint/project/$projectId/members")
 
-        val pojoResponse = response.body?.string()?.let { json.decodeFromString<TeamResponse>(it) }
+        //This MUST be a list. A top level array is returned from the api call.
+        val pojoResponse = response.body?.string()?.let { json.decodeFromString<List<TeamResponse>>(it) }
         response.close()
-        for (entry in pojoResponse?.entries ?: return null) {
+        for (entry in pojoResponse ?: return null) {
             if (entry.role.equals("owner", true)) return entry.userResponse.username
         }
         return null

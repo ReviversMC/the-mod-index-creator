@@ -57,24 +57,14 @@ class ModrinthResponse {
     }
 
     /**
-     * The api response for a Modrinth team.
-     * @param entries The entries of the version.
+     * The entry of a Modrinth team. This does NOT contain all the info from the api call.
+     * @param userResponse The user of the team.
+     * @param role The role of the user in the team.
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
     @kotlinx.serialization.Serializable
-    data class TeamResponse(val entries: List<TeamEntry>) {
-        /**
-         * The entry of a Modrinth team. This does NOT contain all the info from the api call.
-         * @param userResponse The user of the team.
-         * @param role The role of the user in the team.
-         * @author ReviversMC
-         * @since 1.0.0-1.0.0
-         */
-        @kotlinx.serialization.Serializable
-        data class TeamEntry(val userResponse: UserResponse, val role: String)
-    }
-
+    data class TeamResponse(@SerialName("user") val userResponse: UserResponse, val role: String)
 
     /**
      * The api response for a Modrinth user. This does NOT contain all the info from the api call.
@@ -97,7 +87,7 @@ class ModrinthResponse {
     @kotlinx.serialization.Serializable
     data class VersionResponse(
         val name: String,
-        val gameVersions: List<String>,
+        @SerialName("game_versions") val gameVersions: List<String>,
         val loaders: List<String>,
         val files: List<VersionFile>
     ) {
