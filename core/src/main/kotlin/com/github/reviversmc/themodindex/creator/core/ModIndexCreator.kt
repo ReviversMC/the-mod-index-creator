@@ -122,7 +122,7 @@ class ModIndexCreator(
 
                 otherLinks.add(ManifestJson.ManifestLinks.OtherLink("discord", it.discordUrl))
                 otherLinks.add(ManifestJson.ManifestLinks.OtherLink("wiki", it.wikiUrl))
-                it.donationUrls.forEach { donationLink ->
+                it.donationUrls?.forEach { donationLink ->
                     otherLinks.add(ManifestJson.ManifestLinks.OtherLink(donationLink.platform, donationLink.url))
                 }
             } ?: throw IllegalArgumentException("No modrinth project found for $modrinthId")
@@ -130,7 +130,7 @@ class ModIndexCreator(
             downloadFiles.forEach { modLoader ->
                 returnMap[modLoader.key] = ManifestJson(
                     schemaVersion, modrinthProject.title, modrinthApiCall.projectOwner(modrinthId),
-                    modrinthProject.projectLicense?.id, curseForgeId, modrinthId,
+                    modrinthProject.license?.id, curseForgeId, modrinthId,
                     ManifestJson.ManifestLinks(
                         modrinthProject.issuesUrl, modrinthProject.sourceUrl, otherLinks
                     ), modLoader.value
