@@ -113,7 +113,7 @@ class ModIndexCreator(
         }
 
         if (modrinthId != null) {
-            val modrinthProject = modrinthApiCall.project(modrinthId)?.let {
+            val modrinthProject = modrinthApiCall.project(modrinthId)?.also {
                 val files = downloadModrinthFiles(it)
                 downloadFiles.forEach { entry ->
                     downloadFiles[entry.key] =
@@ -125,7 +125,6 @@ class ModIndexCreator(
                 it.donationUrls.forEach { donationLink ->
                     otherLinks.add(ManifestJson.ManifestLinks.OtherLink(donationLink.platform, donationLink.url))
                 }
-                return@let it
             } ?: throw IllegalArgumentException("No modrinth project found for $modrinthId")
 
             downloadFiles.forEach { modLoader ->

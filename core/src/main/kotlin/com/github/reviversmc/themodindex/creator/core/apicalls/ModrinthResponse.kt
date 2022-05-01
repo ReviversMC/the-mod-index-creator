@@ -7,7 +7,7 @@ import kotlinx.serialization.SerialName
  * @author ReviversMC
  * @since 1.0.0-1.0.0
  */
-open class ModrinthResponse {
+class ModrinthResponse {
 
     /**
      * The api response for a Modrinth project. This does NOT contain all the info from the api call.
@@ -23,6 +23,7 @@ open class ModrinthResponse {
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
+    @kotlinx.serialization.Serializable
     data class ProjectResponse(
         val id: String,
         val title: String,
@@ -41,6 +42,7 @@ open class ModrinthResponse {
          * @author ReviversMC
          * @since 1.0.0-1.0.0
          */
+        @kotlinx.serialization.Serializable
         data class ProjectLicense(val id: String)
 
         /**
@@ -50,6 +52,7 @@ open class ModrinthResponse {
          * @author ReviversMC
          * @since 1.0.0-1.0.0
          */
+        @kotlinx.serialization.Serializable
         data class DonationUrl(val platform: String, val url: String)
     }
 
@@ -59,6 +62,7 @@ open class ModrinthResponse {
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
+    @kotlinx.serialization.Serializable
     data class TeamResponse(val entries: List<TeamEntry>) {
         /**
          * The entry of a Modrinth team. This does NOT contain all the info from the api call.
@@ -67,6 +71,7 @@ open class ModrinthResponse {
          * @author ReviversMC
          * @since 1.0.0-1.0.0
          */
+        @kotlinx.serialization.Serializable
         data class TeamEntry(val userResponse: UserResponse, val role: String)
     }
 
@@ -77,6 +82,7 @@ open class ModrinthResponse {
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
+    @kotlinx.serialization.Serializable
     data class UserResponse(val username: String)
 
     /**
@@ -88,6 +94,7 @@ open class ModrinthResponse {
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
+    @kotlinx.serialization.Serializable
     data class VersionResponse(
         val name: String,
         val gameVersions: List<String>,
@@ -102,6 +109,7 @@ open class ModrinthResponse {
          * @author ReviversMC
          * @since 1.0.0-1.0.0
          */
+        @kotlinx.serialization.Serializable
         data class VersionFile(val hashes: VersionHash, val url: String, val primary: Boolean) {
             /**
              * The hash of a Modrinth version file. This does NOT contain all the info from the api call.
@@ -109,6 +117,7 @@ open class ModrinthResponse {
              * @author ReviversMC
              * @since 1.0.0-1.0.0
              */
+            @kotlinx.serialization.Serializable
             data class VersionHash(val sha1: String)
         }
     }

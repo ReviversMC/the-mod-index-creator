@@ -17,6 +17,7 @@ class CurseForgeResponse {
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
+    @kotlinx.serialization.Serializable
     data class ModResponse(
         val id: String,
         val name: String,
@@ -34,6 +35,7 @@ class CurseForgeResponse {
          * @author ReviversMC
          * @since 1.0.0-1.0.0
          */
+        @kotlinx.serialization.Serializable
         data class ModLinks(val websiteUrl: String, val wikiUrl: String, val issuesUrl: String, val sourceUrl: String)
 
         /**
@@ -44,6 +46,7 @@ class CurseForgeResponse {
          * @author ReviversMC
          * @since 1.0.0-1.0.0
          */
+        @kotlinx.serialization.Serializable
         data class ModAuthor(val id: String, val name: String, val url: String)
     }
 
@@ -55,6 +58,7 @@ class CurseForgeResponse {
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
+    @kotlinx.serialization.Serializable
     data class FilesResponse(val data: List<FileResponse>, val pagination: Pagination) {
 
         /**
@@ -66,6 +70,7 @@ class CurseForgeResponse {
          * @author ReviversMC
          * @since 1.0.0-1.0.0
          */
+        @kotlinx.serialization.Serializable
         data class Pagination(val index: Int, val pageSize: Int, val resultCount: Int, val totalCount: Int)
     }
 
@@ -80,6 +85,7 @@ class CurseForgeResponse {
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
+    @kotlinx.serialization.Serializable
     data class FileResponse(
         val id: String,
         val isAvailable: Boolean,
@@ -87,7 +93,7 @@ class CurseForgeResponse {
         val hashes: List<FileHashes>,
         val downloadUrl: String,
         val gameVersions: List<String>
-        ) {
+    ) {
         /**
          * The hashes of a file
          * @param value The hash value
@@ -95,6 +101,7 @@ class CurseForgeResponse {
          * @author ReviversMC
          * @since 1.0.0-1.0.0
          */
+        @kotlinx.serialization.Serializable
         data class FileHashes(val value: String, val algo: Int) {
             /**
              * Make sense of the hash algorithm numbers that CF gives
