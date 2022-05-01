@@ -13,7 +13,7 @@ class ModrinthResponse {
      * The api response for a Modrinth project. This does NOT contain all the info from the api call.
      * @param id The id of the project.
      * @param title The title of the project.
-     * @param projectLicense The license of the project.
+     * @param license The license of the project.
      * @param issuesUrl The url of the issues for the project.
      * @param sourceUrl The url of the source code for the project.
      * @param wikiUrl The url of the wiki for the project.
@@ -27,12 +27,12 @@ class ModrinthResponse {
     data class ProjectResponse(
         val id: String,
         val title: String,
-        val projectLicense: ProjectLicense?,
-        @SerialName("issues_url") val issuesUrl: String,
-        @SerialName("source_url") val sourceUrl: String,
-        @SerialName("wiki_url") val wikiUrl: String,
-        @SerialName("discord_url") val discordUrl: String,
-        val donationUrls: List<DonationUrl>,
+        val license: License?,
+        @SerialName("issues_url") val issuesUrl: String?,
+        @SerialName("source_url") val sourceUrl: String?,
+        @SerialName("wiki_url") val wikiUrl: String?,
+        @SerialName("discord_url") val discordUrl: String?,
+        @SerialName("donation_urls") val donationUrls: List<DonationUrl>?,
         val versions: List<String>
     ) {
 
@@ -43,7 +43,7 @@ class ModrinthResponse {
          * @since 1.0.0-1.0.0
          */
         @kotlinx.serialization.Serializable
-        data class ProjectLicense(val id: String)
+        data class License(val id: String)
 
         /**
          * A donation url of the project. This does NOT contain all the info from the api call.
