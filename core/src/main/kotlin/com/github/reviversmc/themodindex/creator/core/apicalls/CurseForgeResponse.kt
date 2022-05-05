@@ -8,24 +8,31 @@ package com.github.reviversmc.themodindex.creator.core.apicalls
 class CurseForgeResponse {
 
     /**
-     * The api response for a CF mod. This does NOT contain all the info from the api call.
-     * @param id The id of the mod.
-     * @param name The name of the mod.
-     * @param links The links of the mod.
-     * @param authors The authors of the mod.
-     * @param allowModDistribution Whether the mod is allowed to be distributed.
+     * The data wrapper for the api response for a CF mod. This does NOT contain all the info from the api call.
+     * @param data The [ModData] from the api call, cause CF WRAPS EVERYTHING IN A DATA OBJECT.
      * @author ReviversMC
      * @since 1.0.0-1.0.0
      */
     @kotlinx.serialization.Serializable
-    data class ModResponse(
-        val id: String,
-        val name: String,
-        //We can't get the license! :(
-        val links: ModLinks,
-        val authors: List<ModAuthor>,
-        val allowModDistribution: Boolean?,
-    ) {
+    data class ModResponse(val data: ModData) {
+
+        /**
+         * The api response for a CF mod. This does NOT contain all the info from the api call.
+         * @param id The id of the mod.
+         * @param name The name of the mod.
+         * @param links The links of the mod.
+         * @param authors The authors of the mod.
+         * @param allowModDistribution Whether the mod is allowed to be distributed.
+         * @author ReviversMC
+         * @since 1.0.0-1.0.0
+         */
+        @kotlinx.serialization.Serializable
+        data class ModData(
+            val id: Int, val name: String,
+            //We can't get the license! :(
+            val links: ModLinks, val authors: List<ModAuthor>, val allowModDistribution: Boolean?
+        )
+
         /**
          * The links that a mod has
          * @param websiteUrl The website url of a mod
@@ -47,13 +54,13 @@ class CurseForgeResponse {
          * @since 1.0.0-1.0.0
          */
         @kotlinx.serialization.Serializable
-        data class ModAuthor(val id: String, val name: String, val url: String)
+        data class ModAuthor(val id: Int, val name: String, val url: String)
     }
 
 
     /**
      * The api response when searching for CF files. This does NOT contain all the info from the api call.
-     * @param data The [FileResponse]s that were found
+     * @param data The [FileResponse]s that were found, cause CF WRAPS EVERYTHING IN A DATA OBJECT
      * @param pagination The pagination info
      * @author ReviversMC
      * @since 1.0.0-1.0.0
@@ -87,7 +94,7 @@ class CurseForgeResponse {
      */
     @kotlinx.serialization.Serializable
     data class FileResponse(
-        val id: String,
+        val id: Int,
         val isAvailable: Boolean,
         val displayName: String,
         val hashes: List<FileHashes>,
