@@ -16,6 +16,12 @@ class ModIndexCreator(
     private val modrinthApiCall: ModrinthV2ApiCall,
 ) : Creator {
 
+    /*
+    Atm of creation, curse files cannot be included in the index.
+    See https://media.discordapp.net/attachments/734077874708938867/971793259317854349/sconosciuto.jpeg (picture)
+    or https://discord.com/channels/900128427150028811/940227856741597194/971451873074757712 (original source, CF dev server)
+     */
+    private val curseFilesAllowed = false
     private val schemaVersion = "1.0.0"
 
     //Allows for the passing of api key
@@ -31,6 +37,7 @@ class ModIndexCreator(
      * */
     private fun downloadCurseForgeFiles(curseForgeId: String): MutableMap<String, MutableList<ManifestJson.ManifestFile>> {
 
+        if (!curseFilesAllowed) return mutableMapOf()
         val curseForgeMod = curseForgeApiCall.mod(curseForgeId)?.data ?: return mutableMapOf()
         //Respect the mod distribution toggle by not providing files for mods that have the toggle as false
         if (curseForgeMod.allowModDistribution != true) return mutableMapOf()
