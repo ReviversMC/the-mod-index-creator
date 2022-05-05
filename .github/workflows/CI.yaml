@@ -14,6 +14,8 @@ jobs:
         distribution: 'temurin'
     - name: Test if core works
       run: ./gradlew :core:test
+      env:
+        CURSEFORGE_API_KEY: ${{ secrets.CF_API_KEY }}
     - name: ShadowJar core
       run: ./gradlew :core:shadowJar
     - name: Test if cli works
