@@ -26,7 +26,7 @@ class ApiCallTest : KoinTest {
      * Uses Sodium by jellysquid to test the API call.
      *
      * @author ReviversMC
-     * @since 1.0.0-1.0.0
+     * @since 1-1.0.0
      */
     @Test
     fun `curse api test`(koin: Koin) {
@@ -94,7 +94,7 @@ class ApiCallTest : KoinTest {
      * Uses Sodium by jellysquid to test the API call.
      *
      * @author ReviversMC
-     * @since 1.0.0-1.0.0
+     * @since 1-1.0.0
      */
     @Test
     fun `modrinth api test`() {

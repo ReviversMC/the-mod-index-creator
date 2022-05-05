@@ -11,7 +11,7 @@ interface Creator {
      * @param curseForgeId The curseforge id of the mod. Slugs not recommended.
      * @return A [ManifestJson] object, with the key being the mod loader.
      * @author ReviversMC
-     * @since 1.0.0-1.0.0
+     * @since 1-1.0.0
      */
     fun createManifest(modrinthId: String?, curseForgeId: String?): Map<String, ManifestJson>
 
@@ -22,7 +22,7 @@ interface Creator {
      * @param genericIdentifier The identifier of the mod in the index (i.e. modLoader:modName).
      * @return A [IndexJson] object, with the key being the mod loader.
      * @author ReviversMC
-     * @since 1.0.0-1.0.0
+     * @since 1-1.0.0
      */
     fun modifyIndex(indexToModify: IndexJson, manifest: ManifestJson, genericIdentifier: String): IndexJson
 }

@@ -18,8 +18,8 @@ class ModIndexCreator(
 
     private val schemaVersion = "1.0.0"
 
-    //Give manual control over the api key
-    private val curseForgeApiCall: CurseForgeApiCall = Koin().get { parametersOf(curseForgeApiKey) }
+    //Allows for the passing of api key
+    private val curseForgeApiCall = Koin().get<CurseForgeApiCall>{ parametersOf(curseForgeApiKey) }
 
     /**
      * Creates a map of [ManifestJson.ManifestFile]s on CurseForge for the mod, according to its mod loaders
@@ -27,7 +27,7 @@ class ModIndexCreator(
      * @param curseForgeId The CurseForge ID of the mod
      * @return A map of [ManifestJson.ManifestFile]s on CurseForge for the mod, according to its mod loaders
      * @author ReviversMC
-     * @since 1.0.0-1.0.0
+     * @since 1-1.0.0
      * */
     private fun downloadCurseForgeFiles(curseForgeId: String): MutableMap<String, MutableList<ManifestJson.ManifestFile>> {
 
@@ -61,7 +61,7 @@ class ModIndexCreator(
      * @param modrinthProject The Modrinth project for this project
      * @return A map of [ManifestJson.ManifestFile]s on Modrinth for the project, according to its mod loaders
      * @author ReviversMC
-     * @since 1.0.0-1.0.0
+     * @since 1-1.0.0
      */
     private fun downloadModrinthFiles(modrinthProject: ModrinthResponse.ProjectResponse):
             MutableMap<String, MutableList<ManifestJson.ManifestFile>> {
