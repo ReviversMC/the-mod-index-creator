@@ -31,8 +31,9 @@ class ModIndexCreator(
      * */
     private fun downloadCurseForgeFiles(curseForgeId: String): MutableMap<String, MutableList<ManifestJson.ManifestFile>> {
 
-        val curseForgeMod = curseForgeApiCall.mod(curseForgeId) ?: return mutableMapOf()
-        if (curseForgeMod.allowModDistribution == false) return mutableMapOf()
+        val curseForgeMod = curseForgeApiCall.mod(curseForgeId)?.data ?: return mutableMapOf()
+        //Respect the mod distribution toggle by not providing files for mods that have the toggle as false
+        if (curseForgeMod.allowModDistribution != true) return mutableMapOf()
 
         val downloadFiles = mutableMapOf<String, MutableList<ManifestJson.ManifestFile>>()
         CurseForgeApiCall.ModLoaderType.values().forEach { loader ->
@@ -106,7 +107,7 @@ class ModIndexCreator(
         curseForgeId?.run {
             val files = downloadCurseForgeFiles(curseForgeId)
             downloadFiles.putAll(files)
-            curseForgeApiCall.mod(curseForgeId)?.links?.let {
+            curseForgeApiCall.mod(curseForgeId)?.data?.links?.let {
                 otherLinks.add(ManifestJson.ManifestLinks.OtherLink("website", it.websiteUrl))
                 otherLinks.add(ManifestJson.ManifestLinks.OtherLink("wiki", it.wikiUrl))
             }
@@ -140,7 +141,7 @@ class ModIndexCreator(
         }
 
         curseForgeId?.run {
-            curseForgeApiCall.mod(curseForgeId)?.let { mod ->
+            curseForgeApiCall.mod(curseForgeId)?.data?.let { mod ->
                 downloadFiles.forEach { modLoader ->
                     returnMap[modLoader.key] = ManifestJson(
                         schemaVersion, mod.name, mod.authors[0].name, null, //TODO Get license from Source control
