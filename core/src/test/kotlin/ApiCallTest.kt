@@ -1,34 +1,18 @@
-import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
-import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
-import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthResponse
-import com.github.reviversmc.themodindex.creator.core.apicalls.apiCallModule
+import com.github.reviversmc.themodindex.creator.core.apicalls.*
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
+import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.RegisterExtension
+import org.koin.core.Koin
 import org.koin.core.parameter.parametersOf
 import org.koin.test.KoinTest
 import org.koin.test.inject
 import org.koin.test.junit5.KoinTestExtension
 import java.util.Properties
-import kotlin.test.assertContains
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
+import kotlin.test.*
 
 class ApiCallTest : KoinTest {
-
-    private val curseForgeApiCall by inject<CurseForgeApiCall> {
-        parametersOf(
-            {
-                val properties = Properties()
-                properties.load(
-                    this.javaClass.getResourceAsStream("/curseforge_api_key.txt")
-                        ?: return@parametersOf System.getenv("CURSEFORGE_API_KEY") ?: "broken-api-key"
-                )
-                return@parametersOf properties.getProperty("api_key") ?: System.getenv()["CURSEFORGE_API_KEY"]
-                ?: "broken-api-key"
-            }
-        )
-    }
 
     @JvmField
     @RegisterExtension
@@ -45,11 +29,79 @@ class ApiCallTest : KoinTest {
      * @since 1.0.0-1.0.0
      */
     @Test
+    fun `curse api test`(koin: Koin) {
+        assertThrows<SerializationException> {
+            (koin.get<CurseForgeApiCall> { parametersOf("broken-api-key") }).mod("394468")
+        }
+
+        fun curseApiKey(): String {
+            val properties = Properties()
+            properties.load(
+                this.javaClass.getResourceAsStream("/curseForgeApiKey.properties")
+                    ?: return System.getenv("CURSEFORGE_API_KEY") ?: "broken-api-key"
+            )
+            return properties.getProperty("api_key") ?: System.getenv()["CURSEFORGE_API_KEY"]
+            ?: "broken-api-key"
+        }
+
+        val curseForgeApiCall by inject<CurseForgeApiCall> {
+            parametersOf(curseApiKey())
+        }
+
+        val sodiumProject = curseForgeApiCall.mod("394468")!!.data
+        assertNotNull(sodiumProject)
+        assertEquals("sodium", sodiumProject.name.lowercase())
+        assertEquals("https://github.com/caffeinemc/sodium-fabric", sodiumProject.links.sourceUrl.lowercase())
+        //Other urls left out as assumed to be working since source url is working
+        assertContains(
+            sodiumProject.authors,
+            CurseForgeResponse.ModResponse.ModAuthor(
+                302655,
+                "jellysquid3_",
+                "https://www.curseforge.com/members/28746583-jellysquid3_?username=jellysquid3_"
+            )
+        )
+        assertNotNull(sodiumProject.allowModDistribution)
+        assertFalse(sodiumProject.allowModDistribution ?: false) //Sodium has this set on false
+
+        assertEquals(emptyList(), curseForgeApiCall.files("394468", CurseForgeApiCall.ModLoaderType.FORGE)!!.data)
+
+        //Even though mod distribution is off, files are still returned
+        val sodiumFiles = curseForgeApiCall.files("394468")
+        assertNotNull(sodiumFiles)
+
+        //Checks for
+        assertContains(
+            sodiumFiles.data,
+            CurseForgeResponse.FileResponse(
+                3669187,
+                true,
+                "Sodium mc1.18.2-0.4.1",
+                listOf(
+                    CurseForgeResponse.FileResponse.FileHashes("f839863a6be7014b8d80058ea1f361521148d049", 1),
+                    CurseForgeResponse.FileResponse.FileHashes("601f5c1d8b2b6e3c08a1216000099508", 2),
+                ),
+                "https://edge.forgecdn.net/files/3669/187/sodium-fabric-mc1.18.2-0.4.1+build.15.jar",
+                listOf("Fabric", "1.18.2")
+            ),
+        )
+
+        //We did not specify max files, so we should get all files
+        assertEquals(sodiumFiles.pagination.resultCount, sodiumFiles.pagination.totalCount)
+    }
+
+    /**
+     * Uses Sodium by jellysquid to test the API call.
+     *
+     * @author ReviversMC
+     * @since 1.0.0-1.0.0
+     */
+    @Test
     fun `modrinth api test`() {
         val modrinthApiCall by inject<ModrinthApiCall>()
 
         //Lowercase all the fields we can for reliability. Those not lowercase are from case sensitive fields (e.g. id)
-        val sodiumProject = modrinthApiCall.project("sodium")
+        val sodiumProject = modrinthApiCall.project("AANobbMI")
         assertNotNull(sodiumProject)
         assertEquals("AANobbMI", sodiumProject.id)
         assertEquals("sodium", sodiumProject.title.lowercase())
