@@ -97,7 +97,7 @@ class CurseForgeResponse {
         val id: Int,
         val isAvailable: Boolean,
         val displayName: String,
-        val hashes: List<FileHashes>,
+        val hashes: List<FileHash>,
         val downloadUrl: String,
         val gameVersions: List<String>
     ) {
@@ -109,7 +109,7 @@ class CurseForgeResponse {
          * @since 1-1.0.0
          */
         @kotlinx.serialization.Serializable
-        data class FileHashes(val value: String, val algo: Int) {
+        data class FileHash(val value: String, val algo: Int) {
             /**
              * Make sense of the hash algorithm numbers that CF gives
              * @return The name of the algorithm, instead of CF giving numbers :/

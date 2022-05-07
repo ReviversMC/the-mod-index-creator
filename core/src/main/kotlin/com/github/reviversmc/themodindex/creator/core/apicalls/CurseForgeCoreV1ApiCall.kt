@@ -16,7 +16,7 @@ class CurseForgeCoreV1ApiCall(
 
     private val endpoint = "https://api.curseforge.com"
 
-    override fun mod(modId: String): CurseForgeResponse.ModResponse? {
+    override fun mod(modId: Int): CurseForgeResponse.ModResponse? {
         val response = okHttpClient.newCall(
             Request.Builder().header("x-api-key", apiKey).url("$endpoint/v1/mods/$modId").build()
         ).execute()
@@ -28,7 +28,7 @@ class CurseForgeCoreV1ApiCall(
     }
 
     override fun files(
-        modId: String, modLoaderType: CurseForgeApiCall.ModLoaderType, maxResult: Int
+        modId: Int, modLoaderType: CurseForgeApiCall.ModLoaderType, maxResult: Int
     ): CurseForgeResponse.FilesResponse? {
         val response = okHttpClient.newCall(
             Request.Builder()

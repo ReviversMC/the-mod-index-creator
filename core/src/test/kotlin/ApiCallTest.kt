@@ -31,7 +31,7 @@ class ApiCallTest : KoinTest {
     @Test
     fun `curse api test`(koin: Koin) {
         assertThrows<SerializationException> {
-            (koin.get<CurseForgeApiCall> { parametersOf("broken-api-key") }).mod("394468")
+            (koin.get<CurseForgeApiCall> { parametersOf("broken-api-key") }).mod(394468)
         }
 
         fun curseApiKey(): String {
@@ -48,7 +48,7 @@ class ApiCallTest : KoinTest {
             parametersOf(curseApiKey())
         }
 
-        val sodiumProject = curseForgeApiCall.mod("394468")!!.data
+        val sodiumProject = curseForgeApiCall.mod(394468)!!.data
         assertNotNull(sodiumProject)
         assertEquals("sodium", sodiumProject.name.lowercase())
         assertEquals("https://github.com/caffeinemc/sodium-fabric", sodiumProject.links.sourceUrl.lowercase())
@@ -64,10 +64,10 @@ class ApiCallTest : KoinTest {
         assertNotNull(sodiumProject.allowModDistribution)
         assertFalse(sodiumProject.allowModDistribution ?: false) //Sodium has this set on false
 
-        assertEquals(emptyList(), curseForgeApiCall.files("394468", CurseForgeApiCall.ModLoaderType.FORGE)!!.data)
+        assertEquals(emptyList(), curseForgeApiCall.files(394468, CurseForgeApiCall.ModLoaderType.FORGE)!!.data)
 
         //Even though mod distribution is off, files are still returned
-        val sodiumFiles = curseForgeApiCall.files("394468")
+        val sodiumFiles = curseForgeApiCall.files(394468)
         assertNotNull(sodiumFiles)
 
         //Checks for
@@ -78,8 +78,8 @@ class ApiCallTest : KoinTest {
                 true,
                 "Sodium mc1.18.2-0.4.1",
                 listOf(
-                    CurseForgeResponse.FileResponse.FileHashes("f839863a6be7014b8d80058ea1f361521148d049", 1),
-                    CurseForgeResponse.FileResponse.FileHashes("601f5c1d8b2b6e3c08a1216000099508", 2),
+                    CurseForgeResponse.FileResponse.FileHash("f839863a6be7014b8d80058ea1f361521148d049", 1),
+                    CurseForgeResponse.FileResponse.FileHash("601f5c1d8b2b6e3c08a1216000099508", 2),
                 ),
                 "https://edge.forgecdn.net/files/3669/187/sodium-fabric-mc1.18.2-0.4.1+build.15.jar",
                 listOf("Fabric", "1.18.2")

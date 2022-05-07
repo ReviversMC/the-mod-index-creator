@@ -13,7 +13,7 @@ interface Creator {
      * @author ReviversMC
      * @since 1-1.0.0
      */
-    fun createManifest(modrinthId: String?, curseForgeId: String?): Map<String, ManifestJson>
+    fun createManifest(modrinthId: String?, curseForgeId: Int?): Map<String, ManifestJson>
 
     /**
      * Adds entries to the index.json file if entries are new.

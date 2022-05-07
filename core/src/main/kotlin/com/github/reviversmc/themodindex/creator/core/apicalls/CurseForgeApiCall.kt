@@ -18,7 +18,7 @@ interface CurseForgeApiCall {
      * @author ReviversMC
      * @since 1-1.0.0
      */
-    fun mod(modId: String): CurseForgeResponse.ModResponse?
+    fun mod(modId: Int): CurseForgeResponse.ModResponse?
 
     /**
      * Gets the versions of a CF mod by api call.
@@ -31,7 +31,7 @@ interface CurseForgeApiCall {
      * @author ReviversMC
      * @since 1-1.0.0
      */
-    fun files(modId: String, modLoaderType: ModLoaderType = ModLoaderType.ANY, maxResult: Int = 10000): CurseForgeResponse.FilesResponse?
+    fun files(modId: Int, modLoaderType: ModLoaderType = ModLoaderType.ANY, maxResult: Int = 10000): CurseForgeResponse.FilesResponse?
 
     enum class ModLoaderType(val curseNumber: Int) {
         ANY(0),
