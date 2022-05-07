@@ -4,16 +4,14 @@ import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
+import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthResponse
-import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthV2ApiCall
 import okhttp3.internal.toImmutableList
-import org.koin.core.Koin
-import org.koin.core.parameter.parametersOf
 
 class ModIndexCreator(
     private val apiDownloader: ApiDownloader,
-    private val curseForgeApiKey: String, //Should we make this nullable?
-    private val modrinthApiCall: ModrinthV2ApiCall,
+    private val curseForgeApiCall: CurseForgeApiCall,
+    private val modrinthApiCall: ModrinthApiCall
 ) : Creator {
 
     /*
@@ -24,9 +22,6 @@ class ModIndexCreator(
     private val curseFilesAllowed = false
     private val schemaVersion = "1.0.0"
 
-    //Allows for the passing of api key
-    private val curseForgeApiCall = Koin().get<CurseForgeApiCall>{ parametersOf(curseForgeApiKey) }
-
     /**
      * Creates a map of [ManifestJson.ManifestFile]s on CurseForge for the mod, according to its mod loaders
      *
@@ -35,7 +30,7 @@ class ModIndexCreator(
      * @author ReviversMC
      * @since 1-1.0.0
      * */
-    private fun downloadCurseForgeFiles(curseForgeId: String): MutableMap<String, MutableList<ManifestJson.ManifestFile>> {
+    private fun downloadCurseForgeFiles(curseForgeId: Int): MutableMap<String, MutableList<ManifestJson.ManifestFile>> {
 
         if (!curseFilesAllowed) return mutableMapOf()
         val curseForgeMod = curseForgeApiCall.mod(curseForgeId)?.data ?: return mutableMapOf()
@@ -104,7 +99,7 @@ class ModIndexCreator(
         return downloadFiles
     }
 
-    override fun createManifest(modrinthId: String?, curseForgeId: String?): Map<String, ManifestJson> {
+    override fun createManifest(modrinthId: String?, curseForgeId: Int?): Map<String, ManifestJson> {
         modrinthId ?: curseForgeId ?: return emptyMap() //TODO: Support for non curse OR modrinth mods.
 
         val otherLinks = mutableListOf<ManifestJson.ManifestLinks.OtherLink>()
@@ -122,10 +117,10 @@ class ModIndexCreator(
 
         if (modrinthId != null) {
             val modrinthProject = modrinthApiCall.project(modrinthId)?.also {
-                val files = downloadModrinthFiles(it)
-                downloadFiles.forEach { entry ->
+                val modrinthFiles = downloadModrinthFiles(it)
+                modrinthFiles.forEach { entry ->
                     downloadFiles[entry.key] =
-                        entry.value.plus(files[entry.key] ?: mutableListOf()) as MutableList<ManifestJson.ManifestFile>
+                        entry.value.plus(downloadFiles[entry.key] ?: mutableListOf()) as MutableList<ManifestJson.ManifestFile>
                 }
 
                 otherLinks.add(ManifestJson.ManifestLinks.OtherLink("discord", it.discordUrl))
@@ -138,12 +133,13 @@ class ModIndexCreator(
             downloadFiles.forEach { modLoader ->
                 returnMap[modLoader.key] = ManifestJson(
                     schemaVersion, modrinthProject.title, modrinthApiCall.projectOwner(modrinthId),
-                    modrinthProject.license?.id, curseForgeId, modrinthId,
+                    modrinthProject.license?.id, curseForgeId?.toString(), modrinthId,
                     ManifestJson.ManifestLinks(
                         modrinthProject.issuesUrl, modrinthProject.sourceUrl, otherLinks
                     ), modLoader.value
                 )
             }
+
             return returnMap
         }
 
@@ -152,7 +148,7 @@ class ModIndexCreator(
                 downloadFiles.forEach { modLoader ->
                     returnMap[modLoader.key] = ManifestJson(
                         schemaVersion, mod.name, mod.authors[0].name, null, //TODO Get license from Source control
-                        curseForgeId, null, //Modrinth id is known to be null, else it would have exited the func.
+                        curseForgeId.toString(), null, //Modrinth id is known to be null, else it would have exited the func.
                         ManifestJson.ManifestLinks(
                             mod.links.issuesUrl, mod.links.sourceUrl, otherLinks
                         ), modLoader.value
