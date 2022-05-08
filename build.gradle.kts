@@ -1,10 +1,10 @@
 plugins {
-    id ("com.github.johnrengelman.shadow") version "7.1.2"
+    id("com.github.johnrengelman.shadow") version "7.1.2"
     kotlin("jvm") version "1.6.21"
 }
 
 group = "com.github.reviversmc.themodindex.creator"
-version = "1-1.0.0"
+version = "1.0.0"
 
 subprojects {
     apply {
@@ -62,10 +62,4 @@ subprojects {
             }
         }
     }
-}
-dependencies {
-    implementation("io.insert-koin:koin-test-junit5:3.1.6")
-}
-repositories {
-    mavenCentral()
 }

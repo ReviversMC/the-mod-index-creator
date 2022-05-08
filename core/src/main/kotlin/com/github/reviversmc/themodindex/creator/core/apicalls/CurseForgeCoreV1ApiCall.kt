@@ -8,7 +8,7 @@ import okhttp3.Request
 /**
  * V1 CF Core API calls
  * @author ReviversMC
- * @since 1-1.0.0
+ * @since 1.0.0
  */
 class CurseForgeCoreV1ApiCall(
     private val apiKey: String, private val json: Json, private val okHttpClient: OkHttpClient

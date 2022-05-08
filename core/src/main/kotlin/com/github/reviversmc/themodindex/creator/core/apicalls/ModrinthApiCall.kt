@@ -7,7 +7,7 @@ import java.io.IOException
 /**
  * A class that represents a call to the Modrinth API.
  * @author ReviversMC
- * @since 1-1.0.0
+ * @since 1.0.0
  */
 interface ModrinthApiCall {
 
@@ -18,7 +18,7 @@ interface ModrinthApiCall {
      * @return The project. May not contain all information provided by the api, but rather [ModrinthResponse.ProjectResponse]
      * @throws IOException If the api call fails.
      * @author ReviversMC
-     * @since 1-1.0.0
+     * @since 1.0.0
      */
     fun project(projectId: String): ProjectResponse?
 
@@ -29,7 +29,7 @@ interface ModrinthApiCall {
      * @return The team owner. May not contain all information provided by the api, but rather [ModrinthResponse.TeamResponse]
      * @throws IOException If the api call fails.
      * @author ReviversMC
-     * @since 1-1.0.0
+     * @since 1.0.0
      */
     fun projectOwner(projectId: String): String?
 
@@ -40,7 +40,7 @@ interface ModrinthApiCall {
      * @return The file. May not contain all information provided by the api, but rather [ModrinthResponse.VersionResponse]
      * @throws IOException If the api call fails.
      * @author ReviversMC
-     * @since 1-1.0.0
+     * @since 1.0.0
      */
     fun version(fileId: String): VersionResponse?
 }

@@ -11,7 +11,7 @@ import java.io.IOException
 /**
  * V2 Modrinth API calls
  * @author ReviversMC
- * @since 1-1.0.0
+ * @since 1.0.0
  */
 class ModrinthV2ApiCall(private val json: Json, private val okHttpClient: OkHttpClient) : ModrinthApiCall {
 
@@ -23,7 +23,7 @@ class ModrinthV2ApiCall(private val json: Json, private val okHttpClient: OkHttp
      * @return The response from the call
      * @throws IOException If the call fails
      * @author ReviversMC
-     * @since 1-1.0.0
+     * @since 1.0.0
      */
     private fun doApiCall(urlAsString: String): Response {
         val response = okHttpClient.newCall(Request.Builder().url(urlAsString).build()).execute()

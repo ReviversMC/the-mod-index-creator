@@ -3,7 +3,7 @@ package com.github.reviversmc.themodindex.creator.core.apicalls
 /**
  * This does NOT contain all the info that CF provides, only the info that we need.
  * @author ReviversMC
- * @since 1-1.0.0
+ * @since 1.0.0
  */
 class CurseForgeResponse {
 
@@ -11,7 +11,7 @@ class CurseForgeResponse {
      * The data wrapper for the api response for a CF mod. This does NOT contain all the info from the api call.
      * @param data The [ModData] from the api call, cause CF WRAPS EVERYTHING IN A DATA OBJECT.
      * @author ReviversMC
-     * @since 1-1.0.0
+     * @since 1.0.0
      */
     @kotlinx.serialization.Serializable
     data class ModResponse(val data: ModData) {
@@ -24,7 +24,7 @@ class CurseForgeResponse {
          * @param authors The authors of the mod.
          * @param allowModDistribution Whether the mod is allowed to be distributed.
          * @author ReviversMC
-         * @since 1-1.0.0
+         * @since 1.0.0
          */
         @kotlinx.serialization.Serializable
         data class ModData(
@@ -40,7 +40,7 @@ class CurseForgeResponse {
          * @param issuesUrl The issues url of a mod
          * @param sourceUrl The source url of a mod
          * @author ReviversMC
-         * @since 1-1.0.0
+         * @since 1.0.0
          */
         @kotlinx.serialization.Serializable
         data class ModLinks(val websiteUrl: String, val wikiUrl: String, val issuesUrl: String, val sourceUrl: String)
@@ -51,7 +51,7 @@ class CurseForgeResponse {
          * @param name The name of the author
          * @param url The url of the author on CurseForge
          * @author ReviversMC
-         * @since 1-1.0.0
+         * @since 1.0.0
          */
         @kotlinx.serialization.Serializable
         data class ModAuthor(val id: Int, val name: String, val url: String)
@@ -63,7 +63,7 @@ class CurseForgeResponse {
      * @param data The [FileResponse]s that were found, cause CF WRAPS EVERYTHING IN A DATA OBJECT
      * @param pagination The pagination info
      * @author ReviversMC
-     * @since 1-1.0.0
+     * @since 1.0.0
      */
     @kotlinx.serialization.Serializable
     data class FilesResponse(val data: List<FileResponse>, val pagination: Pagination) {
@@ -75,7 +75,7 @@ class CurseForgeResponse {
          * @param resultCount The actual number of items that are available
          * @param totalCount The total number of items that are available by the request
          * @author ReviversMC
-         * @since 1-1.0.0
+         * @since 1.0.0
          */
         @kotlinx.serialization.Serializable
         data class Pagination(val index: Int, val pageSize: Int, val resultCount: Int, val totalCount: Int)
@@ -90,7 +90,7 @@ class CurseForgeResponse {
      * @param downloadUrl The download url of the file
      * @param gameVersions The game versions that the file is available for
      * @author ReviversMC
-     * @since 1-1.0.0
+     * @since 1.0.0
      */
     @kotlinx.serialization.Serializable
     data class FileResponse(
@@ -106,7 +106,7 @@ class CurseForgeResponse {
          * @param value The hash value
          * @param algo The algorithm used to generate the hash. The int value can be made sense of using [makeSenseOfAlgo]
          * @author ReviversMC
-         * @since 1-1.0.0
+         * @since 1.0.0
          */
         @kotlinx.serialization.Serializable
         data class FileHash(val value: String, val algo: Int) {
@@ -114,7 +114,7 @@ class CurseForgeResponse {
              * Make sense of the hash algorithm numbers that CF gives
              * @return The name of the algorithm, instead of CF giving numbers :/
              * @author ReviversMC
-             * @since 1-1.0.0
+             * @since 1.0.0
              */
             fun makeSenseOfAlgo(): String = when (algo) {
                 1 -> "Sha1"
