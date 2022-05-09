@@ -22,7 +22,6 @@ class CurseForgeResponse {
          * @param name The name of the mod.
          * @param links The links of the mod.
          * @param authors The authors of the mod.
-         * @param allowModDistribution Whether the mod is allowed to be distributed.
          * @author ReviversMC
          * @since 1.0.0
          */
@@ -30,7 +29,7 @@ class CurseForgeResponse {
         data class ModData(
             val id: Int, val name: String,
             //We can't get the license! :(
-            val links: ModLinks, val authors: List<ModAuthor>, val allowModDistribution: Boolean?
+            val links: ModLinks, val authors: List<ModAuthor>
         )
 
         /**
