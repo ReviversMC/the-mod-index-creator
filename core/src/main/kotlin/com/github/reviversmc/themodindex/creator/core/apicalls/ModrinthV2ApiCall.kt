@@ -49,10 +49,25 @@ class ModrinthV2ApiCall(private val json: Json, private val okHttpClient: OkHttp
         //This MUST be a list. A top level array is returned from the api call.
         val pojoResponse = response.body?.string()?.let { json.decodeFromString<List<TeamResponse>>(it) }
         response.close()
-        for (entry in pojoResponse ?: return null) {
-            if (entry.role.equals("owner", true)) return entry.userResponse.username
-        }
-        return null
+
+        //Roles are strings, not enum values :(
+
+        pojoResponse?.let { if (it.size == 1) return pojoResponse[0].userResponse.username } ?: return null
+
+        for (entry in pojoResponse) if (entry.role.equals("owner", true)) return entry.userResponse.username
+
+
+        for (entry in pojoResponse) if (entry.role.equals("coowner", true) || entry.role.equals(
+                "co-owner", true
+            )
+        ) return entry.userResponse.username
+
+
+        for (entry in pojoResponse) if (entry.role.equals("admin", true)) return entry.userResponse.username
+
+        for (entry in pojoResponse) if (entry.role.equals("moderator", true)) return entry.userResponse.username
+
+        return pojoResponse[0].userResponse.username
     }
 
     override fun version(fileId: String): VersionResponse? {
