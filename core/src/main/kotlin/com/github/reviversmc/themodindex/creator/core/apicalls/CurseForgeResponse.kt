@@ -85,7 +85,6 @@ class CurseForgeResponse {
      * @param id The id of the file
      * @param isAvailable Whether the file is available
      * @param displayName The display name of the file
-     * @param hashes The hashes of the file
      * @param downloadUrl The download url of the file
      * @param gameVersions The game versions that the file is available for
      * @author ReviversMC
@@ -96,30 +95,7 @@ class CurseForgeResponse {
         val id: Int,
         val isAvailable: Boolean,
         val displayName: String,
-        val hashes: List<FileHash>,
         val downloadUrl: String,
         val gameVersions: List<String>
-    ) {
-        /**
-         * The hashes of a file
-         * @param value The hash value
-         * @param algo The algorithm used to generate the hash. The int value can be made sense of using [makeSenseOfAlgo]
-         * @author ReviversMC
-         * @since 1.0.0
-         */
-        @kotlinx.serialization.Serializable
-        data class FileHash(val value: String, val algo: Int) {
-            /**
-             * Make sense of the hash algorithm numbers that CF gives
-             * @return The name of the algorithm, instead of CF giving numbers :/
-             * @author ReviversMC
-             * @since 1.0.0
-             */
-            fun makeSenseOfAlgo(): String = when (algo) {
-                1 -> "Sha1"
-                2 -> "Md5"
-                else -> "Unknown"
-            }
-        }
-    }
+    )
 }
