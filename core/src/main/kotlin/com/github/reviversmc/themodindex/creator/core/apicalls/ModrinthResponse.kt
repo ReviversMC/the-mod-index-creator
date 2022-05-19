@@ -103,12 +103,12 @@ class ModrinthResponse {
         data class VersionFile(val hashes: VersionHash, val url: String, val primary: Boolean) {
             /**
              * The hash of a Modrinth version file. This does NOT contain all the info from the api call.
-             * @param sha1 The sha1 hash of the file.
+             * @param sha512 The sha512 hash of the file.
              * @author ReviversMC
              * @since 1.0.0
              */
             @kotlinx.serialization.Serializable
-            data class VersionHash(val sha1: String)
+            data class VersionHash(val sha512: String)
         }
     }
 }
