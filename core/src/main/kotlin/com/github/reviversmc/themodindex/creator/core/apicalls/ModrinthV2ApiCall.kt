@@ -70,11 +70,11 @@ class ModrinthV2ApiCall(private val json: Json, private val okHttpClient: OkHttp
         return pojoResponse[0].userResponse.username
     }
 
-    override fun version(fileId: String): VersionResponse? {
-        val response = doApiCall("$endpoint/version/$fileId")
+    override fun versions(projectId: String): List<VersionResponse> {
+        val response = doApiCall("$endpoint/project/$projectId/version") //Not versions for some reason
 
-        val pojoResponse = response.body?.string()?.let { json.decodeFromString<VersionResponse>(it) }
+        val pojoResponse = response.body?.string()?.let { json.decodeFromString<List<VersionResponse>>(it) }
         response.close()
-        return pojoResponse
+        return pojoResponse ?: emptyList()
     }
 }

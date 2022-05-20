@@ -36,11 +36,11 @@ interface ModrinthApiCall {
     /**
      * Gets a modrinth file via api call.
      *
-     * @param fileId The file id.
-     * @return The file. May not contain all information provided by the api, but rather [ModrinthResponse.VersionResponse]
+     * @param projectId The project id, or a slug.
+     * @return The info of all versions. May not contain all information provided by the api, but rather [ModrinthResponse.VersionResponse]
      * @throws IOException If the api call fails.
      * @author ReviversMC
      * @since 1.0.0
      */
-    fun version(fileId: String): VersionResponse?
+    fun versions(projectId: String): List<VersionResponse>
 }
