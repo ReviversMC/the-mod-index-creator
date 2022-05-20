@@ -95,7 +95,7 @@ class CurseForgeResponse {
         val id: Int,
         val isAvailable: Boolean,
         val displayName: String,
-        val downloadUrl: String,
+        val downloadUrl: String?,
         val gameVersions: List<String>
     )
 }
