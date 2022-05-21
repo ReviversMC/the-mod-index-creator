@@ -48,42 +48,34 @@ class ApiCallTest : KoinTest {
             parametersOf(curseApiKey())
         }
 
-        val sodiumProject = curseForgeApiCall.mod(394468)!!.data
-        assertNotNull(sodiumProject)
-        assertEquals("sodium", sodiumProject.name.lowercase())
-        assertEquals("https://github.com/caffeinemc/sodium-fabric", sodiumProject.links.sourceUrl.lowercase())
+        val curseForgeMod = curseForgeApiCall.mod(394468)!!.data
+        assertNotNull(curseForgeMod)
+        assertEquals("sodium", curseForgeMod.name.lowercase())
+        assertEquals("https://github.com/caffeinemc/sodium-fabric", curseForgeMod.links.sourceUrl.lowercase())
         //Other urls left out as assumed to be working since source url is working
         assertContains(
-            sodiumProject.authors,
+            curseForgeMod.authors,
             CurseForgeResponse.ModResponse.ModAuthor(
                 302655,
                 "jellysquid3_",
                 "https://www.curseforge.com/members/28746583-jellysquid3_?username=jellysquid3_"
             )
         )
-        assertNotNull(sodiumProject.allowModDistribution)
-        assertFalse(sodiumProject.allowModDistribution ?: false) //Sodium has this set on false
 
         assertEquals(emptyList(), curseForgeApiCall.files(394468, CurseForgeApiCall.ModLoaderType.FORGE)!!.data)
 
-        //Even though mod distribution is off, files are still returned
         val sodiumFiles = curseForgeApiCall.files(394468)
         assertNotNull(sodiumFiles)
 
-        //Checks for
         assertContains(
             sodiumFiles.data,
             CurseForgeResponse.FileResponse(
                 3669187,
                 true,
                 "Sodium mc1.18.2-0.4.1",
-                listOf(
-                    CurseForgeResponse.FileResponse.FileHash("f839863a6be7014b8d80058ea1f361521148d049", 1),
-                    CurseForgeResponse.FileResponse.FileHash("601f5c1d8b2b6e3c08a1216000099508", 2),
-                ),
                 "https://edge.forgecdn.net/files/3669/187/sodium-fabric-mc1.18.2-0.4.1+build.15.jar",
                 listOf("Fabric", "1.18.2")
-            ),
+            )
         )
 
         //We did not specify max files, so we should get all files
@@ -110,16 +102,16 @@ class ApiCallTest : KoinTest {
         //Other urls left out as assumed to be working since source url is working
         assertContains(sodiumProject.versions, "74Y5Z8fo") //This version is v0.4.1
 
-        val sodiumVersion041 = modrinthApiCall.version("74Y5Z8fo")
-        assertNotNull(sodiumVersion041)
-        assertEquals("sodium 0.4.1", sodiumVersion041.name.lowercase())
-        assertEquals(listOf("1.18.2"), sodiumVersion041.gameVersions)
-        assertEquals(listOf("fabric"), sodiumVersion041.loaders.map { it.lowercase() })
+        val sodiumVersion010 = modrinthApiCall.versions("AANobbMI").last()
+        assertNotNull(sodiumVersion010)
+        assertEquals("Sodium 0.1.0", sodiumVersion010.name)
+        assertEquals(listOf("1.16.5", "1.16.4", "1.16.3"), sodiumVersion010.gameVersions.sortedDescending())
+        assertEquals(listOf("fabric"), sodiumVersion010.loaders.map { it.lowercase() })
         assertContains(
-            sodiumVersion041.files,
+            sodiumVersion010.files,
             ModrinthResponse.VersionResponse.VersionFile(
-                ModrinthResponse.VersionResponse.VersionFile.VersionHash("f839863a6be7014b8d80058ea1f361521148d049"),
-                "https://cdn.modrinth.com/data/AANobbMI/versions/mc1.18.2-0.4.1/sodium-fabric-mc1.18.2-0.4.1%2Bbuild.15.jar",
+                ModrinthResponse.VersionResponse.VersionFile.VersionHash("2597064f7116315adcfe114f0d76c04233791fed049cbbcf722f878002bf14cd8dec421806da639f31ffd496b9dedac9e39e2b48f43007427fa0f659ec5118e2"),
+                "https://cdn.modrinth.com/data/AANobbMI/versions/mc1.16.3-0.1.0/sodium-fabric-mc1.16.3-0.1.0.jar",
                 true
             )
         )
