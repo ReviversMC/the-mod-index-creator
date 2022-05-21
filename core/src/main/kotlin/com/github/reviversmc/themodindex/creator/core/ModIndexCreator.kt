@@ -5,181 +5,292 @@ import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
-import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthResponse
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.internal.toImmutableList
+import okhttp3.internal.toImmutableMap
+import org.kohsuke.github.GitHub
+import java.io.IOException
+import java.math.BigInteger
+import java.security.MessageDigest
 
 class ModIndexCreator(
     private val apiDownloader: ApiDownloader,
     private val curseForgeApiCall: CurseForgeApiCall,
-    private val modrinthApiCall: ModrinthApiCall
+    private val githubApiCall: GitHub,
+    private val modrinthApiCall: ModrinthApiCall,
+    private val okHttpClient: OkHttpClient
 ) : Creator {
 
-    /*
-    Atm of creation, curse files cannot be included in the index.
-    See https://media.discordapp.net/attachments/734077874708938867/971793259317854349/sconosciuto.jpeg (picture)
-    or https://discord.com/channels/900128427150028811/940227856741597194/971451873074757712 (original source, CF dev server)
+    private val indexVersion = "3.0.0"
+
+    /**
+     * Create a sha512 hash for a given input
+     * @param input The bytes to create a sha512 hash for
+     * @return The sha512 hash
+     * @author ReviversMC
+     * @since 1.0.0
      */
-    private val curseFilesAllowed = false
-    private val schemaVersion = "1.0.0"
+    private fun createSHA512Hash(input: ByteArray): String {
+        var out = BigInteger(
+            1, MessageDigest.getInstance("SHA-512").digest(input)
+        ).toString(16)
+
+        while (out.length < 128) out = "0$out"
+        return out
+    }
 
     /**
      * Creates a map of [ManifestJson.ManifestFile]s on CurseForge for the mod, according to its mod loaders
      *
      * @param curseForgeId The CurseForge ID of the mod
+     * @param existingFiles The existing files to add to, if any
      * @return A map of [ManifestJson.ManifestFile]s on CurseForge for the mod, according to its mod loaders
      * @author ReviversMC
-     * @since 1-1.0.0
+     * @since 1.0.0
      * */
-    private fun downloadCurseForgeFiles(curseForgeId: Int): MutableMap<String, MutableList<ManifestJson.ManifestFile>> {
+    private fun downloadCurseForgeFiles(
+        curseForgeId: Int, existingFiles: Map<String, List<ManifestJson.ManifestFile>> = emptyMap()
+    ): Map<String, List<ManifestJson.ManifestFile>> {
 
-        if (!curseFilesAllowed) return mutableMapOf()
-        val curseForgeMod = curseForgeApiCall.mod(curseForgeId)?.data ?: return mutableMapOf()
-        //Respect the mod distribution toggle by not providing files for mods that have the toggle as false
-        if (curseForgeMod.allowModDistribution != true) return mutableMapOf()
+        /*
+        Atm of creation, curse files cannot be included in the index.
+        See https://media.discordapp.net/attachments/734077874708938867/971793259317854349/sconosciuto.jpeg (picture)
+        or https://discord.com/channels/900128427150028811/940227856741597194/971451873074757712 (original source, CF dev server)
+        */
 
-        val downloadFiles = mutableMapOf<String, MutableList<ManifestJson.ManifestFile>>()
-        CurseForgeApiCall.ModLoaderType.values().forEach { loader ->
-            val existingFiles = downloadFiles.getOrDefault(loader.name.lowercase(), mutableListOf())
-            for (file in curseForgeApiCall.files(curseForgeId, loader)?.data ?: return mutableMapOf()) {
-                existingFiles.add(
+        val returnMap = existingFiles.toMutableMap()
+        for (modLoader in CurseForgeApiCall.ModLoaderType.values()) {
+            if (modLoader == CurseForgeApiCall.ModLoaderType.ANY) continue
+            val loaderFiles = returnMap.getOrDefault(modLoader.name.lowercase(), emptyList()).toMutableList()
+            val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
+
+            for (file in curseForgeApiCall.files(curseForgeId, modLoader)?.data ?: continue) {
+
+                val fileResponse =
+                    okHttpClient.newCall(Request.Builder().url(file.downloadUrl ?: continue).build()).execute()
+                val fileHash = createSHA512Hash(fileResponse.body?.bytes() ?: continue)
+                fileResponse.close()
+
+                if (loaderFileHashes.contains(fileHash)) {
+                    loaderFileHashes.forEachIndexed { index, existingHash ->
+                        if (existingHash.equals(fileHash, true)) loaderFiles[index] =
+                            loaderFiles[index].copy(curseDownloadAvailable = true)
+                    }
+                } else loaderFiles.add(
                     ManifestJson.ManifestFile(
-                        file.displayName,
-                        file.gameVersions.sortedDescending(),
-                        file.hashes.filter { it.makeSenseOfAlgo().equals("sha1", true) }[0].value,
-                        mutableListOf(file.downloadUrl)
+                        file.displayName, file.gameVersions.sortedDescending().mapNotNull {
+                            try {
+                                CurseForgeApiCall.ModLoaderType.valueOf(it.uppercase())
+                                null//Do not add if detected to be loader
+                            } catch (_: IllegalArgumentException) {
+                                it
+                            }
+                        }, fileHash, emptyList(), true
                     )
                 )
+
             }
-            downloadFiles[loader.name.lowercase()] = existingFiles
+            returnMap[modLoader.name.lowercase()] = loaderFiles.toImmutableList()
         }
-        return downloadFiles
+
+        returnMap.values.removeIf { it.isEmpty() }
+        return returnMap.toImmutableMap()
     }
 
-    //TODO some sort of github downloader
+    /**
+     * Creates a map of [ManifestJson.ManifestFile]s on GitHub for the mod, according to its mod loaders.
+     * THIS WILL ONLY ADD FILES FOR HASHES THAT ARE ALREADY PRESENT IN THE EXISTING FILES MAP.
+     *
+     * @param gitHubRepo The GitHub repository of the mod. Refers to the owner/repo format, not the https://github.com/owner/repo format.
+     * @param existingFiles The existing files to add to, if any
+     * @return A map of [ManifestJson.ManifestFile]s on GitHub for the mod, according to its mod loaders
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    private fun downloadGitHubFiles(
+        gitHubRepo: String, existingFiles: Map<String, List<ManifestJson.ManifestFile>>
+    ): Map<String, List<ManifestJson.ManifestFile>> {
+
+        val returnMap = existingFiles.toMutableMap()
+
+        githubApiCall.getRepository(gitHubRepo).listReleases().forEach { release ->
+            for (asset in release.listAssets()) {
+                val response = okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
+                val fileHash = createSHA512Hash(response.body?.bytes() ?: continue)
+                response.close()
+
+                for ((loader, manifestFiles) in returnMap) {
+                    if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
+                    manifestFiles.forEachIndexed { index, manifestFile ->
+                        if (manifestFile.sha512Hash.equals(fileHash, true)) {
+                            returnMap[loader] = manifestFiles.toMutableList().apply {
+                                this[index] =
+                                    manifestFile.copy(downloadUrls = this[index].downloadUrls + asset.browserDownloadUrl)
+                            }
+                            return@forEachIndexed
+                        }
+                    }
+                }
+            }
+        }
+        return returnMap.toImmutableMap()
+    }
 
     /**
      * Creates a map of [ManifestJson.ManifestFile]s on Modrinth for the project, according to its mod loaders
      *
-     * @param modrinthProject The Modrinth project for this project
+     * @param modrinthId The modrinth id for this project
+     * @param existingFiles The existing files to add to, if any
      * @return A map of [ManifestJson.ManifestFile]s on Modrinth for the project, according to its mod loaders
      * @author ReviversMC
-     * @since 1-1.0.0
+     * @since 1.0.0
      */
-    private fun downloadModrinthFiles(modrinthProject: ModrinthResponse.ProjectResponse):
-            MutableMap<String, MutableList<ManifestJson.ManifestFile>> {
+    private fun downloadModrinthFiles(
+        modrinthId: String, existingFiles: Map<String, List<ManifestJson.ManifestFile>> = emptyMap()
+    ): Map<String, List<ManifestJson.ManifestFile>> {
 
-        if (apiDownloader.getOrDownloadIndexJson()?.schemaVersion != schemaVersion) {
-            throw IllegalStateException(
-                "You are using an outdated version of this tool. Please update to the latest version." +
-                        "Attempted index version to target: $schemaVersion,\n" +
-                        "but found: ${apiDownloader.getOrDownloadIndexJson()?.schemaVersion}"
-            )
-        }
+        val returnMap = existingFiles.toMutableMap()
+        //val downloadFiles = mutableMapOf<String, MutableList<ManifestJson.ManifestFile>>()
+        modrinthApiCall.versions(modrinthId).forEach { versionResponse ->
 
+            versionResponse.loaders.forEach { loader -> //All files here are guaranteed to work for the loader.
+                val loaderFiles = returnMap.getOrDefault(loader.lowercase(), emptyList()).toMutableList()
+                val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
 
-        val downloadFiles = mutableMapOf<String, MutableList<ManifestJson.ManifestFile>>()
-        for (version in modrinthProject.versions) {
-            val versionResponse = modrinthApiCall.version(version) ?: continue
+                for (file in versionResponse.files) {
 
-            versionResponse.loaders.forEach { loader ->
-                val existingFiles = downloadFiles.getOrDefault(loader.lowercase(), mutableListOf())
-                versionResponse.files.forEach {
-                    existingFiles.add(
+                    if (loaderFileHashes.contains(file.hashes.sha512)) {
+                        loaderFileHashes.forEachIndexed { index, existingHash ->
+                            if (existingHash.equals(file.hashes.sha512, true)) loaderFiles[index] =
+                                loaderFiles[index].copy(downloadUrls = loaderFiles[index].downloadUrls + file.url)
+                        }
+                    } else loaderFiles.add(
                         ManifestJson.ManifestFile(
                             versionResponse.name,
                             versionResponse.gameVersions.sortedDescending(),
-                            it.hashes.sha1,
-                            mutableListOf(it.url)
+                            file.hashes.sha512,
+                            listOf(file.url),
+                            false //We don't know if it's available, so assume false
                         )
                     )
                 }
-                downloadFiles[loader.lowercase()] = existingFiles
+                returnMap[loader.lowercase()] = loaderFiles.toImmutableList()
             }
         }
-        return downloadFiles
+        return returnMap.toImmutableMap()
     }
 
     override fun createManifest(modrinthId: String?, curseForgeId: Int?): Map<String, ManifestJson> {
+
+        if (apiDownloader.getOrDownloadIndexJson()?.indexVersion != indexVersion) {
+            throw IllegalStateException(
+                "Attempted index version to target: $indexVersion,\nbut found: ${apiDownloader.getOrDownloadIndexJson()?.indexVersion ?: "UNKNOWN"}"
+            )
+        }
         modrinthId ?: curseForgeId ?: return emptyMap() //TODO: Support for non curse OR modrinth mods.
 
-        val otherLinks = mutableListOf<ManifestJson.ManifestLinks.OtherLink>()
-        val downloadFiles = mutableMapOf<String, MutableList<ManifestJson.ManifestFile>>()
-        val returnMap = mutableMapOf<String, ManifestJson>()
+        /*
+        Current impl:
+        - If modrinthId is not null, use modrinth for metadata
+        - If curseForgeId is not null, use curseforge for metadata
+        - If both are null, return empty map
 
-        curseForgeId?.run {
-            val files = downloadCurseForgeFiles(curseForgeId)
-            downloadFiles.putAll(files)
-            curseForgeApiCall.mod(curseForgeId)?.data?.links?.let {
-                otherLinks.add(ManifestJson.ManifestLinks.OtherLink("website", it.websiteUrl))
-                otherLinks.add(ManifestJson.ManifestLinks.OtherLink("wiki", it.wikiUrl))
-            }
+        - If modrinthId is not null, use modrinth for files
+        - If curseForgeId is not null, store a boolean in the manifest saying that curseforge files are available
+        - If GitHub is used a source, scan GitHub releases for files. Check if the hash is similar to that provided by modrinth or curseforge
+        - If all are null, don't include the version. If no versions are non-null, return empty map
+         */
+
+        val curseForgeMod = curseForgeId?.let { curseForgeApiCall.mod(it) }
+        val modrinthProject = modrinthId?.let { modrinthApiCall.project(it) }
+
+        val gitHubUserRepo = modrinthProject?.sourceUrl?.let {//Make the source in the format of User/Repo
+            val splitSource = it.split("/")
+            return@let if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
+
+        } ?: curseForgeMod?.data?.links?.sourceUrl?.let {
+            val splitSource = it.split("/")
+            return@let if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
         }
 
-        if (modrinthId != null) {
-            val modrinthProject = modrinthApiCall.project(modrinthId)?.also {
-                val modrinthFiles = downloadModrinthFiles(it)
-                modrinthFiles.forEach { entry ->
-                    downloadFiles[entry.key] =
-                        entry.value.plus(downloadFiles[entry.key] ?: mutableListOf()) as MutableList<ManifestJson.ManifestFile>
-                }
+        val modrinthFiles = modrinthId?.let { downloadModrinthFiles(it) } ?: emptyMap()
+        val curseAndModrinthFiles = curseForgeId?.let { downloadCurseForgeFiles(it, modrinthFiles) } ?: modrinthFiles
 
-                otherLinks.add(ManifestJson.ManifestLinks.OtherLink("discord", it.discordUrl))
-                otherLinks.add(ManifestJson.ManifestLinks.OtherLink("wiki", it.wikiUrl))
-                it.donationUrls?.forEach { donationLink ->
-                    otherLinks.add(ManifestJson.ManifestLinks.OtherLink(donationLink.platform, donationLink.url))
-                }
-            } ?: throw IllegalArgumentException("No modrinth project found for $modrinthId")
+        val combinedFiles =
+            gitHubUserRepo?.let { downloadGitHubFiles(it, curseAndModrinthFiles) } ?: curseAndModrinthFiles
 
-            downloadFiles.forEach { modLoader ->
-                returnMap[modLoader.key] = ManifestJson(
-                    schemaVersion, modrinthProject.title, modrinthApiCall.projectOwner(modrinthId),
-                    modrinthProject.license?.id, curseForgeId?.toString(), modrinthId,
-                    ManifestJson.ManifestLinks(
-                        modrinthProject.issuesUrl, modrinthProject.sourceUrl, otherLinks
-                    ), modLoader.value
-                )
+        if (combinedFiles.isEmpty()) return emptyMap()
+
+        val otherLinks = mutableListOf<ManifestJson.ManifestLinks.OtherLink>().apply {
+            modrinthProject?.let {
+
+                it.discordUrl?.let { url -> if (url != "") add(ManifestJson.ManifestLinks.OtherLink("discord", url)) }
+                it.wikiUrl?.let { url -> if (url != "") add(ManifestJson.ManifestLinks.OtherLink("wiki", url)) }
+
+                it.donationUrls?.forEach { donation ->
+                    add(ManifestJson.ManifestLinks.OtherLink(donation.platform, donation.url))
+                }
             }
 
+            curseForgeMod?.data?.links?.let {
+                if (it.websiteUrl != "") add(ManifestJson.ManifestLinks.OtherLink("website", it.websiteUrl))
+                if (it.wikiUrl != "") add(ManifestJson.ManifestLinks.OtherLink("wiki", it.wikiUrl))
+            }
+        }.distinct()
+
+        val returnMap = mutableMapOf<String, ManifestJson>()
+
+        modrinthProject?.run {
+            combinedFiles.forEach {
+                returnMap[it.key] = ManifestJson(
+                    indexVersion,
+                    title,
+                    modrinthApiCall.projectOwner(modrinthId)
+                        ?: throw IOException("No owner found for modrinth project: $modrinthId"),
+                    license?.id ?: "UNKNOWN",
+                    //Could cause null to be wrapped in quotes, and we thus have to do the ugly check to prevent that.
+                    curseForgeId,
+                    id,
+                    ManifestJson.ManifestLinks(issuesUrl, sourceUrl, otherLinks),
+                    it.value
+                )
+            }
             return returnMap
         }
 
-        curseForgeId?.run {
-            curseForgeApiCall.mod(curseForgeId)?.data?.let { mod ->
-                downloadFiles.forEach { modLoader ->
-                    returnMap[modLoader.key] = ManifestJson(
-                        schemaVersion, mod.name, mod.authors[0].name, null, //TODO Get license from Source control
-                        curseForgeId.toString(), null, //Modrinth id is known to be null, else it would have exited the func.
-                        ManifestJson.ManifestLinks(
-                            mod.links.issuesUrl, mod.links.sourceUrl, otherLinks
-                        ), modLoader.value
-                    )
-                }
-                return returnMap
+        curseForgeMod?.data?.run {
+            combinedFiles.forEach {
+                returnMap[it.key] = ManifestJson(
+                    indexVersion,
+                    name,
+                    authors[0].name,
+                    githubApiCall.getRepository(gitHubUserRepo).license.key,
+                    curseForgeId,
+                    modrinthId, //Modrinth id is known to be null, else it would have exited the func.
+                    ManifestJson.ManifestLinks(
+                        links.issuesUrl, links.sourceUrl, otherLinks
+                    ),
+                    it.value
+                )
             }
+            return returnMap
         }
 
         return emptyMap()
     }
 
-    override fun modifyIndex(indexToModify: IndexJson, manifest: ManifestJson, genericIdentifier: String): IndexJson {
-        if (indexToModify.schemaVersion != schemaVersion) {
+    override fun modifyIndex(
+        indexToModify: IndexJson, manifest: ManifestJson, genericIdentifier: String
+    ): IndexJson {
+        if (indexToModify.indexVersion != indexVersion) {
             throw IllegalStateException(
-                "You are using an outdated version of this tool. Please update to the latest version." +
-                        "Attempted index version to target: $schemaVersion,\n" +
-                        "but found: ${apiDownloader.getOrDownloadIndexJson()?.schemaVersion}"
+                "Attempted index version to target: $indexVersion,\nbut found: ${indexToModify.indexVersion}"
             )
         }
 
-        val indexFiles = indexToModify.files.toMutableList()
-
-        for (manifestFile in manifest.files) {
-            val indexFile = IndexJson.IndexFile(
-                "$genericIdentifier:${manifestFile.fileName ?: continue}", manifestFile.sha1Hash ?: continue
-            )
-            indexFiles.add(indexFile)
-        }
-
-        return indexToModify.copy(files = indexFiles.toImmutableList().sortedBy { it.identifier })
-
+        return indexToModify.copy(identifiers = indexToModify.identifiers.toMutableList().apply {
+            manifest.files.forEach { add("$genericIdentifier:${it.sha512Hash}") }
+        })
     }
 }
