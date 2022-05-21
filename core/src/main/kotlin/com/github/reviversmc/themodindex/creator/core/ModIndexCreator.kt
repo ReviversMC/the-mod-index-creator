@@ -22,7 +22,7 @@ class ModIndexCreator(
     private val okHttpClient: OkHttpClient
 ) : Creator {
 
-    private val indexVersion = "3.0.0"
+    private val indexVersion = "4.0.0"
 
     /**
      * Create a sha512 hash for a given input
@@ -164,7 +164,7 @@ class ModIndexCreator(
                         loaderFileHashes.forEachIndexed { index, existingHash ->
                             if (existingHash.equals(file.hashes.sha512, true)) loaderFiles[index] =
                                 loaderFiles[index].copy(downloadUrls = loaderFiles[index].downloadUrls + file.url)
-                        }
+                        } //TODO make everything enqueue
                     } else loaderFiles.add(
                         ManifestJson.ManifestFile(
                             versionResponse.name,
