@@ -8,7 +8,8 @@ val creatorModule = module {
     factory { (curseForgeApiKey: String, gitHubApiKey: String) ->
         ModIndexCreator(
             get(),
-            get { parametersOf(curseForgeApiKey) },
+            curseForgeApiKey,
+            get(),
             get { parametersOf(gitHubApiKey) },
             get(),
             get()

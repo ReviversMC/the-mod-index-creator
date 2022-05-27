@@ -5,10 +5,9 @@ import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
+import kotlinx.serialization.ExperimentalSerializationApi
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.internal.toImmutableList
-import okhttp3.internal.toImmutableMap
 import org.kohsuke.github.GitHub
 import java.io.IOException
 import java.math.BigInteger
@@ -16,6 +15,7 @@ import java.security.MessageDigest
 
 class ModIndexCreator(
     private val apiDownloader: ApiDownloader,
+    private val curseApiKey: String,
     private val curseForgeApiCall: CurseForgeApiCall,
     private val githubApiCall: GitHub,
     private val modrinthApiCall: ModrinthApiCall,
@@ -65,7 +65,8 @@ class ModIndexCreator(
             val loaderFiles = returnMap.getOrDefault(modLoader.name.lowercase(), emptyList()).toMutableList()
             val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
 
-            for (file in curseForgeApiCall.files(curseForgeId, modLoader)?.data ?: continue) {
+            for (file in curseForgeApiCall.files(curseApiKey, curseForgeId, modLoader.curseNumber).body()?.data
+                ?: continue) {
 
                 val fileResponse =
                     okHttpClient.newCall(Request.Builder().url(file.downloadUrl ?: continue).build()).execute()
@@ -91,11 +92,11 @@ class ModIndexCreator(
                 )
 
             }
-            returnMap[modLoader.name.lowercase()] = loaderFiles.toImmutableList()
+            returnMap[modLoader.name.lowercase()] = loaderFiles.toList()
         }
 
         returnMap.values.removeIf { it.isEmpty() }
-        return returnMap.toImmutableMap()
+        return returnMap.toMap()
     }
 
     /**
@@ -134,7 +135,7 @@ class ModIndexCreator(
                 }
             }
         }
-        return returnMap.toImmutableMap()
+        return returnMap.toMap()
     }
 
     /**
@@ -152,7 +153,7 @@ class ModIndexCreator(
 
         val returnMap = existingFiles.toMutableMap()
         //val downloadFiles = mutableMapOf<String, MutableList<ManifestJson.ManifestFile>>()
-        modrinthApiCall.versions(modrinthId).forEach { versionResponse ->
+        modrinthApiCall.versions(modrinthId).body()?.forEach { versionResponse ->
 
             versionResponse.loaders.forEach { loader -> //All files here are guaranteed to work for the loader.
                 val loaderFiles = returnMap.getOrDefault(loader.lowercase(), emptyList()).toMutableList()
@@ -175,12 +176,13 @@ class ModIndexCreator(
                         )
                     )
                 }
-                returnMap[loader.lowercase()] = loaderFiles.toImmutableList()
+                returnMap[loader.lowercase()] = loaderFiles.toList()
             }
         }
-        return returnMap.toImmutableMap()
+        return returnMap.toMap()
     }
 
+    @ExperimentalSerializationApi
     override fun createManifest(modrinthId: String?, curseForgeId: Int?): Map<String, ManifestJson> {
 
         if (apiDownloader.getOrDownloadIndexJson()?.indexVersion != indexVersion) {
@@ -202,8 +204,8 @@ class ModIndexCreator(
         - If all are null, don't include the version. If no versions are non-null, return empty map
          */
 
-        val curseForgeMod = curseForgeId?.let { curseForgeApiCall.mod(it) }
-        val modrinthProject = modrinthId?.let { modrinthApiCall.project(it) }
+        val curseForgeMod = curseForgeId?.let { curseForgeApiCall.mod(curseApiKey, it) }?.body()
+        val modrinthProject = modrinthId?.let { modrinthApiCall.project(it) }?.body()
 
         val gitHubUserRepo = modrinthProject?.sourceUrl?.let {//Make the source in the format of User/Repo
             val splitSource = it.split("/")
@@ -246,7 +248,8 @@ class ModIndexCreator(
                 returnMap[it.key] = ManifestJson(
                     indexVersion,
                     title,
-                    modrinthApiCall.projectOwner(modrinthId)
+                    modrinthApiCall.projectMembers(modrinthId).body()?.filter { member -> member.role == "Owner" }
+                        ?.map { member -> member.userResponse.username }?.get(0)
                         ?: throw IOException("No owner found for modrinth project: $modrinthId"),
                     license?.id ?: "UNKNOWN",
                     //Could cause null to be wrapped in quotes, and we thus have to do the ugly check to prevent that.
@@ -280,6 +283,11 @@ class ModIndexCreator(
         return emptyMap()
     }
 
+    @ExperimentalSerializationApi
+    override suspend fun createManifestAsync(modrinthId: String?, curseForgeId: Int?): Map<String, ManifestJson> {
+
+    }
+
     override fun modifyIndex(
         indexToModify: IndexJson, manifest: ManifestJson, genericIdentifier: String
     ): IndexJson {
@@ -292,5 +300,13 @@ class ModIndexCreator(
         return indexToModify.copy(identifiers = indexToModify.identifiers.toMutableList().apply {
             manifest.files.forEach { add("$genericIdentifier:${it.sha512Hash}") }
         })
+    }
+
+    override suspend fun modifyIndexAsync(
+        indexToModify: IndexJson,
+        manifest: ManifestJson,
+        genericIdentifier: String
+    ): IndexJson {
+
     }
 }
