@@ -20,13 +20,9 @@ subprojects {
     dependencies {
         api("io.insert-koin:koin-core:3.2.0")
         testApi("org.junit.jupiter:junit-jupiter:5.8.2")
-        testApi("io.insert-koin:koin-test-junit5:3.2.0-beta-1")
-        testApi("io.insert-koin:koin-test:3.2.0-beta-1")
-        testApi("io.mockk:mockk:1.12.3")
-    }
-
-    sourceSets.main {
-        java.srcDirs("build/generated/ksp/main/kotlin")
+        testApi("io.insert-koin:koin-test-junit5:3.2.0")
+        testApi("io.insert-koin:koin-test:3.2.0")
+        testApi("io.mockk:mockk:1.12.4")
     }
 
     tasks {
