@@ -25,7 +25,10 @@ interface CurseForgeApiCall {
      * @since 1.0.0
      */
     @GET("/v1/mods/{modId}")
-    fun mod(@Header("x-api-key") curseForgeApiKey: String, @Path("modId") modId: Int): Response<CurseForgeResponse.ModResponse>
+    fun mod(
+        @Header("x-api-key") curseForgeApiKey: String,
+        @Path("modId") modId: Int
+    ): Response<CurseForgeResponse.ModResponse>
 
     /**
      * Gets a CF mod by api call, asynchronously.
@@ -38,7 +41,10 @@ interface CurseForgeApiCall {
      * @since 1.0.0
      */
     @GET("/v1/mods/{modId}")
-    suspend fun modAsync(@Header("x-api-key") curseForgeApiKey: String, @Path("modId") modId: Int): Response<CurseForgeResponse.ModResponse>
+    suspend fun modAsync(
+        @Header("x-api-key") curseForgeApiKey: String,
+        @Path("modId") modId: Int
+    ): Response<CurseForgeResponse.ModResponse>
 
     /**
      * Gets the versions of a CF mod by api call.
@@ -80,6 +86,7 @@ interface CurseForgeApiCall {
         @Query("pageSize") maxNumberOfResults: Int? = 10000
     ): Response<CurseForgeResponse.FilesResponse>
 
+    @Suppress("unused") //We want all the enum values, so that it can be selected by consumers
     enum class ModLoaderType(val curseNumber: Int?) {
         ANY(null),
         FORGE(1),
