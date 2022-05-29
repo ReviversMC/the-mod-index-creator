@@ -85,7 +85,7 @@ interface CurseForgeApiCall {
         FORGE(1),
         CAULDRON(2),
         LITELOADER(3),
-        FABRIC(4)
-        //TODO Create for quilt when it is added
+        FABRIC(4),
+        QUILT(5)
     }
 }
