@@ -1,5 +1,6 @@
 package com.github.reviversmc.themodindex.creator.core.apicalls
 
+import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import retrofit2.Retrofit
@@ -22,4 +23,5 @@ val apiCallModule = module {
             .build()
             .create(ModrinthApiCall::class.java)
     } bind ModrinthApiCall::class
+    includes(dependencyModule)
 }
