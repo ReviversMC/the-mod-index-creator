@@ -73,7 +73,7 @@ interface CurseForgeApiCall {
      * @since 1.0.0
      */
     @GET("/v1/mods/{modId}/files")
-    fun filesAsync(
+    suspend fun filesAsync(
         @Header("x-api-key") curseForgeApiKey: String,
         @Path("modId") modId: Int,
         @Query("modLoaderType") modLoaderType: Int? = ModLoaderType.ANY.curseNumber,
