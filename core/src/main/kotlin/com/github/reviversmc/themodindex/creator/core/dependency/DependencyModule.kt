@@ -5,7 +5,7 @@ import com.github.reviversmc.themodindex.api.downloader.DefaultApiDownloader
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import org.kohsuke.github.GitHubBuilder
 import org.kohsuke.github.connector.GitHubConnector
@@ -16,7 +16,7 @@ import org.koin.dsl.module
 
 @ExperimentalSerializationApi
 val dependencyModule = module {
-    factory { (get() as Json).asConverterFactory("application/json".toMediaType()) }
+    factory { (get() as Json).asConverterFactory(MediaType.get("application/json")) }
     factory { DefaultApiDownloader(get()) } bind ApiDownloader::class //Use the old DSL so that we can specify which params to fill.
     factory {
         Json {

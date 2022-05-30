@@ -95,12 +95,11 @@ class ModrinthResponse {
          * A file of a Modrinth version. This does NOT contain all the info from the api call.
          * @param hashes The hashes of the file.
          * @param url The url of the file.
-         * @param primary Whether the file is the primary file.
          * @author ReviversMC
          * @since 1.0.0
          */
         @kotlinx.serialization.Serializable
-        data class VersionFile(val hashes: VersionHash, val url: String, val primary: Boolean) {
+        data class VersionFile(val hashes: VersionHash, val url: String) {
             /**
              * The hash of a Modrinth version file. This does NOT contain all the info from the api call.
              * @param sha512 The sha512 hash of the file.
