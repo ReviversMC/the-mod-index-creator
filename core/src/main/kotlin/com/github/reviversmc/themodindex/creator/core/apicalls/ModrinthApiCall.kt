@@ -63,7 +63,7 @@ interface ModrinthApiCall {
     suspend fun projectMembersAsync(@Path("projectId") projectId: String): Response<List<ModrinthResponse.TeamResponse>>
 
     /**
-     * Gets a modrinth file via api call.
+     * Gets all modrinth files for a project.
      *
      * @param projectId The project id, or a slug.
      * @return The info of all versions, after a call is made. May not contain all information provided by the api, but rather [ModrinthResponse.VersionResponse].
@@ -71,11 +71,11 @@ interface ModrinthApiCall {
      * @author ReviversMC
      * @since 1.0.0
      */
-    @GET("/project/{projectId}/versions")
+    @GET("/project/{projectId}/version")
     fun versions(@Path("projectId") projectId: String): Response<List<VersionResponse>>
 
     /**
-     * Gets a modrinth file via api call, asynchronously.
+     * Gets all modrinth files for a project, asynchronously.
      *
      * @param projectId The project id, or a slug.
      * @return The info of all versions, after a call is made. May not contain all information provided by the api, but rather [ModrinthResponse.VersionResponse].
@@ -83,6 +83,6 @@ interface ModrinthApiCall {
      * @author ReviversMC
      * @since 1.0.0
      */
-    @GET("/project/{projectId}/versions")
+    @GET("/project/{projectId}/version")
     suspend fun versionsAsync(@Path("projectId") projectId: String): Response<List<VersionResponse>>
 }
