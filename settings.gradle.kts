@@ -1,3 +1,4 @@
 rootProject.name = "the-mod-index-creator"
-include("cli")
-include("core")
+include(":githubapp")
+include(":cli")
+include(":core")
