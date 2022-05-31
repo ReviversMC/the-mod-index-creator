@@ -61,16 +61,15 @@ class ModrinthResponse {
      * @param hits The hits ([ProjectResponse]) of the search query.
      * @param offset The number of results skipped by the query.
      * @param limit The number of results returned by the query.
-     * @param totalHits The total number projects that exist, not just the ones returned by the query.
+     * @param totalHits The total number projects that exist for the query, not just the ones returned.
+     *                  E.g. a search with no filters will return the total number of projects as the totalHits,
+     *                  but only return the number of projects specified by the limit/maximum allowed by Modrinth
      * @author ReviversMC
      * @since 1.0.0
      */
     @kotlinx.serialization.Serializable
     data class SearchResponse(
-        val hits: List<ProjectResponse>,
-        val offset: Int,
-        val limit: Int,
-        @SerialName("total_hits") val totalHits: Int
+        val hits: List<ProjectResponse>, val offset: Int, val limit: Int, @SerialName("total_hits") val totalHits: Int
     )
 
     /**
