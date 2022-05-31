@@ -57,6 +57,23 @@ class ModrinthResponse {
     }
 
     /**
+     * The api response for a search query
+     * @param hits The hits ([ProjectResponse]) of the search query.
+     * @param offset The number of results skipped by the query.
+     * @param limit The number of results returned by the query.
+     * @param totalHits The total number projects that exist, not just the ones returned by the query.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    @kotlinx.serialization.Serializable
+    data class SearchResponse(
+        val hits: List<ProjectResponse>,
+        val offset: Int,
+        val limit: Int,
+        @SerialName("total_hits") val totalHits: Int
+    )
+
+    /**
      * The entry of a Modrinth team. This does NOT contain all the info from the api call.
      * @param userResponse The user of the team.
      * @param role The role of the user in the team.
