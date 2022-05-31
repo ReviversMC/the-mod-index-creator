@@ -92,6 +92,12 @@ class ApiCallTest : KoinTest {
         assertEquals("lgpl-3", modrinthProject.license!!.id.lowercase())
         assertEquals("https://github.com/reviversmc/modget", modrinthProject.sourceUrl!!.lowercase())
 
+        val modrinthProjectSearch = modrinthApiCall.search("modget").execute().body()
+        assertNotNull(modrinthProjectSearch)
+        assertContains(modrinthProjectSearch.hits.map { it.id }, modrinthProject.id)
+        assertContains(modrinthProjectSearch.hits.map { it.title }, modrinthProject.title)
+        assertContains(modrinthProjectSearch.hits.map { it.license }, modrinthProject.license!!.id)
+
         val modgetVersion001 = modrinthApiCall.versions("2NpFE0R3").execute().body()!!.last()
         assertNotNull(modgetVersion001)
         assertEquals("Modget 0.0.1", modgetVersion001.name)
@@ -104,12 +110,12 @@ class ApiCallTest : KoinTest {
             ), modgetVersion001.files.last()
         )
 
-        assertEquals(
-            "NebelNidas",
-            modrinthApiCall.projectMembers("2NpFE0R3").execute().body()
-                ?.first { member -> member.role == "Owner" }?.userResponse?.username
-                ?: throw IOException("No owner found for modrinth project: 2NpFE0R3")
-        )
+        val projectOwner = modrinthApiCall.projectMembers("2NpFE0R3").execute().body()
+            ?.first { member -> member.role == "Owner" }?.userResponse?.username
+            ?: throw IOException("No owner found for modrinth project: 2NpFE0R3")
+
+        assertEquals("NebelNidas", projectOwner)
+        assertContains(modrinthProjectSearch.hits.map { it.author }, projectOwner)
     }
 
 
