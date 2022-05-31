@@ -47,6 +47,13 @@ interface CurseForgeApiCall {
         @Query("pageSize") maxNumberOfResults: Int? = 10000
     ): Call<CurseForgeResponse.FilesResponse>
 
+    /**
+     * A convenience enum to know what mod loader each number is associated with.
+     *
+     * @param curseNumber The number associated with the mod loader. Use this number in api calls.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
     @Suppress("unused") //We want all the enum values, so that it can be selected by consumers
     enum class ModLoaderType(val curseNumber: Int?) {
         ANY(null),
