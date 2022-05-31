@@ -38,6 +38,8 @@ interface ModrinthApiCall {
 
     /**
      * Gets projects present in the Modrinth API.
+     * Each hit in [ModrinthResponse.SearchResponse.hits] does not provide as much information as [ModrinthResponse.ProjectResponse].
+     * Use [project] to get more information on a project.
      *
      * @param query The query to search for (e.g. a project name)
      * @param searchMethod The search method that results are sorted by. Use [SearchMethod] for all available options

@@ -69,8 +69,21 @@ class ModrinthResponse {
      */
     @kotlinx.serialization.Serializable
     data class SearchResponse(
-        val hits: List<ProjectResponse>, val offset: Int, val limit: Int, @SerialName("total_hits") val totalHits: Int
-    )
+        val hits: List<SearchHit>, val offset: Int, val limit: Int, @SerialName("total_hits") val totalHits: Int
+    ) {
+        /**
+         * This does not give as much information as [ProjectResponse]. Prefer using [ProjectResponse] when possible
+         *
+         * @param id The id of the project.
+         * @param title The title of the project.
+         * @param license The license of the project.
+         * @param author The author of the project.
+         * @author ReviversMC
+         * @since 1.0.0
+         */
+        @kotlinx.serialization.Serializable
+        data class SearchHit(@SerialName("project_id") val id: String, val title: String, val license: String, val author: String)
+    }
 
     /**
      * The entry of a Modrinth team. This does NOT contain all the info from the api call.
