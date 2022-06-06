@@ -11,6 +11,7 @@ import org.kohsuke.github.GitHubBuilder
 import org.kohsuke.github.connector.GitHubConnector
 import org.kohsuke.github.extras.okhttp3.OkHttpGitHubConnector
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -24,8 +25,14 @@ val dependencyModule = module {
             prettyPrint = true
         }
     }
-    factory { (oAuthToken: String) ->
-        GitHubBuilder().withOAuthToken(oAuthToken).withConnector(get() as GitHubConnector).build()
+    factory(named("installation")) {(installationToken: String) ->
+        GitHubBuilder().withAppInstallationToken(installationToken).withConnector(get() as GitHubConnector).build()
+    }
+    factory(named("jwt")) { (jwt: String) ->
+        GitHubBuilder().withJwtToken(jwt).withConnector(get() as GitHubConnector).build()
+    }
+    factory(named("oAuth")) { (oAuthToken: String) ->
+        GitHubBuilder().withJwtToken(oAuthToken).withConnector(get() as GitHubConnector).build()
     }
     factory { OkHttpGitHubConnector(get()) } bind GitHubConnector::class
     singleOf(::OkHttpClient)
