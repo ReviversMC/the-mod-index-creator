@@ -54,7 +54,7 @@ interface ModrinthApiCall {
         @Query("query") query: String? = null,
         @Query("index") searchMethod: String? = SearchMethod.DEFAULT.modrinthString,
         @Query("offset") offset: Int? = null,
-        @Query("limit") limit: Int? = null
+        @Query("limit") limit: Int? = null,
     ): Call<ModrinthResponse.SearchResponse>
 
     /**
@@ -67,12 +67,7 @@ interface ModrinthApiCall {
 
     @Suppress("unused") // We want all the enum values, so that it can be selected by consumers.
     enum class SearchMethod(val modrinthString: String?) {
-        DEFAULT(null),
-        DOWNLOADS("downloads"),
-        FOLLOWS("follows"),
-        NEWEST("newest"),
-        RELEVANCE("relevance"),
-        UPDATED("updated")
+        DEFAULT(null), DOWNLOADS("downloads"), FOLLOWS("follows"), NEWEST("newest"), RELEVANCE("relevance"), UPDATED("updated")
     }
 
     /**

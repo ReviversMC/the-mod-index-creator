@@ -25,7 +25,7 @@ val dependencyModule = module {
             prettyPrint = true
         }
     }
-    factory(named("installation")) {(installationToken: String) ->
+    factory(named("installation")) { (installationToken: String) ->
         GitHubBuilder().withAppInstallationToken(installationToken).withConnector(get() as GitHubConnector).build()
     }
     factory(named("jwt")) { (jwt: String) ->

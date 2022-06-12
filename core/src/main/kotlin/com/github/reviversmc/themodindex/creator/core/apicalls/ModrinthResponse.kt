@@ -33,7 +33,7 @@ class ModrinthResponse {
         @SerialName("wiki_url") val wikiUrl: String?,
         @SerialName("discord_url") val discordUrl: String?,
         @SerialName("donation_urls") val donationUrls: List<DonationUrl>?,
-        val versions: List<String>
+        val versions: List<String>,
     ) {
 
         /**
@@ -69,7 +69,7 @@ class ModrinthResponse {
      */
     @kotlinx.serialization.Serializable
     data class SearchResponse(
-        val hits: List<SearchHit>, val offset: Int, val limit: Int, @SerialName("total_hits") val totalHits: Int
+        val hits: List<SearchHit>, val offset: Int, val limit: Int, @SerialName("total_hits") val totalHits: Int,
     ) {
         /**
          * This does not give as much information as [ProjectResponse]. Prefer using [ProjectResponse] when possible
@@ -82,7 +82,12 @@ class ModrinthResponse {
          * @since 1.0.0
          */
         @kotlinx.serialization.Serializable
-        data class SearchHit(@SerialName("project_id") val id: String, val title: String, val license: String, val author: String)
+        data class SearchHit(
+            @SerialName("project_id") val id: String,
+            val title: String,
+            val license: String,
+            val author: String,
+        )
     }
 
     /**
@@ -118,7 +123,7 @@ class ModrinthResponse {
         val name: String,
         @SerialName("game_versions") val gameVersions: List<String>,
         val loaders: List<String>,
-        val files: List<VersionFile>
+        val files: List<VersionFile>,
     ) {
         /**
          * A file of a Modrinth version. This does NOT contain all the info from the api call.

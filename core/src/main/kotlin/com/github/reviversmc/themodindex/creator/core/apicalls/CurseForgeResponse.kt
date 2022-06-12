@@ -29,7 +29,7 @@ class CurseForgeResponse {
         data class ModData(
             val id: Int, val name: String,
             //We can't get the license! :(
-            val links: ModLinks, val authors: List<ModAuthor>
+            val links: ModLinks, val authors: List<ModAuthor>,
         )
 
         /**
@@ -96,6 +96,6 @@ class CurseForgeResponse {
         val isAvailable: Boolean,
         val displayName: String,
         val downloadUrl: String?,
-        val gameVersions: List<String>
+        val gameVersions: List<String>,
     )
 }
