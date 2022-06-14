@@ -1,30 +1,32 @@
 package com.github.reviversmc.themodindex.creator.core
 
 import com.github.reviversmc.themodindex.api.data.IndexJson
-import com.github.reviversmc.themodindex.api.data.ManifestJson
-import kotlinx.serialization.ExperimentalSerializationApi
+import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
+import com.github.reviversmc.themodindex.creator.core.data.ManifestWithIdentifier
 
 interface Creator {
-    /**
-     * Creates a fully fleshed out manifest.json file.
-     *
-     * @param modrinthId   The modrinth id of the mod. Slugs not recommended.
-     * @param curseForgeId The curseforge id of the mod. Slugs not recommended.
-     * @return A [ManifestJson] object, with the key being the mod loader.
-     * @author ReviversMC
-     * @since 1.0.0
-     */
-    @ExperimentalSerializationApi
-    fun createManifest(modrinthId: String?, curseForgeId: Int?): Map<String, ManifestJson>
 
     /**
-     * Adds entries to the index.json file if entries are new.
-     * @param indexToModify The index.json file to modify.
-     * @param manifest The manifest with entries to add to the index.
-     * @param genericIdentifier The identifier of the mod in the index (i.e. modLoader:modName).
-     * @return A [IndexJson] object, with the key being the mod loader.
+     * Creates a [ManifestWithApiStatus], which contains [ManifestWithIdentifier]s
+     * When used in Kotlin, [curseForgeId] cannot be null, while [modrinthId] can be null.
      * @author ReviversMC
      * @since 1.0.0
      */
-    fun modifyIndex(indexToModify: IndexJson, manifest: ManifestJson, genericIdentifier: String): IndexJson
+    fun createManifestCurseForge(modrinthId: String, curseForgeId: Int? = null): ManifestWithApiStatus
+
+    /**
+     * Creates a [ManifestWithApiStatus], which contains [ManifestWithIdentifier]s
+     * When used in Kotlin, [modrinthId] cannot be null, while [curseForgeId] can be null.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    fun createManifestModrinth(modrinthId: String? = null, curseForgeId: Int): ManifestWithApiStatus
+
+    /**
+     * Adds [ManifestWithIdentifier] entries to the [indexToModify] if entries are new.
+     * Returns the [indexToModify] with the new entries added, or the same index if no new entries were added.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    fun modifyIndex(indexToModify: IndexJson, manifestWithIdentifier: ManifestWithIdentifier): IndexJson
 }
