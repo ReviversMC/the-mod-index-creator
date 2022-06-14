@@ -15,7 +15,7 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-@ExperimentalSerializationApi
+@OptIn(ExperimentalSerializationApi::class)
 val dependencyModule = module {
     factory { (get() as Json).asConverterFactory(MediaType.get("application/json")) }
     factory { DefaultApiDownloader(get()) } bind ApiDownloader::class //Use the old DSL so that we can specify which params to fill.

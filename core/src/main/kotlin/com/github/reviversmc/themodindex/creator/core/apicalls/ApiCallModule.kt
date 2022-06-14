@@ -1,12 +1,10 @@
 package com.github.reviversmc.themodindex.creator.core.apicalls
 
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
-import kotlinx.serialization.ExperimentalSerializationApi
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import retrofit2.Retrofit
 
-@ExperimentalSerializationApi
 val apiCallModule = module {
     factory {
         Retrofit.Builder()
