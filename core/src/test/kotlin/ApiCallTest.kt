@@ -46,7 +46,7 @@ class ApiCallTest : KoinTest {
         assertEquals("https://github.com/reviversmc/modget", curseForgeMod.links.sourceUrl.lowercase())
         //Other urls left out as assumed to be working since source url is working
         assertContains(
-            curseForgeMod.authors, CurseForgeResponse.ModResponse.ModAuthor(
+            curseForgeMod.authors, CurseModAuthor(
                 452596, "NebelNidas", "https://www.curseforge.com/members/100230862-nebelnidas?username=nebelnidas"
             )
         )
@@ -61,7 +61,7 @@ class ApiCallTest : KoinTest {
         assertNotNull(curseForgeFiles)
 
         assertEquals(
-            CurseForgeResponse.FileResponse(
+            CurseFileResponse(
                 3481563,
                 true,
                 "Modget 0.1.0",
@@ -104,8 +104,8 @@ class ApiCallTest : KoinTest {
         assertEquals(listOf("1.16.5", "1.16.4"), modgetVersion001.gameVersions.sortedDescending())
         assertEquals(listOf("fabric"), modgetVersion001.loaders.map { it.lowercase() })
         assertEquals(
-            ModrinthResponse.VersionResponse.VersionFile(
-                ModrinthResponse.VersionResponse.VersionFile.VersionHash("7dc82b00a305d8793a6787897f6c3bcf415e75ed0a257f17c40046320a1f3b686a1195eb3d4a3c36acd9b41308819315c2eb804194e44f5fe7fa303e5afc4fbc"),
+            ModrinthVersionFile(
+                ModrinthVersionHash("7dc82b00a305d8793a6787897f6c3bcf415e75ed0a257f17c40046320a1f3b686a1195eb3d4a3c36acd9b41308819315c2eb804194e44f5fe7fa303e5afc4fbc"),
                 "https://cdn.modrinth.com/data/2NpFE0R3/versions/0.0.1/modget-0.0.1.jar",
             ), modgetVersion001.files.last()
         )
