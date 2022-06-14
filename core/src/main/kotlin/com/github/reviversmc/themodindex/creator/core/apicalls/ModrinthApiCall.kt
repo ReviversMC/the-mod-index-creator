@@ -1,7 +1,5 @@
 package com.github.reviversmc.themodindex.creator.core.apicalls
 
-import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthResponse.ProjectResponse
-import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthResponse.VersionResponse
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -15,37 +13,32 @@ import retrofit2.http.Query
 interface ModrinthApiCall {
 
     /**
-     * Gets a modrinth project via api call.
-     *
-     * @param projectId The project id, or a slug.
-     * @return The project, after a call is made. May not contain all information provided by the api, but rather [ModrinthResponse.ProjectResponse].
+     * Returns a Modrinth [ModrinthProjectResponse], obtained by its [projectId].
      * @author ReviversMC
      * @since 1.0.0
      */
     @GET("/v2/project/{projectId}")
-    fun project(@Path("projectId") projectId: String): Call<ProjectResponse>
+    fun project(@Path("projectId") projectId: String): Call<ModrinthProjectResponse>
 
     /**
-     * Gets the owner of the team who created a Modrinth project.
-     *
-     * @param projectId The project id, or a slug.
-     * @return The team members, after a call is made. May not contain all information provided by the api, but rather [ModrinthResponse.TeamResponse].
+     * Returns the team members for a Modrinth project, obtained by its [projectId].
      * @author ReviversMC
      * @since 1.0.0
      */
     @GET("/v2/project/{projectId}/members")
-    fun projectMembers(@Path("projectId") projectId: String): Call<List<ModrinthResponse.TeamResponse>>
+    fun projectMembers(@Path("projectId") projectId: String): Call<List<ModrinthTeamResponse>>
 
     /**
-     * Gets projects present in the Modrinth API.
-     * Each hit in [ModrinthResponse.SearchResponse.hits] does not provide as much information as [ModrinthResponse.ProjectResponse].
+     * Returns projects present in the Modrinth API.
+     * Each hit in [ModrinthSearchHit] does not provide as much information as [ModrinthProjectResponse].
      * Use [project] to get more information on a project.
+     *
+     * Filtering can be done using the following params:
      *
      * @param query The query to search for (e.g. a project name)
      * @param searchMethod The search method that results are sorted by. Use [SearchMethod] for all available options
      * @param offset The number of results to skip. Results will thus be from offset to offset + limit.
      * @param limit The number of results to return. Leave null if you want the modrinth default limit.
-     * @return The projects, after a call is made.
      * @author ReviversMC
      * @since 1.0.0
      */
@@ -55,12 +48,11 @@ interface ModrinthApiCall {
         @Query("index") searchMethod: String? = SearchMethod.DEFAULT.modrinthString,
         @Query("offset") offset: Int? = null,
         @Query("limit") limit: Int? = null,
-    ): Call<ModrinthResponse.SearchResponse>
+    ): Call<ModrinthSearchResponse>
 
     /**
-     * A convenience enum for knowing which search method to use.
-     *
-     * @param modrinthString The string to use in the api call. Use this instead of the [name] property.
+     * A convenience enum for knowing which search method ([modrinthString]) to use.
+     * Use [modrinthString] instead of the [name] property, as [modrinthString] is correctly capitalized.
      * @author ReviversMC
      * @since 1.0.0
      */
@@ -71,13 +63,10 @@ interface ModrinthApiCall {
     }
 
     /**
-     * Gets all modrinth files for a project.
-     *
-     * @param projectId The project id, or a slug.
-     * @return The info of all versions, after a call is made. May not contain all information provided by the api, but rather [ModrinthResponse.VersionResponse].
+     * Returns all modrinth [ModrinthVersionResponse]s for a project, obtained using its [projectId].
      * @author ReviversMC
      * @since 1.0.0
      */
     @GET("/v2/project/{projectId}/version")
-    fun versions(@Path("projectId") projectId: String): Call<List<VersionResponse>>
+    fun versions(@Path("projectId") projectId: String): Call<List<ModrinthVersionResponse>>
 }
