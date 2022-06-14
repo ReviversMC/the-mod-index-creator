@@ -2,6 +2,7 @@ package com.github.reviversmc.themodindex.creator.core
 
 import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
+import com.github.reviversmc.themodindex.api.data.ManifestLinks
 import com.github.reviversmc.themodindex.api.data.VersionFile
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
@@ -9,7 +10,6 @@ import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithIdentifier
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiStatus
-import kotlinx.serialization.ExperimentalSerializationApi
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.kohsuke.github.GitHub
@@ -39,9 +39,7 @@ class ModIndexCreator(
     private val indexVersion = "4.0.0"
 
     /**
-     * Create a sha512 hash for a given input
-     * @param input The bytes to create a sha512 hash for
-     * @return The sha512 hash
+     * Creates a sha512 hash for the given [input] bytes
      * @author ReviversMC
      * @since 1.0.0
      */
@@ -57,12 +55,14 @@ class ModIndexCreator(
     /**
      * Creates a [ManifestVersionsPerLoader] for the CurseForge mod, which is found using its [curseForgeId].
      * The results can be merged with any [existingFiles] that have already been generated.
+     * @throws IOException If the api call to CF fails
      * @author ReviversMC
      * @since 1.0.0
      */
+    @kotlin.jvm.Throws(IOException::class)
     private fun downloadCurseForgeFiles(
         curseForgeId: Int, existingFiles: ManifestVersionsPerLoader = emptyMap(),
-    ): ManifestVersionsPerLoader =
+    ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
         /*
         Atm of creation, curse files cannot be included in the index.
@@ -70,123 +70,125 @@ class ModIndexCreator(
         or https://discord.com/channels/900128427150028811/940227856741597194/971451873074757712 (original source, CF dev server)
         */
 
-        existingFiles.toMutableMap().apply {
-            for (modLoader in CurseForgeApiCall.ModLoaderType.values()) {
-                if (modLoader == CurseForgeApiCall.ModLoaderType.ANY) continue
-                val loaderFiles = returnMap.getOrDefault(modLoader.name.lowercase(), emptyList()).toMutableList()
-                val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
+        for (modLoader in CurseForgeApiCall.ModLoaderType.values()) {
+            if (modLoader == CurseForgeApiCall.ModLoaderType.ANY) continue
+            val loaderFiles = this.getOrDefault(modLoader.name.lowercase(), emptyList()).toMutableList()
+            val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
 
-                for (file in curseForgeApiCall.files(curseApiKey, curseForgeId, modLoader.curseNumber).execute()
-                    .body()?.data ?: continue) {
+            for (file in curseForgeApiCall.files(curseApiKey, curseForgeId, modLoader.curseNumber).execute()
+                .body()?.data ?: continue) {
 
-                    val fileResponse =
-                        okHttpClient.newCall(Request.Builder().url(file.downloadUrl ?: continue).build()).execute()
-                    val fileHash = createSHA512Hash(fileResponse.body()?.bytes() ?: continue)
-                    fileResponse.close()
+                val fileResponse =
+                    okHttpClient.newCall(Request.Builder().url(file.downloadUrl ?: continue).build()).execute()
+                val fileHash = createSHA512Hash(fileResponse.body()?.bytes() ?: continue)
+                fileResponse.close()
 
-                    if (loaderFileHashes.contains(fileHash)) {
-                        loaderFileHashes.forEachIndexed { index, existingHash ->
-                            if (existingHash.equals(fileHash, true)) loaderFiles[index] =
-                                loaderFiles[index].copy(curseDownloadAvailable = true)
-                        }
-                    } else loaderFiles.add(
-                        ManifestJson.ManifestFile(
-                            file.displayName, file.gameVersions.sortedDescending().mapNotNull {
-                                try {
-                                    CurseForgeApiCall.ModLoaderType.valueOf(it.uppercase())
-                                    null// Do not add if detected to be loader
-                                } catch (_: IllegalArgumentException) {
-                                    it
-                                }
-                            }, fileHash, emptyList(), true
-                        )
+                if (loaderFileHashes.contains(fileHash)) {
+                    loaderFileHashes.forEachIndexed { index, existingHash ->
+                        if (existingHash.equals(fileHash, true)) loaderFiles[index] =
+                            loaderFiles[index].copy(curseDownloadAvailable = true)
+                    }
+                } else loaderFiles.add(
+                    VersionFile(
+                        file.displayName, file.gameVersions.sortedDescending().mapNotNull {
+                            try {
+                                CurseForgeApiCall.ModLoaderType.valueOf(it.uppercase())
+                                null// Do not add if detected to be loader
+                            } catch (_: IllegalArgumentException) {
+                                it
+                            }
+                        }, fileHash, emptyList(), true
                     )
+                )
 
-                }
-                returnMap[modLoader.name.lowercase()] = loaderFiles.toList()
             }
+            this[modLoader.name.lowercase()] = loaderFiles.toList()
+        }
 
-            returnMap.values.removeIf { it.isEmpty() }
-        }.toMap()
+        this.values.removeIf { it.isEmpty() }
+    }.toMap()
 
     /**
-     * Creates a map of [ManifestJson.ManifestFile]s on GitHub for the mod, according to its mod loaders.
+     * Creates a [ManifestVersionsPerLoader] for the GitHub mod, found using its [gitHubRepo].
+     * [gitHubRepo] is the owner/repo format, not the https://github.com/owner/repo format.
+     *
      * THIS WILL ONLY ADD FILES FOR HASHES THAT ARE ALREADY PRESENT IN THE EXISTING FILES MAP.
      *
-     * @param gitHubRepo The GitHub repository of the mod. Refers to the owner/repo format, not the https://github.com/owner/repo format.
-     * @param existingFiles The existing files to add to, if any
-     * @return A map of [ManifestJson.ManifestFile]s on GitHub for the mod, according to its mod loaders
+     * The results can be merged with any [existingFiles] that have already been generated.
+     *
+     * @throws IOException If the api call to CF fails
      * @author ReviversMC
      * @since 1.0.0
      */
+    @kotlin.jvm.Throws(IOException::class)
     private fun downloadGitHubFiles(
-        gitHubRepo: String, existingFiles: Map<String, List<ManifestJson.ManifestFile>>,
-    ): Map<String, List<ManifestJson.ManifestFile>> {
-
-        val returnMap = existingFiles.toMutableMap()
+        gitHubRepo: String, existingFiles: ManifestVersionsPerLoader = emptyMap(),
+    ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
         githubApiCall.getRepository(gitHubRepo).listReleases().forEach { release ->
             for (asset in release.listAssets()) {
-                val response = okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
+                val response =
+                    okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
                 val fileHash = createSHA512Hash(response.body()?.bytes() ?: continue)
                 response.close()
 
-                for ((loader, manifestFiles) in returnMap) {
+                for ((loader, manifestFiles) in this) {
                     if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
                     manifestFiles.forEachIndexed { index, manifestFile ->
                         if (manifestFile.sha512Hash.equals(fileHash, true)) {
-                            returnMap[loader] = manifestFiles.toMutableList().apply {
-                                this[index] =
-                                    manifestFile.copy(downloadUrls = this[index].downloadUrls + asset.browserDownloadUrl)
-                            }
-                            return@forEachIndexed
+                            this[loader] = manifestFiles.toMutableList().also { files ->
+                                files[index] =
+                                    manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
+                            }.toList()
+                            return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
                         }
                     }
                 }
             }
         }
-        return returnMap.toMap()
-    }
+    }.toMap()
+
 
     /**
      * Creates a [ManifestVersionsPerLoader] for the Modrinth project, which is found using [modrinthId].
      * The results can be merged with any [existingFiles] that have already been generated.
+     * @throws IOException If the api call to Modrinth fails
      * @author ReviversMC
      * @since 1.0.0
      */
+    @kotlin.jvm.Throws(IOException::class)
     private fun downloadModrinthFiles(
         modrinthId: String,
         existingFiles: ManifestVersionsPerLoader = emptyMap(),
-    ): ManifestVersionsPerLoader =
+    ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-        existingFiles.toMutableMap().apply {
-            modrinthApiCall.versions(modrinthId).execute().body()?.forEach { versionResponse ->
+        modrinthApiCall.versions(modrinthId).execute().body()?.forEach { versionResponse ->
 
-                versionResponse.loaders.forEach { loader -> // All files here are guaranteed to work for the loader.
-                    val loaderFiles = this.getOrDefault(loader.lowercase(), emptyList()).toMutableList()
-                    val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
+            versionResponse.loaders.forEach { loader -> // All files here are guaranteed to work for the loader.
+                val loaderFiles = this.getOrDefault(loader.lowercase(), emptyList()).toMutableList()
+                val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
 
-                    for (file in versionResponse.files) {
+                for (file in versionResponse.files) {
 
-                        if (loaderFileHashes.contains(file.hashes.sha512)) {
-                            loaderFileHashes.forEachIndexed { index, existingHash ->
-                                if (existingHash.equals(file.hashes.sha512, true)) loaderFiles[index] =
-                                    loaderFiles[index].copy(downloadUrls = loaderFiles[index].downloadUrls + file.url)
-                            }
-                        } else loaderFiles.add(
-                            VersionFile(
-                                versionResponse.name,
-                                versionResponse.gameVersions.sortedDescending(),
-                                file.hashes.sha512,
-                                listOf(file.url),
-                                false // We don't know if it's available, so assume false
-                            )
+                    if (loaderFileHashes.contains(file.hashes.sha512)) {
+                        loaderFileHashes.forEachIndexed { index, existingHash ->
+                            if (existingHash.equals(file.hashes.sha512, true)) loaderFiles[index] =
+                                loaderFiles[index].copy(downloadUrls = loaderFiles[index].downloadUrls + file.url)
+                        }
+                    } else loaderFiles.add(
+                        VersionFile(
+                            versionResponse.name,
+                            versionResponse.gameVersions.sortedDescending(),
+                            file.hashes.sha512,
+                            listOf(file.url),
+                            false // We don't know if it's available, so assume false
                         )
-                    }
-                    this[loader.lowercase()] = loaderFiles.toList()
+                    )
                 }
+                this[loader.lowercase()] = loaderFiles.toList()
             }
-        }.toMap()
+        }
+    }.toMap()
 
 
     override fun createManifestCurseForge(modrinthId: String, curseForgeId: Int?): ManifestWithApiStatus =
@@ -196,7 +198,6 @@ class ModIndexCreator(
         createManifest(modrinthId, curseForgeId)
 
 
-    @OptIn(ExperimentalSerializationApi::class)
     private fun createManifest(modrinthId: String?, curseForgeId: Int?): ManifestWithApiStatus {
 
         if (apiDownloader.getOrDownloadIndexJson()?.indexVersion != indexVersion) {
@@ -239,6 +240,7 @@ class ModIndexCreator(
 
         val workingThirdPartyApis = mutableListOf<ThirdPartyApiStatus>()
 
+
         val modrinthFiles = modrinthId?.let { downloadModrinthFiles(it) }
             .also { workingThirdPartyApis.add(ThirdPartyApiStatus.MODRINTH_WORKING) } ?: emptyMap()
 
@@ -268,26 +270,26 @@ class ModIndexCreator(
         if (combinedFiles.isEmpty()) return ManifestWithApiStatus(workingThirdPartyApis.toList(), emptyList())
 
 
-        val otherLinks = mutableListOf<ManifestJson.ManifestLinks.OtherLink>().apply {
+        val otherLinks = mutableListOf<ManifestLinks.OtherLink>().apply {
             modrinthProject?.let {
 
                 it.discordUrl?.let { url ->
                     if (url != "") add(
-                        ManifestJson.ManifestLinks.OtherLink(
+                        ManifestLinks.OtherLink(
                             "discord", url
                         )
                     )
                 }
-                it.wikiUrl?.let { url -> if (url != "") add(ManifestJson.ManifestLinks.OtherLink("wiki", url)) }
+                it.wikiUrl?.let { url -> if (url != "") add(ManifestLinks.OtherLink("wiki", url)) }
 
                 it.donationUrls?.forEach { donation ->
-                    add(ManifestJson.ManifestLinks.OtherLink(donation.platform, donation.url))
+                    add(ManifestLinks.OtherLink(donation.platform, donation.url))
                 }
             }
 
             curseForgeMod?.data?.links?.let {
-                if (it.websiteUrl != "") add(ManifestJson.ManifestLinks.OtherLink("website", it.websiteUrl))
-                if (it.wikiUrl != "") add(ManifestJson.ManifestLinks.OtherLink("wiki", it.wikiUrl))
+                if (it.websiteUrl != "") add(ManifestLinks.OtherLink("website", it.websiteUrl))
+                if (it.wikiUrl != "") add(ManifestLinks.OtherLink("wiki", it.wikiUrl))
             }
         }.distinct()
 
@@ -307,7 +309,7 @@ class ModIndexCreator(
                                 // Could cause null to be wrapped in quotes, and we thus have to do the ugly check to prevent that.
                                 curseForgeId,
                                 project.id,
-                                ManifestJson.ManifestLinks(project.issuesUrl, project.sourceUrl, otherLinks),
+                                ManifestLinks(project.issuesUrl, project.sourceUrl, otherLinks),
                                 manifestFiles
                             )
                         )
@@ -326,7 +328,7 @@ class ModIndexCreator(
                                 githubApiCall.getRepository(gitHubUserRepo).license.key,
                                 curseForgeId,
                                 modrinthId, // Modrinth id is known to be null, else it would have exited the func.
-                                ManifestJson.ManifestLinks(
+                                ManifestLinks(
                                     modData.links.issuesUrl, modData.links.sourceUrl, otherLinks
                                 ),
                                 manifestFiles
