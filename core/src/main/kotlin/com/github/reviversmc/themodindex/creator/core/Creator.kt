@@ -15,7 +15,7 @@ interface Creator {
      * @since 1.0.0
      */
     @kotlin.jvm.Throws(IOException::class)
-    fun createManifestCurseForge(modrinthId: String, curseForgeId: Int? = null): ManifestWithApiStatus
+    fun createManifestCurseForge(modrinthId: String? = null, curseForgeId: Int): ManifestWithApiStatus
 
     /**
      * Creates a [ManifestWithApiStatus], which contains [ManifestWithIdentifier]s
@@ -25,7 +25,7 @@ interface Creator {
      * @since 1.0.0
      */
     @kotlin.jvm.Throws(IOException::class)
-    fun createManifestModrinth(modrinthId: String? = null, curseForgeId: Int): ManifestWithApiStatus
+    fun createManifestModrinth(modrinthId: String, curseForgeId: Int? = null): ManifestWithApiStatus
 
     /**
      * Adds [ManifestWithIdentifier] entries to the [indexToModify] if entries are new.

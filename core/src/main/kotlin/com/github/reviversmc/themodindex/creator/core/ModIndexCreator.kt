@@ -191,10 +191,10 @@ class ModIndexCreator(
     }.toMap()
 
 
-    override fun createManifestCurseForge(modrinthId: String, curseForgeId: Int?): ManifestWithApiStatus =
+    override fun createManifestCurseForge(modrinthId: String?, curseForgeId: Int): ManifestWithApiStatus =
         createManifest(modrinthId, curseForgeId)
 
-    override fun createManifestModrinth(modrinthId: String?, curseForgeId: Int): ManifestWithApiStatus =
+    override fun createManifestModrinth(modrinthId: String, curseForgeId: Int?): ManifestWithApiStatus =
         createManifest(modrinthId, curseForgeId)
 
 
