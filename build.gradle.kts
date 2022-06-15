@@ -19,10 +19,11 @@ subprojects {
 
     dependencies {
         api("io.insert-koin:koin-core:3.2.0")
-        testApi("org.junit.jupiter:junit-jupiter:5.8.2")
+        testApi("com.squareup.okhttp3:mockwebserver:4.10.0")
         testApi("io.insert-koin:koin-test-junit5:3.2.0")
         testApi("io.insert-koin:koin-test:3.2.0")
         testApi("io.mockk:mockk:1.12.4")
+        testApi("org.junit.jupiter:junit-jupiter:5.8.2")
     }
 
     tasks {
