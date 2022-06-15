@@ -14,5 +14,5 @@ gradle-app.setting
 # # Work around https://youtrack.jetbrains.com/issue/IDEA-116898
 # gradle/wrapper/gradle-wrapper.properties
 
-# Curse api key is stored here for tests. Add your own on a local machine.
-core/src/test/resources/curseForgeApiKey.properties
+# Credentials stored here for tests. Add your own on a local machine.
+core/src/test/resources/credentials.properties

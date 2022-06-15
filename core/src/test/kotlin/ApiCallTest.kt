@@ -34,7 +34,7 @@ class ApiCallTest : KoinTest {
         fun curseApiKey(): String {
             val properties = Properties()
             properties.load(
-                this.javaClass.getResourceAsStream("/curseForgeApiKey.properties")
+                this.javaClass.getResourceAsStream("/credentials.properties")
                     ?: return System.getenv("CURSEFORGE_API_KEY") ?: "broken-api-key"
             )
             return properties.getProperty("api_key") ?: System.getenv()["CURSEFORGE_API_KEY"] ?: "broken-api-key"

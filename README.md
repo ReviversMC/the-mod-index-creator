@@ -2,5 +2,9 @@
 An easy-to-use tool for users to add entries to the-mod-index
 
 ### Testing
-The CF key should go into test/resources/curseForgeApiKey.properties, with the field api-key (don't wrap the value in quotes!).
-The properties file will not, and should not be committed.
+In order to properly test the-mod-index-creator, you need to have the following fields in /core/test/resources/credentials.properties:
+
+```properties
+api_key = <your-api-key>
+github_oAuth = <your-github-oAuth-token>
+```
