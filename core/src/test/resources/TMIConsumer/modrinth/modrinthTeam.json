@@ -1,0 +1,19 @@
+[
+  {
+    "team_id": "n8WoL2OI",
+    "user": {
+      "id": "NX2Xstqz",
+      "github_id": 65006925,
+      "username": "cloudate9",
+      "name": "Cloudate9",
+      "email": null,
+      "avatar_url": "https://avatars.githubusercontent.com/u/65006925?v=4",
+      "bio": "Kotlin and Java coder that enjoys coding and playing Minecraft. Loving CTFs and use I Arch btw.",
+      "created": "2022-05-23T06:13:51+00:00",
+      "role": "developer"
+    },
+    "role": "Owner",
+    "permissions": null,
+    "accepted": true
+  }
+]
