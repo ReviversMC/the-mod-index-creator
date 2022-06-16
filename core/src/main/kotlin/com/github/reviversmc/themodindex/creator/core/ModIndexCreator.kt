@@ -8,8 +8,8 @@ import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
-import com.github.reviversmc.themodindex.creator.core.data.ManifestWithIdentifier
-import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiStatus
+import com.github.reviversmc.themodindex.creator.core.data.ManifestWithGenericIdentifier
+import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.kohsuke.github.GitHub
@@ -238,36 +238,33 @@ class ModIndexCreator(
         }
 
 
-        val workingThirdPartyApis = mutableListOf<ThirdPartyApiStatus>()
+        val usedThirdPartyApis = mutableListOf<ThirdPartyApiUsage>()
 
 
         val modrinthFiles = modrinthId?.let { downloadModrinthFiles(it) }
-            .also { workingThirdPartyApis.add(ThirdPartyApiStatus.MODRINTH_WORKING) } ?: emptyMap()
+            ?.also { usedThirdPartyApis.add(ThirdPartyApiUsage.MODRINTH_USED) } ?: emptyMap()
 
-        val curseAndModrinthFiles = curseForgeId?.let { downloadCurseForgeFiles(it, modrinthFiles) }.also {
+        val curseAndModrinthFiles = curseForgeId?.let { downloadCurseForgeFiles(it, modrinthFiles) }?.also {
             if (modrinthFiles != it) { // Checks if info was actually added
-                workingThirdPartyApis.add(ThirdPartyApiStatus.CURSEFORGE_WORKING)
+                usedThirdPartyApis.add(ThirdPartyApiUsage.CURSEFORGE_USED)
             }
         } ?: modrinthFiles
 
+
         val combinedFiles = gitHubUserRepo?.let { downloadGitHubFiles(it, curseAndModrinthFiles) }
-            .also { workingThirdPartyApis.add(ThirdPartyApiStatus.GITHUB_WORKING) } ?: curseAndModrinthFiles
+            ?.also { usedThirdPartyApis.add(ThirdPartyApiUsage.GITHUB_USED) } ?: curseAndModrinthFiles
 
 
-        when {
-            ThirdPartyApiStatus.isAllWorking(workingThirdPartyApis) -> workingThirdPartyApis.apply {
-                clear()
-                add(ThirdPartyApiStatus.ALL_WORKING)
-            }
-
-            ThirdPartyApiStatus.isNoneWorking(workingThirdPartyApis) -> workingThirdPartyApis.apply {
-                clear()
-                add(ThirdPartyApiStatus.NONE_WORKING)
-            }
-            // Else, no change is required.
+        if (ThirdPartyApiUsage.isAllWorking(usedThirdPartyApis)) usedThirdPartyApis.apply {
+            clear()
+            add(ThirdPartyApiUsage.ALL_USED)
+        } else if (ThirdPartyApiUsage.isNoneWorking(usedThirdPartyApis)) usedThirdPartyApis.apply {
+            clear()
+            add(ThirdPartyApiUsage.NONE_USED)
         }
 
-        if (combinedFiles.isEmpty()) return ManifestWithApiStatus(workingThirdPartyApis.toList(), emptyList())
+
+        if (combinedFiles.isEmpty()) return ManifestWithApiStatus(usedThirdPartyApis.toList(), emptyList())
 
 
         val otherLinks = mutableListOf<ManifestLinks.OtherLink>().apply {
@@ -293,13 +290,13 @@ class ModIndexCreator(
             }
         }.distinct()
 
-        val returnManifests = mutableListOf<ManifestWithIdentifier>().apply {
+        val returnManifests = mutableListOf<ManifestWithGenericIdentifier>().apply {
 
             modrinthProject?.let { project ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
                     add(
-                        ManifestWithIdentifier(
-                            "$modLoader:${project.title.lowercase()}", ManifestJson(
+                        ManifestWithGenericIdentifier(
+                            "$modLoader:${project.title.lowercase().replace(' ', '-')}", ManifestJson(
                                 indexVersion,
                                 project.title,
                                 modrinthApiCall.projectMembers(modrinthId).execute().body()
@@ -320,8 +317,8 @@ class ModIndexCreator(
             curseForgeMod?.data?.let { modData ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
                     add(
-                        ManifestWithIdentifier(
-                            "${modLoader}:${modData.name.lowercase()}", ManifestJson(
+                        ManifestWithGenericIdentifier(
+                            "${modLoader}:${modData.name.lowercase().replace(' ', '-')}", ManifestJson(
                                 indexVersion,
                                 modData.name,
                                 modData.authors[0].name,
@@ -340,12 +337,12 @@ class ModIndexCreator(
         }.toList()
 
         return ManifestWithApiStatus(
-            workingThirdPartyApis.toList(),
+            usedThirdPartyApis.toList(),
             returnManifests // returnManifests may be empty here, if no files have been added.
         )
     }
 
-    override fun modifyIndex(indexToModify: IndexJson, manifestWithIdentifier: ManifestWithIdentifier): IndexJson {
+    override fun modifyIndex(indexToModify: IndexJson, manifestWithIdentifier: ManifestWithGenericIdentifier): IndexJson {
         if (indexToModify.indexVersion != indexVersion) {
             throw IllegalStateException(
                 "Attempted index version to target: $indexVersion,\nbut found: ${indexToModify.indexVersion}"
