@@ -1,0 +1,48 @@
+{
+  "indexVersion": "4.0.0",
+  "fancyName": "TMI Consumer",
+  "author": "cloudate9",
+  "license": "lgpl-3",
+  "curseForgeId": null,
+  "modrinthId": "2NpFE0R3",
+  "links": {
+    "issue": "https://github.com/reviversmc/the-mod-index-creator/issues",
+    "sourceControl": null,
+    "others": [
+      {
+        "linkName": "discord",
+        "url": "https://discord.gg/6bTGYFppfz"
+      },
+      {
+        "linkName": "wiki",
+        "url": "https://github.com/reviversmc/the-mod-index-creator/wiki"
+      }
+    ]
+  },
+  "files": [
+    {
+      "fileName": "Version 1.1.0",
+      "mcVersions": [
+        "1.19.1",
+        "1.18.2",
+        "1.18.1"
+      ],
+      "sha512Hash": "not a real sha512 :o",
+      "downloadUrls": [
+        "localhost"
+      ],
+      "curseDownloadAvailable": false
+    },
+    {
+      "fileName": "Version 1.0.0",
+      "mcVersions": [
+        "1.18.1"
+      ],
+      "sha512Hash": "not a real sha512",
+      "downloadUrls": [
+        "localhost"
+      ],
+      "curseDownloadAvailable": false
+    }
+  ]
+}
