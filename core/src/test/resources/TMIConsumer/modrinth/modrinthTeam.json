@@ -15,5 +15,22 @@
     "role": "Owner",
     "permissions": null,
     "accepted": true
+  },
+  {
+    "team_id": "n8WoL2OI",
+    "user": {
+      "id": "JkE8PbvN",
+      "github_id": 48808497,
+      "username": "nebelnidas",
+      "name": "NebelNidas",
+      "email": null,
+      "avatar_url": "https://avatars.githubusercontent.com/u/48808497?v=4",
+      "bio": "",
+      "created": "2021-01-30T21:31:41+00:00",
+      "role": "developer"
+    },
+    "role": "Also Owner",
+    "permissions": null,
+    "accepted": true
   }
 ]

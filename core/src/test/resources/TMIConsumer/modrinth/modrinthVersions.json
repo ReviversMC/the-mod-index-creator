@@ -1,0 +1,66 @@
+[
+  {
+    "name": "Version 1.1.0",
+    "version_number": "1.1.0",
+    "changelog": "The minutely (minor) better fake consumer of the test mod.",
+    "game_versions": [
+      "1.19.1",
+      "1.18.2",
+      "1.18.1"
+    ],
+    "version_type": "alpha",
+    "loaders": [
+      "fabric",
+      "quilt"
+    ],
+    "featured": true,
+    "id": "D4Zrji5i",
+    "project_id": "2NpFE0R3",
+    "author_id": "NX2Xstqz",
+    "date_published": "2021-12-23T20:50:17+01:00",
+    "downloads": 0,
+    "files": [
+      {
+        "hashes": {
+          "sha1": "not a real sha1 :o",
+          "sha512": "not a real sha512 :o"
+        },
+        "url": "localhost",
+        "filename": "version-1.1.0.jar",
+        "primary": true,
+        "size": 0
+      }
+    ]
+  },
+  {
+    "name": "Version 1.0.0",
+    "version_number": "1.0.0",
+    "changelog": "The first fake consumer of the test mod.",
+    "game_versions": [
+      "1.18.1"
+    ],
+    "version_type": "alpha",
+    "loaders": [
+      "fabric",
+      "quilt"
+    ],
+    "featured": true,
+    "id": "NNm7VW4j",
+    "project_id": "2NpFE0R3",
+    "author_id": "NX2Xstqz",
+    "date_published": "2021-12-23T20:50:17+00:00",
+    "downloads": 0,
+    "files": [
+      {
+        "hashes": {
+          "sha1": "not a real sha1",
+          "sha512": "not a real sha512"
+        },
+        "url": "localhost",
+        "filename": "version-1.0.0.jar",
+        "primary": true,
+        "size": 0
+      }
+    ]
+  }
+]
