@@ -2,13 +2,13 @@ package com.github.reviversmc.themodindex.creator.core
 
 import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
-import com.github.reviversmc.themodindex.creator.core.data.ManifestWithIdentifier
+import com.github.reviversmc.themodindex.creator.core.data.ManifestWithGenericIdentifier
 import java.io.IOException
 
 interface Creator {
 
     /**
-     * Creates a [ManifestWithApiStatus], which contains [ManifestWithIdentifier]s
+     * Creates a [ManifestWithApiStatus], which contains [ManifestWithGenericIdentifier]s
      * When used in Kotlin, [curseForgeId] cannot be null, while [modrinthId] can be null.
      * @throws IOException If any underlying api calls fail
      * @author ReviversMC
@@ -18,7 +18,7 @@ interface Creator {
     fun createManifestCurseForge(modrinthId: String? = null, curseForgeId: Int): ManifestWithApiStatus
 
     /**
-     * Creates a [ManifestWithApiStatus], which contains [ManifestWithIdentifier]s
+     * Creates a [ManifestWithApiStatus], which contains [ManifestWithGenericIdentifier]s
      * When used in Kotlin, [modrinthId] cannot be null, while [curseForgeId] can be null.
      * @throws IOException If any underlying api calls fail
      * @author ReviversMC
@@ -28,10 +28,10 @@ interface Creator {
     fun createManifestModrinth(modrinthId: String, curseForgeId: Int? = null): ManifestWithApiStatus
 
     /**
-     * Adds [ManifestWithIdentifier] entries to the [indexToModify] if entries are new.
+     * Adds [ManifestWithGenericIdentifier] entries to the [indexToModify] if entries are new.
      * Returns the [indexToModify] with the new entries added, or the same index if no new entries were added.
      * @author ReviversMC
      * @since 1.0.0
      */
-    fun modifyIndex(indexToModify: IndexJson, manifestWithIdentifier: ManifestWithIdentifier): IndexJson
+    fun modifyIndex(indexToModify: IndexJson, manifestWithIdentifier: ManifestWithGenericIdentifier): IndexJson
 }
