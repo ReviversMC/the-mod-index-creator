@@ -1,6 +1,7 @@
 import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthProjectResponse
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
@@ -12,11 +13,13 @@ import org.koin.core.parameter.parametersOf
 import org.koin.test.KoinTest
 import org.koin.test.get
 import org.koin.test.junit5.KoinTestExtension
-import kotlin.test.assertNotNull
+import java.io.File
+import java.util.*
+import kotlin.test.assertEquals
 
 class CreationTest : KoinTest {
 
-    //TODO Mock GitHub API, and finish fake CF server
+    // TODO Mock GitHub API, and finish fake CF server
 
     private val baseUrl = "http://localhost" // Ensure not https!
 
@@ -26,7 +29,7 @@ class CreationTest : KoinTest {
     private val modrinthTeamResponse = this.javaClass.getResource("/TMIConsumer/modrinth/modrinthTeam.json")?.readText()
 
     private val modrinthVersionResponse =
-        this.javaClass.getResource("/TMIConsumer/modrinth/modrinthVersion.json")?.readText()
+        this.javaClass.getResource("/TMIConsumer/modrinth/modrinthVersions.json")?.readText()
 
     @Suppress("JSON_FORMAT_REDUNDANT") // We only use this instance once, and all other instances will be dependency injected.
     private val decodedModrinthProjectResponse =
@@ -38,14 +41,17 @@ class CreationTest : KoinTest {
     private val curseForgeServer = MockWebServer().apply {
         dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
-                if (request.headers["x-api-key"] == null) return MockResponse().setResponseCode(401)
+                if (request.getHeader("x-api-key") == null) return MockResponse().setResponseCode(401)
 
                 return MockResponse().setResponseCode(500)
             }
         }
     }
 
+    private var isTestingForGitHub = false
+
     private val modrinthServer = MockWebServer().apply {
+
         dispatcher = object : Dispatcher() {
 
             override fun dispatch(request: RecordedRequest): MockResponse {
@@ -53,7 +59,13 @@ class CreationTest : KoinTest {
                     "/v2/project/$projectId" -> modrinthProjectResponse?.let {
                         MockResponse().setResponseCode(
                             200
-                        ).setBody(it)
+                        ).setBody(
+                            if (isTestingForGitHub) it else get<Json>().encodeToString(
+                                decodedModrinthProjectResponse!!.copy( // Shouldn't be null as this was decoded from modrinthProjectResponse
+                                    sourceUrl = null
+                                )
+                            )
+                        )
                     } ?: MockResponse().setResponseCode(500)
 
                     "/v2/project/$projectId/members" -> modrinthTeamResponse?.let {
@@ -62,7 +74,7 @@ class CreationTest : KoinTest {
                         ).setBody(it)
                     } ?: MockResponse().setResponseCode(500)
 
-                    "/v2/versions/$versionId" -> modrinthVersionResponse?.let {
+                    "/v2/project/$projectId/version" -> modrinthVersionResponse?.let {
                         MockResponse().setResponseCode(
                             200
                         ).setBody(it)
@@ -82,29 +94,44 @@ class CreationTest : KoinTest {
 
     @AfterEach
     fun `after each`() {
-        curseForgeServer.start()
+        curseForgeServer.shutdown()
         modrinthServer.shutdown()
     }
 
     @JvmField
     @RegisterExtension
-    val koinTestExtension = KoinTestExtension.create {
-        modules(fakeCreatorModule)
+    val koinTestExtension = KoinTestExtension.create { modules(fakeCreatorModule) }
+
+    private fun gitHubOAuthToken(): String {
+        val properties = Properties()
+        properties.load(
+            this.javaClass.getResourceAsStream("/credentials.properties") ?: return System.getenv("GITHUB_OAUTH")
+                ?: "broken-api-key"
+        )
+        return properties.getProperty("github_oAuth") ?: System.getenv("GITHUB_OAUTH") ?: "broken-api-key"
     }
 
     @Test
-    fun `should return correct index`() {
+    fun `should generate accurate manifests`() {
+
         val creator = get<Creator> {
             parametersOf(
-                "",
-                "$baseUrl:${curseForgeServer.port}/",
-                "",
-                "$baseUrl:${modrinthServer.port}/"
+                "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
             )
         }
 
-        //TODO an actual useful test, that compares the actual output to the expected output
-        assertNotNull(creator.createManifestModrinth(projectId))
+        val json = get<Json>()
+
+        isTestingForGitHub = false.also {
+            assertEquals( //Test for a pure modrinth config, without CurseForge or GitHub.
+                json.decodeFromString(
+                    javaClass.getResource("/TMIConsumer/expected_manifests/pureModrinth.json")?.readText()
+                        ?: throw NoSuchFileException(file = File("/TMIConsumer/expected_manifests/pureModrinth.json")),
+                ), creator.createManifestModrinth(projectId).manifestsWithIdentifiers.first().manifestJson
+            )
+        }
+
+
 
     }
 
