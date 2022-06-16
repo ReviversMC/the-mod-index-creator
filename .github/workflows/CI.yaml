@@ -16,6 +16,7 @@ jobs:
       run: ./gradlew :core:test
       env:
         CURSEFORGE_API_KEY: ${{ secrets.CF_API_KEY }}
+        GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
     - name: ShadowJar core
       run: ./gradlew :core:shadowJar
     - name: Test if cli works
