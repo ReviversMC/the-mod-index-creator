@@ -34,7 +34,7 @@ data class CurseModData(
  * @since 1.0.0
  */
 @kotlinx.serialization.Serializable
-data class CurseModLinks(val websiteUrl: String, val wikiUrl: String, val issuesUrl: String, val sourceUrl: String)
+data class CurseModLinks(val websiteUrl: String, val wikiUrl: String, val issuesUrl: String?, val sourceUrl: String?)
 
 /**
  * The authors of a mod.
