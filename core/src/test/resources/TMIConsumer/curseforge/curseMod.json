@@ -1,0 +1,158 @@
+{
+  "data": {
+    "id": 463481,
+    "gameId": 432,
+    "name": "TMI Consumer",
+    "slug": "tmi-consumer",
+    "links": {
+      "websiteUrl": "https://github.com/reviversmc/the-mod-index-creator",
+      "wikiUrl": "https://github.com/reviversmc/the-mod-index-creator/wiki",
+      "issuesUrl": "https://github.com/reviversmc/the-mod-index-creator/issues",
+      "sourceUrl": "https://github.com/reviversmc/the-mod-index-creator"
+    },
+    "summary": "A fake consumer for the-mod-index",
+    "status": 4,
+    "downloadCount": 0,
+    "isFeatured": false,
+    "primaryCategoryId": 412,
+    "categories": [
+      {
+        "id": 435,
+        "gameId": 432,
+        "name": "Server Utility",
+        "slug": "server-utility",
+        "url": "https://www.curseforge.com/minecraft/mc-mods/server-utility",
+        "iconUrl": "https://media.forgecdn.net/avatars/6/48/635351498950580836.png",
+        "dateModified": "2014-05-08T17:44:55.057Z",
+        "isClass": false,
+        "classId": 6,
+        "parentCategoryId": 6
+      },
+      {
+        "id": 412,
+        "gameId": 432,
+        "name": "Technology",
+        "slug": "technology",
+        "url": "https://www.curseforge.com/minecraft/mc-mods/technology",
+        "iconUrl": "https://media.forgecdn.net/avatars/6/27/635351494745973439.png",
+        "dateModified": "2014-05-08T17:37:54.597Z",
+        "isClass": false,
+        "classId": 6,
+        "parentCategoryId": 6
+      }
+    ],
+    "classId": 6,
+    "authors": [
+      {
+        "id": 376747,
+        "name": "Cloudate9",
+        "url": "https://www.curseforge.com/members/102060242-cloudate9?username=cloudate9"
+      }
+    ],
+    "logo": {
+      "id": 361960,
+      "modId": 463481,
+      "title": "637528125676392143.png",
+      "description": "",
+      "thumbnailUrl": "http://localhost/curseLogoThumbnail",
+      "url": "https://localhost/curseLogoThumbnailUrl"
+    },
+    "screenshots": [
+      {
+        "id": 361960,
+        "modId": 463481,
+        "title": "Picture A",
+        "description": "",
+        "thumbnailUrl": "http://localhost/cursePictureAThumbnail",
+        "url": "https://localhost/cursePictureAThumbnailUrl"
+      },
+      {
+        "id": 361960,
+        "modId": 463481,
+        "title": "Picture B",
+        "description": "",
+        "thumbnailUrl": "http://localhost/cursePictureBThumbnail",
+        "url": "https://localhost/cursePictureBThumbnailUrl"
+      }
+    ],
+    "mainFileId": 3256972,
+    "latestFiles": [
+      {
+        "id": 3256972,
+        "gameId": 432,
+        "modId": 463481,
+        "isAvailable": true,
+        "displayName": "Version-1.1.0",
+        "fileName": "version-1-1.0.jar",
+        "releaseType": 1,
+        "fileStatus": 4,
+        "hashes": [
+          {
+            "value": "acf1acecc93be99b0d13739a7be78bfd935b23c6",
+            "algo": 1
+          },
+          {
+            "value": "1a3ffeeb57dd5aff77c3c2e7994da8ef",
+            "algo": 2
+          }
+        ],
+        "fileDate": "2022-06-15T14:46:46.947Z",
+        "fileLength": 10314,
+        "downloadCount": 0,
+        "downloadUrl": "http://localhost/files/curse/tmic-1.1.0.jar:{port}/",
+        "gameVersions": [
+          "Fabric",
+          "Quilt",
+          "1.18.2"
+        ],
+        "sortableGameVersions": [
+          {
+            "gameVersionName": "Fabric",
+            "gameVersionPadded": "0",
+            "gameVersion": "",
+            "gameVersionReleaseDate": "2019-08-01T00:00:00Z",
+            "gameVersionTypeId": 68441
+          },
+          {
+            "gameVersionName": "Quilt",
+            "gameVersionPadded": "0",
+            "gameVersion": "",
+            "gameVersionReleaseDate": "2022-05-26T00:00:00Z",
+            "gameVersionTypeId": 68441
+          },
+          {
+            "gameVersionName": "1.18.2",
+            "gameVersionPadded": "0000000001.0000000018.0000000002",
+            "gameVersion": "1.18.2",
+            "gameVersionReleaseDate": "2022-02-28T14:23:37.723Z",
+            "gameVersionTypeId": 73250
+          }
+        ],
+        "dependencies": [
+        ],
+        "alternateFileId": 0,
+        "isServerPack": false,
+        "fileFingerprint": 1268209641,
+        "modules": [
+        ]
+      }
+    ],
+    "latestFilesIndexes": [
+      {
+        "gameVersion": "1.18.2",
+        "fileId": 3833330,
+        "filename": "version-1-1.0.jar",
+        "releaseType": 1,
+        "gameVersionTypeId": 73250,
+        "modLoader": 5
+      }
+    ],
+    "dateCreated": "2022-06-13T18:32:48.36Z",
+    "dateModified": "2022-06-15T15:33:39.367Z",
+    "dateReleased": "2022-06-15T14:46:46.947Z",
+    "allowModDistribution": true,
+    "gamePopularityRank": 100000,
+    "isAvailable": true,
+    "thumbsUpCount": 0
+  }
+}

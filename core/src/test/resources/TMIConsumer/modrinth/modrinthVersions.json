@@ -4,9 +4,7 @@
     "version_number": "1.1.0",
     "changelog": "The minutely (minor) better fake consumer as a test mod.",
     "game_versions": [
-      "1.19.1",
-      "1.18.2",
-      "1.18.1"
+      "1.18.2"
     ],
     "version_type": "release",
     "loaders": [
@@ -36,7 +34,7 @@
     "version_number": "1.0.0",
     "changelog": "The first fake consumer as a test mod.",
     "game_versions": [
-      "1.18.1"
+      "1.18.2"
     ],
     "version_type": "release",
     "loaders": [
@@ -67,7 +65,8 @@
     "version_number": "0.9.0",
     "changelog": "The last non stable version of the fake consumer as a test mod.",
     "game_versions": [
-      "1.18.1"
+      "1.18.1",
+      "1.17.1"
     ],
     "version_type": "alpha",
     "loaders": [
