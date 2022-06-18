@@ -322,7 +322,7 @@ class ModIndexCreator(
                                 indexVersion,
                                 modData.name,
                                 modData.authors.first().name,
-                                githubApiCall.getRepository(gitHubUserRepo).license.key,
+                                gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key },
                                 curseForgeId,
                                 modrinthId, // Modrinth id is known to be null, else it would have exited the func.
                                 ManifestLinks(
