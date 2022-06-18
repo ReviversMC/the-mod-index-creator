@@ -55,7 +55,7 @@
       "title": "637528125676392143.png",
       "description": "",
       "thumbnailUrl": "http://localhost/curseLogoThumbnail",
-      "url": "https://localhost/curseLogoThumbnailUrl"
+      "url": "http://localhost/curseLogoThumbnailUrl"
     },
     "screenshots": [
       {
@@ -64,7 +64,7 @@
         "title": "Picture A",
         "description": "",
         "thumbnailUrl": "http://localhost/cursePictureAThumbnail",
-        "url": "https://localhost/cursePictureAThumbnailUrl"
+        "url": "http://localhost/cursePictureAThumbnailUrl"
       },
       {
         "id": 361960,
@@ -72,7 +72,7 @@
         "title": "Picture B",
         "description": "",
         "thumbnailUrl": "http://localhost/cursePictureBThumbnail",
-        "url": "https://localhost/cursePictureBThumbnailUrl"
+        "url": "http://localhost/cursePictureBThumbnailUrl"
       }
     ],
     "mainFileId": 3256972,
@@ -99,7 +99,7 @@
         "fileDate": "2022-06-15T14:46:46.947Z",
         "fileLength": 10314,
         "downloadCount": 0,
-        "downloadUrl": "http://localhost/files/curse/tmic-1.1.0.jar:{port}/",
+        "downloadUrl": "http://localhost:{port}/files/tmic-1.1.0.jar",
         "gameVersions": [
           "Fabric",
           "Quilt",

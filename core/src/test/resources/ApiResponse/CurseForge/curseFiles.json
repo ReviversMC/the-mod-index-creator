@@ -22,7 +22,7 @@
       "fileDate": "2022-06-15T14:46:46.947Z",
       "fileLength": 10314,
       "downloadCount": 0,
-      "downloadUrl": "http://localhost/files/curse/tmic-1.1.0.jar:{port}/",
+      "downloadUrl": "http://localhost:{port}/files/tmic-1.1.0.jar",
       "gameVersions": [
         "Fabric",
         "Quilt",
@@ -81,7 +81,7 @@
       "fileDate": "2021-10-06T20:25:57.357Z",
       "fileLength": 4991218,
       "downloadCount": 0,
-      "downloadUrl": "http://localhost/files/curse/tmic-1.0.0.jar:{port}/",
+      "downloadUrl": "http://localhost:{port}/files/tmic-1.0.0.jar",
       "gameVersions": [
         "Fabric",
         "Quilt",
@@ -140,7 +140,7 @@
       "fileDate": "2021-10-04T20:38:23.397Z",
       "fileLength": 4984348,
       "downloadCount": 0,
-      "downloadUrl": "https://edge.forgecdn.net/files/3481/563/modget-0.1.0.jar",
+      "downloadUrl": "http://localhost:{port}/files/tmic-0.8.15.jar",
       "gameVersions": [
         "Fabric",
         "1.16.5",
