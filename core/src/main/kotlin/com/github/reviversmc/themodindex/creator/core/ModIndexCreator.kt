@@ -8,7 +8,6 @@ import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
-import com.github.reviversmc.themodindex.creator.core.data.ManifestWithGenericIdentifier
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -290,48 +289,48 @@ class ModIndexCreator(
             }
         }.distinct()
 
-        val returnManifests = mutableListOf<ManifestWithGenericIdentifier>().apply {
+        val returnManifests = mutableListOf<ManifestJson>().apply {
 
             modrinthProject?.let { project ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
                     add(
-                        ManifestWithGenericIdentifier(
-                            "$modLoader:${project.title.lowercase().replace(' ', '-')}", ManifestJson(
-                                indexVersion,
-                                project.title,
-                                modrinthApiCall.projectMembers(modrinthId).execute().body()
-                                    ?.first { member -> member.role == "Owner" }?.userResponse?.username
-                                    ?: throw IOException("No owner found for modrinth project: $modrinthId"),
-                                project.license?.id ?: "UNKNOWN",
-                                // Could cause null to be wrapped in quotes, and we thus have to do the ugly check to prevent that.
-                                curseForgeId,
-                                project.id,
-                                ManifestLinks(project.issuesUrl, project.sourceUrl, otherLinks),
-                                manifestFiles
-                            )
+                        ManifestJson(
+                            indexVersion,
+                            "$modLoader:${project.title.lowercase().replace(' ', '-')}",
+                            project.title,
+                            modrinthApiCall.projectMembers(modrinthId).execute().body()
+                                ?.first { member -> member.role == "Owner" }?.userResponse?.username
+                                ?: throw IOException("No owner found for modrinth project: $modrinthId"),
+                            project.license?.id ?: "UNKNOWN",
+                            // Could cause null to be wrapped in quotes, and we thus have to do the ugly check to prevent that.
+                            curseForgeId,
+                            project.id,
+                            ManifestLinks(project.issuesUrl, project.sourceUrl, otherLinks),
+                            manifestFiles
                         )
                     )
+
                 }
             }
 
             curseForgeMod?.data?.let { modData ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
                     add(
-                        ManifestWithGenericIdentifier(
-                            "${modLoader}:${modData.name.lowercase().replace(' ', '-')}", ManifestJson(
-                                indexVersion,
-                                modData.name,
-                                modData.authors.first().name,
-                                gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key },
-                                curseForgeId,
-                                modrinthId, // Modrinth id is known to be null, else it would have exited the func.
-                                ManifestLinks(
-                                    modData.links.issuesUrl, modData.links.sourceUrl, otherLinks
-                                ),
-                                manifestFiles
-                            )
+                        ManifestJson(
+                            indexVersion,
+                            "${modLoader}:${modData.name.lowercase().replace(' ', '-')}",
+                            modData.name,
+                            modData.authors.first().name,
+                            gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key },
+                            curseForgeId,
+                            modrinthId, // Modrinth id is known to be null, else it would have exited the func.
+                            ManifestLinks(
+                                modData.links.issuesUrl, modData.links.sourceUrl, otherLinks
+                            ),
+                            manifestFiles
                         )
                     )
+
                 }
             }
         }.toList()
@@ -342,7 +341,7 @@ class ModIndexCreator(
         )
     }
 
-    override fun modifyIndex(indexToModify: IndexJson, manifestWithIdentifier: ManifestWithGenericIdentifier): IndexJson {
+    override fun modifyIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson {
         if (indexToModify.indexVersion != indexVersion) {
             throw IllegalStateException(
                 "Attempted index version to target: $indexVersion,\nbut found: ${indexToModify.indexVersion}"
@@ -350,7 +349,7 @@ class ModIndexCreator(
         }
 
         return indexToModify.copy(identifiers = indexToModify.identifiers.toMutableList().apply {
-            manifestWithIdentifier.manifestJson.files.forEach { add("${manifestWithIdentifier.genericIdentifier}:${it.sha512Hash}") }
+            manifest.files.forEach { add("${manifest.genericIdentifier}:${it.sha512Hash}") }
         }.toList())
     }
 }

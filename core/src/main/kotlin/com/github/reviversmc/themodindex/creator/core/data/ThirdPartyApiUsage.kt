@@ -1,5 +1,7 @@
 package com.github.reviversmc.themodindex.creator.core.data
 
+import com.github.reviversmc.themodindex.api.data.ManifestJson
+
 /**
  * An enum to represent the different api providers that are used.
  * [ALL_USED] should only be used when all providers are met, and [NONE_USED] should only be used when no providers are met.
@@ -19,9 +21,9 @@ enum class ThirdPartyApiUsage {
 }
 
 /**
- * A class to neatly bundle a [List] of [ManifestWithGenericIdentifier]s with the [ThirdPartyApiUsage]s that were used to create them.
+ * A class to neatly bundle a [List] of [ManifestJson]s with the [ThirdPartyApiUsage]s that were used to create them.
  */
 data class ManifestWithApiStatus(
     val thirdPartyApiUsage: List<ThirdPartyApiUsage>,
-    val manifestsWithGenericIdentifiers: List<ManifestWithGenericIdentifier>,
+    val manifests: List<ManifestJson>,
 )
