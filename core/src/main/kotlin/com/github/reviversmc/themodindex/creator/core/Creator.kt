@@ -15,7 +15,7 @@ interface Creator {
      * @since 1.0.0
      */
     @kotlin.jvm.Throws(IOException::class)
-    fun createManifestCurseForge(modrinthId: String? = null, curseForgeId: Int): ManifestWithApiStatus
+    fun createManifestCurseForge(curseForgeId: Int, modrinthId: String? = null): ManifestWithApiStatus
 
     /**
      * Creates a [ManifestWithApiStatus], which contains [ManifestWithGenericIdentifier]s

@@ -191,7 +191,7 @@ class ModIndexCreator(
     }.toMap()
 
 
-    override fun createManifestCurseForge(modrinthId: String?, curseForgeId: Int): ManifestWithApiStatus =
+    override fun createManifestCurseForge(curseForgeId: Int, modrinthId: String?): ManifestWithApiStatus =
         createManifest(modrinthId, curseForgeId)
 
     override fun createManifestModrinth(modrinthId: String, curseForgeId: Int?): ManifestWithApiStatus =
@@ -321,7 +321,7 @@ class ModIndexCreator(
                             "${modLoader}:${modData.name.lowercase().replace(' ', '-')}", ManifestJson(
                                 indexVersion,
                                 modData.name,
-                                modData.authors[0].name,
+                                modData.authors.first().name,
                                 githubApiCall.getRepository(gitHubUserRepo).license.key,
                                 curseForgeId,
                                 modrinthId, // Modrinth id is known to be null, else it would have exited the func.
