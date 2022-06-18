@@ -43,7 +43,7 @@ class ApiCallTest : KoinTest {
         val curseForgeMod = curseForgeApiCall.mod(curseApiKey(), 533960).execute().body()!!.data
         assertNotNull(curseForgeMod)
         assertEquals("modget", curseForgeMod.name.lowercase())
-        assertEquals("https://github.com/reviversmc/modget", curseForgeMod.links.sourceUrl.lowercase())
+        assertEquals("https://github.com/reviversmc/modget", curseForgeMod.links.sourceUrl?.lowercase())
         //Other urls left out as assumed to be working since source url is working
         assertContains(
             curseForgeMod.authors, CurseModAuthor(
