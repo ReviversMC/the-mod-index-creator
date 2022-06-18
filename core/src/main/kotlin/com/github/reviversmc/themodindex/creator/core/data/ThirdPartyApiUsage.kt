@@ -23,5 +23,5 @@ enum class ThirdPartyApiUsage {
  */
 data class ManifestWithApiStatus(
     val thirdPartyApiUsage: List<ThirdPartyApiUsage>,
-    val manifestsWithIdentifiers: List<ManifestWithGenericIdentifier>,
+    val manifestsWithGenericIdentifiers: List<ManifestWithGenericIdentifier>,
 )
