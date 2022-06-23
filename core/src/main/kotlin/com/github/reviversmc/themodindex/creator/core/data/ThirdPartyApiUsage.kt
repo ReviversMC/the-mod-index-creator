@@ -12,17 +12,29 @@ enum class ThirdPartyApiUsage {
     ALL_USED, CURSEFORGE_USED, GITHUB_USED, MODRINTH_USED, NONE_USED;
 
     companion object {
-        fun isAllWorking(workingList: List<ThirdPartyApiUsage> = emptyList()) =
-            CURSEFORGE_USED in workingList && GITHUB_USED in workingList && MODRINTH_USED in workingList
+        /**
+         * Returns if the contents of [usedList] is effectively [ALL_USED].
+         * @author ReviversMC
+         * @since 1.0.0
+         */
+        fun isAllWorking(usedList: List<ThirdPartyApiUsage> = emptyList()) =
+            CURSEFORGE_USED in usedList && GITHUB_USED in usedList && MODRINTH_USED in usedList || usedList == listOf(ALL_USED)
 
-        fun isNoneWorking(workingList: List<ThirdPartyApiUsage> = emptyList()) =
-            workingList.isEmpty() || workingList == listOf(NONE_USED)
+        /**
+         * Returns if the contents of [usedList] is effectively [NONE_USED]
+         * @author ReviversMC
+         * @since 1.0.0
+         */
+        fun isNoneWorking(usedList: List<ThirdPartyApiUsage> = emptyList()) =
+            usedList.isEmpty() || usedList == listOf(NONE_USED)
     }
 }
 
 /**
  * A class to neatly bundle a [List] of [ManifestJson]s
  * with the [ThirdPartyApiUsage]s that were used to create them, even if they do not affect the end result.
+ * @author ReviversMC
+ * @since 1.0.0
  */
 data class ManifestWithApiStatus(
     val thirdPartyApiUsage: List<ThirdPartyApiUsage>,
