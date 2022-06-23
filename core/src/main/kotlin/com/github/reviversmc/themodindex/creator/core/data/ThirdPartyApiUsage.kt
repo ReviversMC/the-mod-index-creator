@@ -21,7 +21,8 @@ enum class ThirdPartyApiUsage {
 }
 
 /**
- * A class to neatly bundle a [List] of [ManifestJson]s with the [ThirdPartyApiUsage]s that were used to create them.
+ * A class to neatly bundle a [List] of [ManifestJson]s
+ * with the [ThirdPartyApiUsage]s that were used to create them, even if they do not affect the end result.
  */
 data class ManifestWithApiStatus(
     val thirdPartyApiUsage: List<ThirdPartyApiUsage>,
