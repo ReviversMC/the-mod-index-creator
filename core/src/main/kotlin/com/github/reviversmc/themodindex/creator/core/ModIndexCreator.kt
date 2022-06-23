@@ -35,7 +35,7 @@ class ModIndexCreator(
     private val okHttpClient: OkHttpClient,
 ) : Creator {
 
-    private val indexVersion = "4.0.0"
+    private val indexVersion = "4.1.0"
 
     /**
      * Creates a sha512 hash for the given [input] bytes
