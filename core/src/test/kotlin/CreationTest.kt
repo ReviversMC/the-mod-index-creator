@@ -18,6 +18,7 @@ import org.koin.test.junit5.KoinTestExtension
 import org.koin.test.junit5.mock.MockProviderExtension
 import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class CreationTest : KoinTest {
 
@@ -41,7 +42,7 @@ class CreationTest : KoinTest {
 
     @Suppress("KotlinConstantConditions") // We want to use the curse number constants
     private fun curseForgeFilesResponse(curseNumber: Int = 0) = when (curseNumber) {
-        CurseForgeApiCall.ModLoaderType.ANY.curseNumber-> readResource("/apiResponse/curseForge/curseAllFiles.json")
+        CurseForgeApiCall.ModLoaderType.ANY.curseNumber -> readResource("/apiResponse/curseForge/curseAllFiles.json")
         CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber -> readResource("/apiResponse/curseForge/curseFabricFiles.json")
         CurseForgeApiCall.ModLoaderType.QUILT.curseNumber -> readResource("/apiResponse/curseForge/curseQuiltFiles.json")
         else -> readResource("/apiResponse/curseForge/curseEmptyFiles.json")
@@ -148,7 +149,29 @@ class CreationTest : KoinTest {
     @RegisterExtension
     val mockProvider = MockProviderExtension.create { mockkClass(it) }
 
-    @Suppress("KotlinConstantConditions")
+    @Test
+    fun `creator methods should be equivalent`() = get<Creator> {
+        parametersOf(
+            "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
+        )
+    }.let { creator ->
+
+        assertTrue {
+            creator.createManifestCurseForge(
+                curseForgeModId,
+                modrinthProjectId
+            ) == creator.createManifestModrinth(modrinthProjectId, curseForgeModId, false)
+        }
+
+        assertTrue {
+            creator.createManifestCurseForge(
+                curseForgeModId,
+                modrinthProjectId,
+                false
+            ) == creator.createManifestModrinth(modrinthProjectId, curseForgeModId)
+        }
+    }
+
     @Test
     fun `should generate accurate manifests`() {
 
@@ -179,14 +202,38 @@ class CreationTest : KoinTest {
 
         isTestingForGitHub = false.apply {
             isCurseForgeDistribution = true.apply {
-                val pureCurseForge = creator.createManifestCurseForge(curseForgeModId)
-                assertEquals(pureCurseForge.thirdPartyApiUsage, listOf(ThirdPartyApiUsage.CURSEFORGE_USED))
-                pureCurseForge.manifests.forEach { assertManifestEquals("pureCurseForge", it) }
-            }
 
-            val pureModrinth = creator.createManifestModrinth(modrinthProjectId)
-            assertEquals(pureModrinth.thirdPartyApiUsage, listOf(ThirdPartyApiUsage.MODRINTH_USED))
-            pureModrinth.manifests.forEach { assertManifestEquals("pureModrinth", it) }
+                creator.createManifestCurseForge(curseForgeModId).run pureCurseForge@{
+                    assertEquals(listOf(ThirdPartyApiUsage.CURSEFORGE_USED), thirdPartyApiUsage)
+                    assertEquals(2, manifests.size)
+                    manifests.forEach { assertManifestEquals("pureCurseForge", it) }
+                }
+
+                creator.createManifestModrinth(modrinthProjectId).run pureModrinth@{
+                    assertEquals(listOf(ThirdPartyApiUsage.MODRINTH_USED), thirdPartyApiUsage)
+                    assertEquals(2, manifests.size)
+                    manifests.forEach { assertManifestEquals("pureModrinth", it) }
+                }
+
+
+                creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseEnabledPlusModrinth@{
+                    assertEquals(
+                        listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                        thirdPartyApiUsage.sorted()
+                    )
+                    assertEquals(2, manifests.size)
+                    manifests.forEach { assertManifestEquals("curseEnabledPlusModrinth", it) }
+                }
+
+                creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeEnabled@{
+                    assertEquals(
+                        listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                        thirdPartyApiUsage.sorted()
+                    )
+                    assertEquals(2, manifests.size)
+                    manifests.forEach { assertManifestEquals("modrinthPlusCurseEnabled", it) }
+                }
+            }
         }
 
 
