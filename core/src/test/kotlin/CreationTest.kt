@@ -233,13 +233,31 @@ class CreationTest : KoinTest {
 
 
         isCurseForgeDistribution = false
-        creator.createManifestCurseForge(curseForgeModId).run pureCurseForge@{
+        creator.createManifestCurseForge(curseForgeModId).run curseForgeDisabled@{
             assertEquals(thirdPartyApiUsage, listOf(ThirdPartyApiUsage.CURSEFORGE_USED))
             assertEquals(0, manifests.size)
             assertEquals(
                 emptyList(),
                 manifests
             ) // No manifests should be generated, as all files are disabled.
+        }
+
+        creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseDisabledPlusModrinth@{
+            assertEquals(
+                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                thirdPartyApiUsage.sorted()
+            )
+            assertEquals(2, manifests.size)
+            manifests.forEach { assertManifestEquals("curseDisabledPlusModrinth", it) }
+        }
+
+        creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeDisabled@{
+            assertEquals(
+                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                thirdPartyApiUsage.sorted()
+            )
+            assertEquals(2, manifests.size)
+            manifests.forEach { assertManifestEquals("modrinthPlusCurseDisabled", it) }
         }
     }
 
