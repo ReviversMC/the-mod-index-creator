@@ -43,7 +43,7 @@
       ],
       "sha512Hash": "3a928aa2cc3bf291a4657d1b51e0e087dfb1dea060c89d20776b8943d24e712ea65778fe608ddaee0a191bc6680483ad12be1f357389a2380f660db246be5844",
       "downloadUrls": [
-        "http://localhost:{port}/files/tmic-1.0.0.jar:"
+        "http://localhost:{port}/files/tmic-1.0.0.jar"
       ],
       "curseDownloadAvailable": false
     },
