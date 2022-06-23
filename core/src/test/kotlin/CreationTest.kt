@@ -116,7 +116,7 @@ class CreationTest : KoinTest {
                     MockResponse().setResponseCode(200).setBody(
                         readResource(
                             "/apiResponse/downloadableFiles/${request.path!!.removePrefix("/files/").removeSuffix("/")}"
-                        ).also { println("Sent $it as response") }
+                        )
                     )
                 } else MockResponse().setResponseCode(404).setBody(request.path.toString())
             }
