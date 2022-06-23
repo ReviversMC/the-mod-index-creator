@@ -24,18 +24,10 @@
       "downloadCount": 0,
       "downloadUrl": "http://localhost:{port}/files/tmic-1.1.0.jar",
       "gameVersions": [
-        "Fabric",
         "Quilt",
         "1.18.2"
       ],
       "sortableGameVersions": [
-        {
-          "gameVersionName": "Fabric",
-          "gameVersionPadded": "0",
-          "gameVersion": "",
-          "gameVersionReleaseDate": "2019-08-01T00:00:00Z",
-          "gameVersionTypeId": 68441
-        },
         {
           "gameVersionName": "Quilt",
           "gameVersionPadded": "0",

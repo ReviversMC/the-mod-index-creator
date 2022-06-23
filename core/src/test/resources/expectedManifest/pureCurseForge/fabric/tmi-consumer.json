@@ -1,0 +1,46 @@
+{
+  "indexVersion": "4.1.0",
+  "genericIdentifier": "fabric:tmi-consumer",
+  "fancyName": "TMI Consumer",
+  "author": "Cloudate9",
+  "license": null,
+  "curseForgeId": 463481,
+  "modrinthId": null,
+  "links": {
+    "issue": "https://github.com/reviversmc/the-mod-index-creator/issues",
+    "sourceControl": null,
+    "others": [
+      {
+        "linkName": "website",
+        "url": "https://github.com/reviversmc/the-mod-index-creator"
+      },
+      {
+        "linkName": "wiki",
+        "url": "https://github.com/reviversmc/the-mod-index-creator/wiki"
+      }
+    ]
+  },
+  "files": [
+    {
+      "fileName": "Version 1.0.0",
+      "mcVersions": [
+        "1.18.2"
+      ],
+      "sha512Hash": "d28061408e7e170456a67e3a877b265bff05ef3f5adf4c0572570fa1106a2c3a306c4d6489a3f9847aeb6895824dc73376136557c2aa22969fe5162be22da22d",
+      "downloadUrls": [
+      ],
+      "curseDownloadAvailable": true
+    },
+    {
+      "fileName": "Version 0.8.15",
+      "mcVersions": [
+        "1.16.5",
+        "1.16.4"
+      ],
+      "sha512Hash": "713cd435f99a9b33eb27d251b40efab580ca5a1feb917b7864c0e94c6ba6e780234e2d70c40fa62ef2a523e2da14fb7b0d78e259f80e54226ead46d41a1c3d70",
+      "downloadUrls": [
+      ],
+      "curseDownloadAvailable": true
+    }
+  ]
+}
