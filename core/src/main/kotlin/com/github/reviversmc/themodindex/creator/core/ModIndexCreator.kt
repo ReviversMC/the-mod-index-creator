@@ -239,27 +239,45 @@ class ModIndexCreator(
         val curseForgeMod = curseForgeId?.let { curseForgeApiCall.mod(curseApiKey, it) }?.execute()?.body()
         val modrinthProject = modrinthId?.let { modrinthApiCall.project(it) }?.execute()?.body()
 
-        val gitHubUserRepo = modrinthProject?.sourceUrl?.let {// Make the source in the format of User/Repo
-            val splitSource = it.split("/")
-            return@let if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
-
-        } ?: curseForgeMod?.data?.links?.sourceUrl?.let {
+        fun obtainGitHubFromCurse() = curseForgeMod?.data?.links?.sourceUrl?.let {
             val splitSource = it.split("/")
             return@let if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
         }
 
+        fun obtainGitHubFromModrinth() = modrinthProject?.sourceUrl?.let {// Make the source in the format of User/Repo
+            val splitSource = it.split("/")
+            return@let if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
+
+        }
+
+        val gitHubUserRepo = if (preferCurseOverModrinth) obtainGitHubFromCurse() ?: obtainGitHubFromModrinth()
+        else obtainGitHubFromModrinth() ?: obtainGitHubFromCurse()
+
 
         val usedThirdPartyApis = mutableListOf<ThirdPartyApiUsage>()
 
-        val curseFiles = curseForgeId?.let { downloadCurseForgeFiles(it) }?.also {
-            usedThirdPartyApis.add(ThirdPartyApiUsage.CURSEFORGE_USED)
-        } ?: emptyMap()
 
-        val curseAndModrinthFiles = modrinthId?.let { downloadModrinthFiles(it, curseFiles) }
-            ?.also { usedThirdPartyApis.add(ThirdPartyApiUsage.MODRINTH_USED) } ?: curseFiles
+        val curseAndModrinthFiles = if (preferCurseOverModrinth) {
+            val curseFiles = curseForgeId?.let { downloadCurseForgeFiles(it) }?.also {
+                usedThirdPartyApis.add(ThirdPartyApiUsage.CURSEFORGE_USED)
+            } ?: emptyMap()
+
+            modrinthId?.let { downloadModrinthFiles(it, curseFiles) }?.also {
+                usedThirdPartyApis.add(ThirdPartyApiUsage.MODRINTH_USED)
+            } ?: curseFiles
+        } else {
+            val modrinthFiles = modrinthId?.let { downloadModrinthFiles(it) }?.also {
+                usedThirdPartyApis.add(ThirdPartyApiUsage.MODRINTH_USED)
+            } ?: emptyMap()
+
+            curseForgeId?.let { downloadCurseForgeFiles(it, modrinthFiles) }?.also {
+                usedThirdPartyApis.add(ThirdPartyApiUsage.CURSEFORGE_USED)
+            } ?: modrinthFiles
+        }
 
         val combinedFiles = gitHubUserRepo?.let { downloadGitHubFiles(it, curseAndModrinthFiles) }
             ?.also { usedThirdPartyApis.add(ThirdPartyApiUsage.GITHUB_USED) } ?: curseAndModrinthFiles
+
 
 
         if (ThirdPartyApiUsage.isAllWorking(usedThirdPartyApis)) usedThirdPartyApis.apply {
@@ -301,24 +319,20 @@ class ModIndexCreator(
 
             fun curseForgeToManifest() = curseForgeMod?.data?.let { modData ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
-                    add(
-                        ManifestJson(
-                            indexVersion,
-                            "${modLoader}:${modData.name.lowercase().replace(' ', '-')}",
-                            modData.name,
-                            modData.authors.first().name,
-                            gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key }
-                                ?: modrinthProject?.license?.id,
-                            modData.id,
-                            modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
-                            ManifestLinks(
-                                modData.links.issuesUrl ?: modrinthProject?.issuesUrl,
-                                modData.links.sourceUrl ?: modrinthProject?.sourceUrl,
-                                otherLinks
-                            ),
-                            manifestFiles
-                        )
-                    )
+                    add(ManifestJson(indexVersion,
+                        "${modLoader}:${modData.name.lowercase().replace(' ', '-')}",
+                        modData.name,
+                        modData.authors.first().name,
+                        gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key }
+                            ?: modrinthProject?.license?.id,
+                        modData.id,
+                        modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
+                        ManifestLinks(
+                            modData.links.issuesUrl ?: modrinthProject?.issuesUrl,
+                            modData.links.sourceUrl ?: modrinthProject?.sourceUrl,
+                            otherLinks
+                        ),
+                        manifestFiles))
                 }
                 return true
             } ?: false
