@@ -34,7 +34,7 @@
       "downloadUrls": [
         "http://localhost:{port}/files/tmic-1.1.0.jar"
       ],
-      "curseDownloadAvailable": false
+      "curseDownloadAvailable": true
     },
     {
       "fileName": "Version 1.0.0",
@@ -44,26 +44,6 @@
       "sha512Hash": "3a928aa2cc3bf291a4657d1b51e0e087dfb1dea060c89d20776b8943d24e712ea65778fe608ddaee0a191bc6680483ad12be1f357389a2380f660db246be5844",
       "downloadUrls": [
         "http://localhost:{port}/files/tmic-1.0.0.jar"
-      ],
-      "curseDownloadAvailable": false
-    },
-    {
-      "fileName": "Version-1.1.0",
-      "mcVersions": [
-        "1.18.2"
-      ],
-      "sha512Hash": "3cdd803eef4a53865d69b83fc0d40c991f739a50bfea7897ea5ec787554c77713aa870422bdbc6c4a92a0dbf1d06b0fcb2bd675905e5da904200452962211a00",
-      "downloadUrls": [
-      ],
-      "curseDownloadAvailable": true
-    },
-    {
-      "fileName": "Version 1.0.0",
-      "mcVersions": [
-        "1.18.2"
-      ],
-      "sha512Hash": "d28061408e7e170456a67e3a877b265bff05ef3f5adf4c0572570fa1106a2c3a306c4d6489a3f9847aeb6895824dc73376136557c2aa22969fe5162be22da22d",
-      "downloadUrls": [
       ],
       "curseDownloadAvailable": true
     }
