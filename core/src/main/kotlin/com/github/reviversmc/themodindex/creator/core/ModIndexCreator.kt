@@ -251,16 +251,12 @@ class ModIndexCreator(
 
         val usedThirdPartyApis = mutableListOf<ThirdPartyApiUsage>()
 
+        val curseFiles = curseForgeId?.let { downloadCurseForgeFiles(it) }?.also {
+            usedThirdPartyApis.add(ThirdPartyApiUsage.CURSEFORGE_USED)
+        } ?: emptyMap()
 
-        val modrinthFiles = modrinthId?.let { downloadModrinthFiles(it) }
-            ?.also { usedThirdPartyApis.add(ThirdPartyApiUsage.MODRINTH_USED) } ?: emptyMap()
-
-        val curseAndModrinthFiles = curseForgeId?.let { downloadCurseForgeFiles(it, modrinthFiles) }?.also {
-            if (modrinthFiles != it) { // Checks if info was actually added
-                usedThirdPartyApis.add(ThirdPartyApiUsage.CURSEFORGE_USED)
-            }
-        } ?: modrinthFiles
-
+        val curseAndModrinthFiles = modrinthId?.let { downloadModrinthFiles(it, curseFiles) }
+            ?.also { usedThirdPartyApis.add(ThirdPartyApiUsage.MODRINTH_USED) } ?: curseFiles
 
         val combinedFiles = gitHubUserRepo?.let { downloadGitHubFiles(it, curseAndModrinthFiles) }
             ?.also { usedThirdPartyApis.add(ThirdPartyApiUsage.GITHUB_USED) } ?: curseAndModrinthFiles
