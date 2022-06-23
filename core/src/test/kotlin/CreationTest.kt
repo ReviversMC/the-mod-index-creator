@@ -189,7 +189,7 @@ class CreationTest : KoinTest {
     }
 
     @Test
-    fun `should generate manifests without GitHub`() {
+    fun `generate manifests without GitHub, Curse disabled`() {
 
         val creator = get<Creator> {
             parametersOf(
@@ -197,6 +197,7 @@ class CreationTest : KoinTest {
             )
         }
 
+        isCurseForgeDistribution = false
         isTestingForGitHub = false
 
         creator.createManifestModrinth(modrinthProjectId).run pureModrinth@{
@@ -205,34 +206,6 @@ class CreationTest : KoinTest {
             manifests.forEach { assertManifestEquals("pureModrinth", it) }
         }
 
-        isCurseForgeDistribution = true
-
-        creator.createManifestCurseForge(curseForgeModId).run pureCurseForge@{
-            assertEquals(listOf(ThirdPartyApiUsage.CURSEFORGE_USED), thirdPartyApiUsage)
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("pureCurseForge", it) }
-        }
-
-        creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseEnabledPlusModrinth@{
-            assertEquals(
-                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                thirdPartyApiUsage.sorted()
-            )
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("curseEnabledPlusModrinth", it) }
-        }
-
-        creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeEnabled@{
-            assertEquals(
-                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                thirdPartyApiUsage.sorted()
-            )
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("modrinthPlusCurseEnabled", it) }
-        }
-
-
-        isCurseForgeDistribution = false
         creator.createManifestCurseForge(curseForgeModId).run curseForgeDisabled@{
             assertEquals(thirdPartyApiUsage, listOf(ThirdPartyApiUsage.CURSEFORGE_USED))
             assertEquals(0, manifests.size)
@@ -258,6 +231,49 @@ class CreationTest : KoinTest {
             )
             assertEquals(2, manifests.size)
             manifests.forEach { assertManifestEquals("modrinthPlusCurseDisabled", it) }
+        }
+    }
+
+    @Test
+    fun `generate manifests without GitHub, Curse enabled`() {
+
+        val creator = get<Creator> {
+            parametersOf(
+                "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
+            )
+        }
+
+        isCurseForgeDistribution = true
+        isTestingForGitHub = false
+
+        creator.createManifestModrinth(modrinthProjectId).run pureModrinth@{
+            assertEquals(listOf(ThirdPartyApiUsage.MODRINTH_USED), thirdPartyApiUsage)
+            assertEquals(2, manifests.size)
+            manifests.forEach { assertManifestEquals("pureModrinth", it) }
+        }
+
+        creator.createManifestCurseForge(curseForgeModId).run pureCurseForge@{
+            assertEquals(listOf(ThirdPartyApiUsage.CURSEFORGE_USED), thirdPartyApiUsage)
+            assertEquals(2, manifests.size)
+            manifests.forEach { assertManifestEquals("pureCurseForge", it) }
+        }
+
+        creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseEnabledPlusModrinth@{
+            assertEquals(
+                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                thirdPartyApiUsage.sorted()
+            )
+            assertEquals(2, manifests.size)
+            manifests.forEach { assertManifestEquals("curseEnabledPlusModrinth", it) }
+        }
+
+        creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeEnabled@{
+            assertEquals(
+                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                thirdPartyApiUsage.sorted()
+            )
+            assertEquals(2, manifests.size)
+            manifests.forEach { assertManifestEquals("modrinthPlusCurseEnabled", it) }
         }
     }
 
