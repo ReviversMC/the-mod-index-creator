@@ -102,7 +102,7 @@ class ModIndexCreator(
                 )
 
             }
-            this[modLoader.name.lowercase()] = loaderFiles.toList()
+            this[modLoader.name.lowercase()] = loaderFiles.toList().sortedByDescending { it.mcVersions.first() }
         }
 
         this.values.removeIf { it.isEmpty() }
@@ -138,7 +138,7 @@ class ModIndexCreator(
                             this[loader] = manifestFiles.toMutableList().also { files ->
                                 files[index] =
                                     manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
-                            }.toList()
+                            }.toList().sortedByDescending { it.mcVersions.first() }
                             return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
                         }
                     }
@@ -184,7 +184,7 @@ class ModIndexCreator(
                         )
                     )
                 }
-                this[loader.lowercase()] = loaderFiles.toList()
+                this[loader.lowercase()] = loaderFiles.toList().sortedByDescending { it.mcVersions.first() }
             }
         }
     }.toMap()
