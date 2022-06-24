@@ -1,6 +1,7 @@
 plugins {
     id("com.github.johnrengelman.shadow") version "7.1.2"
     kotlin("jvm") version "1.7.0"
+    kotlin("plugin.serialization") version "1.7.0"
 }
 
 group = "com.github.reviversmc.themodindex.creator"
@@ -10,6 +11,7 @@ subprojects {
     apply {
         plugin("com.github.johnrengelman.shadow")
         plugin("org.jetbrains.kotlin.jvm")
+        plugin("org.jetbrains.kotlin.plugin.serialization")
     }
 
     repositories {
