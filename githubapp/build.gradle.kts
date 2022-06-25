@@ -13,7 +13,7 @@ dependencies {
 tasks {
     jar {
         manifest {
-            attributes["Main-Class"] = "${rootProject.group}.ghapp.GitHubAppKt"
+            attributes["Main-Class"] = "${rootProject.group}.ghapp.AppKt"
         }
     }
 }
