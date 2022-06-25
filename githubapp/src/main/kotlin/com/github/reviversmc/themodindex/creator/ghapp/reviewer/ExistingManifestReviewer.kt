@@ -98,12 +98,35 @@ class ExistingManifestReviewer(
                         ) {
                             emit(
                                 ManifestWithCreationStatus(
-                                    ReviewStatus.APPROVED_FOR_USE,
+                                    ReviewStatus.APPROVED_UPDATE,
                                     latestManifest,
                                     originalManifest
                                 )
                             )
                             return@launch
+                        }
+
+                        /*
+                        Names of mods can change, and the identifiers of the manifests will change along with it.
+                         */
+                        if (latestManifest.copy(
+                                genericIdentifier = originalManifest.genericIdentifier,
+                                fancyName = originalManifest.fancyName
+                            ) == originalManifest
+                        ) {
+                            // Ensure that the new generic identifier isn't already taken
+                            if (latestManifest.genericIdentifier !in (apiDownloader.getOrDownloadIndexJson()?.identifiers
+                                    ?: throw IOException("Could not download manifest index"))
+                            ) {
+                                emit(
+                                    ManifestWithCreationStatus(
+                                        ReviewStatus.APPROVED_GENERIC_IDENTIFIER_CHANGE,
+                                        latestManifest,
+                                        originalManifest
+                                    )
+                                )
+                                return@launch
+                            }
                         }
 
                         // Else, make a conflict.
