@@ -4,6 +4,7 @@ import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
+import com.github.reviversmc.themodindex.creator.ghapp.COROUTINES_PER_TASK
 import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
 import kotlinx.coroutines.coroutineScope
@@ -15,12 +16,12 @@ import kotlinx.coroutines.sync.withPermit
 import java.io.IOException
 
 class ExistingManifestReviewer(
-    private val apiDownloader: ApiDownloader, private val creator: Creator, private val coroutinesPerTask: Int = 5,
+    private val apiDownloader: ApiDownloader, private val creator: Creator,
 ) : ManifestReviewer {
 
     override suspend fun downloadOriginalManifests() = coroutineScope {
         flow {
-            val manifestDownloadSemaphore = Semaphore(coroutinesPerTask)
+            val manifestDownloadSemaphore = Semaphore(COROUTINES_PER_TASK)
             val existingGenericIdentifiers =
                 apiDownloader.downloadIndexJson()?.identifiers?.map { it.substringBeforeLast(":") }
                     ?: throw IOException("Could not download manifest index")
@@ -39,7 +40,7 @@ class ExistingManifestReviewer(
 
     override suspend fun reviewExistingManifests(originalManifests: Flow<ManifestJson>) = coroutineScope {
         flow {
-            val manifestUpdateSemaphore = Semaphore(coroutinesPerTask)
+            val manifestUpdateSemaphore = Semaphore(COROUTINES_PER_TASK)
 
             originalManifests.collect { originalManifest ->
                 launch {
