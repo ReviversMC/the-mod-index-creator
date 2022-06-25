@@ -10,6 +10,7 @@ import com.github.reviversmc.themodindex.creator.core.apicalls.CurseModData
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
+import kotlinx.coroutines.delay
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.kohsuke.github.GitHub
@@ -55,11 +56,9 @@ class ModIndexCreator(
     /**
      * Creates a [ManifestVersionsPerLoader] for the CurseForge mod, which is found using its [curseForgeId].
      * The results can be merged with any [existingFiles] that have already been generated.
-     * @throws IOException If the api call to CF fails
      * @author ReviversMC
      * @since 1.0.0
      */
-    @kotlin.jvm.Throws(IOException::class)
     private fun downloadCurseForgeFiles(
         curseForgeId: Int, existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
@@ -116,11 +115,9 @@ class ModIndexCreator(
      *
      * The results can be merged with any [existingFiles] that have already been generated.
      *
-     * @throws IOException If the api call to CF fails
      * @author ReviversMC
      * @since 1.0.0
      */
-    @kotlin.jvm.Throws(IOException::class)
     private fun downloadGitHubFiles(
         gitHubRepo: String, existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
@@ -151,17 +148,20 @@ class ModIndexCreator(
     /**
      * Creates a [ManifestVersionsPerLoader] for the Modrinth project, which is found using [modrinthId].
      * The results can be merged with any [existingFiles] that have already been generated.
-     * @throws IOException If the api call to Modrinth fails
      * @author ReviversMC
      * @since 1.0.0
      */
-    @kotlin.jvm.Throws(IOException::class)
-    private fun downloadModrinthFiles(
+    private suspend fun downloadModrinthFiles(
         modrinthId: String,
         existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-        modrinthApiCall.versions(modrinthId).execute().body()?.forEach { versionResponse ->
+        modrinthApiCall.versions(modrinthId).execute().run {
+            if (body() != null) body() else {
+                delay(((headers()["x-ratelimit-reset"]?.toLong() ?: -1) + 1) * 1000)
+                modrinthApiCall.versions(modrinthId).execute().body()
+            }
+        }?.forEach { versionResponse ->
 
             versionResponse.loaders.forEach { loader -> // All files here are guaranteed to work for the loader.
                 val loaderFiles = this.getOrDefault(loader.lowercase(), emptyList()).toMutableList()
@@ -189,14 +189,13 @@ class ModIndexCreator(
         }
     }.toMap()
 
-
-    override fun createManifestCurseForge(
+    override suspend fun createManifestCurseForge(
         curseForgeId: Int,
         modrinthId: String?,
         preferCurseForgeData: Boolean,
     ): ManifestWithApiStatus = createManifest(modrinthId, curseForgeId, preferCurseForgeData)
 
-    override fun createManifestModrinth(
+    override suspend fun createManifestModrinth(
         modrinthId: String,
         curseForgeId: Int?,
         preferModrinthData: Boolean,
@@ -205,7 +204,7 @@ class ModIndexCreator(
     )
 
 
-    private fun createManifest(
+    private suspend fun createManifest(
         modrinthId: String?,
         curseForgeId: Int?,
         preferCurseOverModrinth: Boolean,
@@ -236,8 +235,15 @@ class ModIndexCreator(
         - If all are null, don't include the version. If no versions are non-null, return empty list
          */
 
-        val curseForgeMod = curseForgeId?.let { curseForgeApiCall.mod(curseApiKey, it) }?.execute()?.body()
-        val modrinthProject = modrinthId?.let { modrinthApiCall.project(it) }?.execute()?.body()
+        val curseForgeMod = curseForgeId?.let { curseForgeApiCall.mod(curseApiKey, it).execute().body() }
+        val modrinthProject = modrinthId?.let {
+            modrinthApiCall.project(it).execute().run {
+                if (body() != null) body() else {
+                    delay(((headers()["x-ratelimit-reset"]?.toLong() ?: -1) + 1) * 1000)
+                    modrinthApiCall.project(it).execute().body()
+                }
+            }
+        }
 
         fun obtainGitHubFromCurse() = curseForgeMod?.data?.links?.sourceUrl?.let {
             val splitSource = it.split("/")
@@ -337,32 +343,38 @@ class ModIndexCreator(
                 return true
             } ?: false
 
-            fun modrinthToManifest(curseData: CurseModData?) = modrinthProject?.let { _ -> // No better alias for this
-                combinedFiles.forEach { (modLoader, manifestFiles) ->
-                    add(
-                        ManifestJson(
-                            indexVersion,
-                            "$modLoader:${modrinthProject.title.lowercase().replace(' ', '-')}",
-                            modrinthProject.title,
-                            modrinthApiCall.projectMembers(modrinthId).execute().body()
-                                ?.first { member -> member.role == "Owner" }?.userResponse?.username
-                                ?: curseData?.authors?.first()?.name
-                                ?: throw IOException("No owner found for modrinth project: $modrinthId"),
-                            modrinthProject.license?.id
-                                ?: gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key },
-                            curseData?.id,
-                            modrinthProject.id,
-                            ManifestLinks(
-                                modrinthProject.issuesUrl ?: curseData?.links?.issuesUrl,
-                                modrinthProject.sourceUrl ?: curseData?.links?.sourceUrl,
-                                otherLinks
-                            ),
-                            manifestFiles
+            suspend fun modrinthToManifest(curseData: CurseModData?) =
+                modrinthProject?.let { _ -> // No better alias for this
+                    combinedFiles.forEach { (modLoader, manifestFiles) ->
+                        add(
+                            ManifestJson(
+                                indexVersion,
+                                "$modLoader:${modrinthProject.title.lowercase().replace(' ', '-')}",
+                                modrinthProject.title,
+                                modrinthApiCall.projectMembers(modrinthId).execute().run {
+                                    if (body() != null) body() else {
+                                        delay(((headers()["x-ratelimit-reset"]?.toLong() ?: -1) + 1) * 1000)
+                                        modrinthApiCall.projectMembers(modrinthId).execute().body()
+                                    }
+                                }
+                                    ?.first { member -> member.role == "Owner" }?.userResponse?.username
+                                    ?: curseData?.authors?.first()?.name
+                                    ?: throw IOException("No owner found for modrinth project: $modrinthId"),
+                                modrinthProject.license?.id
+                                    ?: gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key },
+                                curseData?.id,
+                                modrinthProject.id,
+                                ManifestLinks(
+                                    modrinthProject.issuesUrl ?: curseData?.links?.issuesUrl,
+                                    modrinthProject.sourceUrl ?: curseData?.links?.sourceUrl,
+                                    otherLinks
+                                ),
+                                manifestFiles
+                            )
                         )
-                    )
-                }
-                return true
-            } ?: false
+                    }
+                    return true
+                } ?: false
 
             if (preferCurseOverModrinth) {
                 if (!curseForgeToManifest()) modrinthToManifest(curseForgeMod?.data)

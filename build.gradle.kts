@@ -21,6 +21,7 @@ subprojects {
 
     dependencies {
         api("io.insert-koin:koin-core:3.2.0")
+        api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.3")
         testApi("com.squareup.okhttp3:mockwebserver:4.10.0")
         testApi("io.insert-koin:koin-test-junit5:3.2.0")
         testApi("io.insert-koin:koin-test:3.2.0")

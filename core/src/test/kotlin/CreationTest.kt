@@ -3,6 +3,7 @@ import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import io.mockk.mockkClass
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import okhttp3.mockwebserver.Dispatcher
@@ -22,7 +23,7 @@ import kotlin.test.assertTrue
 
 class CreationTest : KoinTest {
 
-    // TODO Mock GitHub API, and finish fake CF server
+    // TODO Mock GitHub API
     /*
     We CANNOT decode (json) string inputs to a Kotlin object, as that would remove unrecognized fields.
     We want the json with unrecognized fields to be sent as an api response.
@@ -167,113 +168,121 @@ class CreationTest : KoinTest {
     )
 
     @Test
-    fun `creator methods should be equivalent`() = get<Creator> {
-        parametersOf(
-            "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
-        )
-    }.let { creator ->
-        assertTrue {
-            creator.createManifestCurseForge(
-                curseForgeModId,
-                modrinthProjectId
-            ) == creator.createManifestModrinth(modrinthProjectId, curseForgeModId, false)
-        }
+    fun `creator methods should be equivalent`() = runBlocking {
+        get<Creator> {
+            parametersOf(
+                "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
+            )
+        }.let { creator ->
+            assertTrue {
+                creator.createManifestCurseForge(
+                    curseForgeModId,
+                    modrinthProjectId
+                ) == creator.createManifestModrinth(modrinthProjectId, curseForgeModId, false)
+            }
 
-        assertTrue {
-            creator.createManifestCurseForge(
-                curseForgeModId,
-                modrinthProjectId,
-                false
-            ) == creator.createManifestModrinth(modrinthProjectId, curseForgeModId)
+            assertTrue {
+                creator.createManifestCurseForge(
+                    curseForgeModId,
+                    modrinthProjectId,
+                    false
+                ) == creator.createManifestModrinth(modrinthProjectId, curseForgeModId)
+            }
         }
     }
 
     @Test
     fun `generate manifests without GitHub, Curse disabled`() {
 
-        val creator = get<Creator> {
-            parametersOf(
-                "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
-            )
-        }
+        runBlocking {
 
-        isCurseForgeDistribution = false
-        isTestingForGitHub = false
+            val creator = get<Creator> {
+                parametersOf(
+                    "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
+                )
+            }
 
-        creator.createManifestModrinth(modrinthProjectId).run pureModrinth@{
-            assertEquals(listOf(ThirdPartyApiUsage.MODRINTH_USED), thirdPartyApiUsage)
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("pureModrinth", it) }
-        }
+            isCurseForgeDistribution = false
+            isTestingForGitHub = false
 
-        creator.createManifestCurseForge(curseForgeModId).run curseForgeDisabled@{
-            assertEquals(thirdPartyApiUsage, listOf(ThirdPartyApiUsage.CURSEFORGE_USED))
-            assertEquals(0, manifests.size)
-            assertEquals(
-                emptyList(),
-                manifests
-            ) // No manifests should be generated, as all files are disabled.
-        }
+            creator.createManifestModrinth(modrinthProjectId).run pureModrinth@{
+                assertEquals(listOf(ThirdPartyApiUsage.MODRINTH_USED), thirdPartyApiUsage)
+                assertEquals(2, manifests.size)
+                manifests.forEach { assertManifestEquals("pureModrinth", it) }
+            }
 
-        creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseDisabledPlusModrinth@{
-            assertEquals(
-                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                thirdPartyApiUsage.sorted()
-            )
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("curseDisabledPlusModrinth", it) }
-        }
+            creator.createManifestCurseForge(curseForgeModId).run curseForgeDisabled@{
+                assertEquals(thirdPartyApiUsage, listOf(ThirdPartyApiUsage.CURSEFORGE_USED))
+                assertEquals(0, manifests.size)
+                assertEquals(
+                    emptyList(),
+                    manifests
+                ) // No manifests should be generated, as all files are disabled.
+            }
 
-        creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeDisabled@{
-            assertEquals(
-                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                thirdPartyApiUsage.sorted()
-            )
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("modrinthPlusCurseDisabled", it) }
+            creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseDisabledPlusModrinth@{
+                assertEquals(
+                    listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                    thirdPartyApiUsage.sorted()
+                )
+                assertEquals(2, manifests.size)
+                manifests.forEach { assertManifestEquals("curseDisabledPlusModrinth", it) }
+            }
+
+            creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeDisabled@{
+                assertEquals(
+                    listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                    thirdPartyApiUsage.sorted()
+                )
+                assertEquals(2, manifests.size)
+                manifests.forEach { assertManifestEquals("modrinthPlusCurseDisabled", it) }
+            }
         }
     }
 
     @Test
     fun `generate manifests without GitHub, Curse enabled`() {
 
-        val creator = get<Creator> {
-            parametersOf(
-                "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
-            )
-        }
+        runBlocking {
 
-        isCurseForgeDistribution = true
-        isTestingForGitHub = false
+            val creator = get<Creator> {
+                parametersOf(
+                    "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
+                )
+            }
 
-        creator.createManifestModrinth(modrinthProjectId).run pureModrinth@{
-            assertEquals(listOf(ThirdPartyApiUsage.MODRINTH_USED), thirdPartyApiUsage)
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("pureModrinth", it) }
-        }
+            isCurseForgeDistribution = true
+            isTestingForGitHub = false
 
-        creator.createManifestCurseForge(curseForgeModId).run pureCurseForge@{
-            assertEquals(listOf(ThirdPartyApiUsage.CURSEFORGE_USED), thirdPartyApiUsage)
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("pureCurseForge", it) }
-        }
+            creator.createManifestModrinth(modrinthProjectId).run pureModrinth@{
+                assertEquals(listOf(ThirdPartyApiUsage.MODRINTH_USED), thirdPartyApiUsage)
+                assertEquals(2, manifests.size)
+                manifests.forEach { assertManifestEquals("pureModrinth", it) }
+            }
 
-        creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseEnabledPlusModrinth@{
-            assertEquals(
-                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                thirdPartyApiUsage.sorted()
-            )
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("curseEnabledPlusModrinth", it) }
-        }
+            creator.createManifestCurseForge(curseForgeModId).run pureCurseForge@{
+                assertEquals(listOf(ThirdPartyApiUsage.CURSEFORGE_USED), thirdPartyApiUsage)
+                assertEquals(2, manifests.size)
+                manifests.forEach { assertManifestEquals("pureCurseForge", it) }
+            }
 
-        creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeEnabled@{
-            assertEquals(
-                listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                thirdPartyApiUsage.sorted()
-            )
-            assertEquals(2, manifests.size)
-            manifests.forEach { assertManifestEquals("modrinthPlusCurseEnabled", it) }
+            creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseEnabledPlusModrinth@{
+                assertEquals(
+                    listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                    thirdPartyApiUsage.sorted()
+                )
+                assertEquals(2, manifests.size)
+                manifests.forEach { assertManifestEquals("curseEnabledPlusModrinth", it) }
+            }
+
+            creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeEnabled@{
+                assertEquals(
+                    listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                    thirdPartyApiUsage.sorted()
+                )
+                assertEquals(2, manifests.size)
+                manifests.forEach { assertManifestEquals("modrinthPlusCurseEnabled", it) }
+            }
         }
     }
 
