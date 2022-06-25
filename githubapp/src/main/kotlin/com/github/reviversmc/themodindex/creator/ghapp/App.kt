@@ -2,8 +2,11 @@ package com.github.reviversmc.themodindex.creator.ghapp
 
 import com.github.reviversmc.themodindex.creator.core.creatorModule
 import com.github.reviversmc.themodindex.creator.ghapp.data.AppConfig
-import io.fusionauth.jwt.domain.JWT
-import io.fusionauth.jwt.rsa.RSASigner
+import com.github.reviversmc.themodindex.creator.ghapp.github.UpdateSender
+import com.github.reviversmc.themodindex.creator.ghapp.github.updateSenderModule
+import com.github.reviversmc.themodindex.creator.ghapp.reviewer.ManifestReviewer
+import com.github.reviversmc.themodindex.creator.ghapp.reviewer.manifestReviewModule
+import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import kotlinx.coroutines.*
@@ -12,19 +15,17 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.koin.core.context.startKoin
+import org.koin.core.parameter.parametersOf
 import java.io.File
 import java.io.IOException
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
 import kotlin.system.exitProcess
 
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
-const val GITHUB_REPO_OWNER = "cloudate9"
-const val GITHUB_REPO_NAME = "the-mod-index"
+const val INDEX_MAJOR = 4
 
 private val logger = KotlinLogging.logger {}
 
-fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolean = false): AppConfig {
+private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolean = false): AppConfig {
     val configFile = File(location)
     if (configFile.exists() && configFile.isFile) {
         logger.info { "Found config file at $location" }
@@ -48,7 +49,13 @@ fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolean = fals
     print("Please indicate the path of the GitHub app's private key: \n > ")
     val privateKey = readlnOrNull() ?: throw IOException("No private key provided.")
 
-    return AppConfig(botToken, channelId, serverId, appId, privateKey).also {
+    print("Please indicate the GitHub owner of the manifest repository: \n > ")
+    val owner = readlnOrNull() ?: throw IOException("No owner provided.")
+
+    print("Please indicate name of the GitHub manifest repository: \n > ")
+    val repoName = readlnOrNull() ?: throw IOException("No repository provided.")
+
+    return AppConfig(botToken, channelId, serverId, appId, privateKey, owner, repoName).also {
         configFile.writeText(json.encodeToString(it))
         logger.info { "Config file created at ${configFile.absolutePath}." }
 
@@ -62,14 +69,13 @@ fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolean = fals
 fun main(args: Array<String>) {
     runBlocking {
 
-        startKoin {
+        val koin = startKoin {
             modules(
-                appModule, creatorModule
+                appModule, creatorModule, manifestReviewModule, updateSenderModule
             )
-        }
+        }.koin
 
-        val appComponent = AppComponent()
-        val commandParser = appComponent.commandParser
+        val commandParser = koin.get<ArgParser>()
 
         val configLocation by commandParser.option(
             ArgType.String, shortName = "c", description = "The location of the config file"
@@ -80,7 +86,14 @@ fun main(args: Array<String>) {
         ).default(false)
 
         commandParser.parse(args)
-        val config = getOrCreateConfig(appComponent.json, configLocation)
+        val config = getOrCreateConfig(koin.get(), configLocation)
+
+        val existingManifests =
+            koin.get<ManifestReviewer>().run { reviewExistingManifests(downloadOriginalManifests()) }
+        val manualReviewNeeded =
+            koin.get<UpdateSender> { parametersOf(if (isProd) "v$INDEX_MAJOR" else "maintainer-test", config) }
+                .sendManifestUpdate(existingManifests)
+
 
     }
 }
