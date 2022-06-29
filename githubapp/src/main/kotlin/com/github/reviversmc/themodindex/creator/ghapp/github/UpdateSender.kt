@@ -7,6 +7,11 @@ import java.io.IOException
 interface UpdateSender {
 
     /**
+     * Gets the installation token used to authenticate with the GitHub API.
+     */
+    val gitHubInstallationToken: String
+
+    /**
      * Sends manifests for update to the manifest server.
      * Manifests to update from [manifestFlow] will be reviewed, and prepared for update if they are approved.
      * Should a manifest be marked for manual review, it will be returned as part of this method's [Flow].
