@@ -38,5 +38,13 @@ interface Creator {
      * @author ReviversMC
      * @since 1.0.0
      */
-    fun modifyIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson
+    fun addToIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson
+
+    /**
+     * Removes [ManifestJson] entries from the [indexToModify] if entries are removed.
+     * Returns the [indexToModify] with the removed entries removed, or the same index if no entries were removed.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    fun removeFromIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson
 }

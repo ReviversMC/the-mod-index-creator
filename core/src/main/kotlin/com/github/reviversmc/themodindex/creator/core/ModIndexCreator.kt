@@ -390,7 +390,7 @@ class ModIndexCreator(
         )
     }
 
-    override fun modifyIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson {
+    override fun addToIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson {
         if (indexToModify.indexVersion != indexVersion) {
             throw IllegalStateException(
                 "Attempted index version to target: $indexVersion,\nbut found: ${indexToModify.indexVersion}"
@@ -398,7 +398,22 @@ class ModIndexCreator(
         }
 
         return indexToModify.copy(identifiers = indexToModify.identifiers.toMutableList().apply {
-            manifest.files.forEach { add("${manifest.genericIdentifier}:${it.sha512Hash}") }
+            manifest.files.forEach {
+                val identifier = "${manifest.genericIdentifier}:${it.sha512Hash}"
+                if (identifier !in this) this.add(identifier)
+            }
+        }.toList())
+    }
+
+    override fun removeFromIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson {
+        if (indexToModify.indexVersion != indexVersion) {
+            throw IllegalStateException(
+                "Attempted index version to target: $indexVersion,\nbut found: ${indexToModify.indexVersion}"
+            )
+        }
+
+        return indexToModify.copy(identifiers = indexToModify.identifiers.toMutableList().apply {
+            manifest.files.forEach { remove("${manifest.genericIdentifier}:${it.sha512Hash}") }
         }.toList())
     }
 }
