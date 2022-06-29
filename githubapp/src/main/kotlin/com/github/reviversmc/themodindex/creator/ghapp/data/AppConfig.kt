@@ -7,4 +7,6 @@ data class AppConfig(
     val discordServer: Long,
     val gitHubAppId: String,
     val gitHubPrivateKeyPath: String,
+    val targetedGitHubRepoOwner: String,
+    val targetedGitHubRepoName: String,
 )
