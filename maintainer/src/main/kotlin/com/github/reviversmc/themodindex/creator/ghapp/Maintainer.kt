@@ -10,6 +10,7 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -20,8 +21,8 @@ import java.io.File
 import java.io.IOException
 import kotlin.system.exitProcess
 
+const val CURSEFORGE_API_KEY = ""
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
-const val INDEX_MAJOR = 4
 
 private val logger = KotlinLogging.logger {}
 
@@ -81,43 +82,44 @@ fun main(args: Array<String>) {
             ArgType.String, shortName = "c", description = "The location of the config file"
         ).default("the-mod-index-automated-creator-config.json")
 
-        val isProd by commandParser.option(
-            ArgType.Boolean, shortName = "p", description = "Whether to run in production mode"
-        ).default(false)
+        val delayInHours by commandParser.option(
+            ArgType.Int, shortName = "d", description = "How long to delay between updates"
+        ).default(3)
 
         commandParser.parse(args)
         val config = getOrCreateConfig(koin.get(), configLocation)
 
-        val existingManifests =
-            koin.get<ManifestReviewer>().run { reviewExistingManifests(downloadOriginalManifests()) }
-        val manualReviewNeeded =
-            koin.get<UpdateSender> { parametersOf(if (isProd) "v$INDEX_MAJOR" else "maintainer-test", config) }
-                .sendManifestUpdate(existingManifests)
+        // val discordBot = koin.get<Kord> { parametersOf(config.discordBotToken) }
+        // discordBot.getChannel(Snowflake(config.discordChannel))
+        // discordBot.login()
+        while (true) {
+            val updateSender = koin.get<UpdateSender> { parametersOf(config) }
+            val manifestReviewer =
+                koin.get<ManifestReviewer> {
+                    parametersOf(
+                        "https://raw.githubusercontent.com/${config.targetedGitHubRepoOwner}/${config.targetedGitHubRepoName}/",
+                        CURSEFORGE_API_KEY,
+                        updateSender.gitHubInstallationToken
+                    )
+                }
 
+            val updateExistingManifests =
+                async {// This can take some time. Let's async await this, so that other things can get done.
+                    logger.debug { "Starting the update of existing manifests" }
+                    val existingManifests =
+                        manifestReviewer.reviewExistingManifests(manifestReviewer.downloadOriginalManifests())
+                    val manualReviewNeeded = updateSender.sendManifestUpdate(existingManifests)
+                    manualReviewNeeded.collect() //TODO Send this info to Discord
+                }
 
+            updateExistingManifests.await()
+
+            // TODO delay in hours, and repeat instead of exiting.
+            exitProcess(0)
+        }
     }
 }
-//     val appId = args[0]
-//     val signer = RSASigner.newSHA256Signer(File(args[1]).readText())
-//
-//     val jwt =
-//         JWT().setIssuedAt(ZonedDateTime.now(ZoneOffset.UTC).minusMinutes(1))
-//             .setExpiration(ZonedDateTime.now(ZoneOffset.UTC).plusMinutes(10))
-//             .setIssuer(appId)
-//
-//     val signedJwt = JWT.getEncoder().encode(jwt, signer)
-//
-//
-//     val gitHubRestApi = appComponent.gitHubAppApi(signedJwt)
-//     val cloudRepo = gitHubRestApi.app.getInstallationByRepository(GITHUB_REPO_OWNER, GITHUB_REPO_NAME)
-//     val x = cloudRepo.createToken().create().token
-//     val y = appComponent.gitHubInstallationApi(x)
-//     val z = y.getRepository("$GITHUB_REPO_OWNER/$GITHUB_REPO_NAME")
-//     if ("update" !in z.branches) {
-//         z.createRef("refs/heads/update", z.getBranch(z.defaultBranch).shA1)
-//     }
-//
-//
+
 //     val apiDownloader = appComponent.indexApiDownloader
 //     val index = apiDownloader.downloadIndexJson() ?: throw IOException("Could not download manifest index")
 // /*
