@@ -1,6 +1,8 @@
 dependencies {
     // Core dependencies
     api(project(":core"))
+    api("com.squareup.okhttp3:okhttp:4.10.0")
+    api("dev.kord:kord-core:0.8.0-M14")
     api("io.fusionauth:fusionauth-jwt:5.2.0")
     api("org.jetbrains.kotlinx:kotlinx-cli-jvm:0.3.4")
 
