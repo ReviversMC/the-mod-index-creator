@@ -1,6 +1,5 @@
 package com.github.reviversmc.themodindex.creator.core
 
-import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 
@@ -32,19 +31,4 @@ interface Creator {
         preferModrinthData: Boolean = true,
     ): ManifestWithApiStatus
 
-    /**
-     * Adds [ManifestJson] entries to the [indexToModify] if entries are new.
-     * Returns the [indexToModify] with the new entries added, or the same index if no new entries were added.
-     * @author ReviversMC
-     * @since 1.0.0
-     */
-    fun addToIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson
-
-    /**
-     * Removes [ManifestJson] entries from the [indexToModify] if entries are removed.
-     * Returns the [indexToModify] with the removed entries removed, or the same index if no entries were removed.
-     * @author ReviversMC
-     * @since 1.0.0
-     */
-    fun removeFromIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson
 }

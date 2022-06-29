@@ -1,6 +1,5 @@
 package com.github.reviversmc.themodindex.creator.core
 
-import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.data.ManifestLinks
 import com.github.reviversmc.themodindex.api.data.VersionFile
@@ -388,32 +387,5 @@ class ModIndexCreator(
             usedThirdPartyApis.toList(),
             returnManifests // returnManifests may be empty here, if no files have been added.
         )
-    }
-
-    override fun addToIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson {
-        if (indexToModify.indexVersion != indexVersion) {
-            throw IllegalStateException(
-                "Attempted index version to target: $indexVersion,\nbut found: ${indexToModify.indexVersion}"
-            )
-        }
-
-        return indexToModify.copy(identifiers = indexToModify.identifiers.toMutableList().apply {
-            manifest.files.forEach {
-                val identifier = "${manifest.genericIdentifier}:${it.sha512Hash}"
-                if (identifier !in this) this.add(identifier)
-            }
-        }.toList())
-    }
-
-    override fun removeFromIndex(indexToModify: IndexJson, manifest: ManifestJson): IndexJson {
-        if (indexToModify.indexVersion != indexVersion) {
-            throw IllegalStateException(
-                "Attempted index version to target: $indexVersion,\nbut found: ${indexToModify.indexVersion}"
-            )
-        }
-
-        return indexToModify.copy(identifiers = indexToModify.identifiers.toMutableList().apply {
-            manifest.files.forEach { remove("${manifest.genericIdentifier}:${it.sha512Hash}") }
-        }.toList())
     }
 }
