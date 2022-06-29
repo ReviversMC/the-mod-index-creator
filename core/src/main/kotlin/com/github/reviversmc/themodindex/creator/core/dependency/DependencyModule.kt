@@ -18,20 +18,16 @@ import org.koin.dsl.module
 @OptIn(ExperimentalSerializationApi::class)
 val dependencyModule = module {
     factory { (get() as Json).asConverterFactory(MediaType.get("application/json")) }
-    factory { DefaultApiDownloader(get()) } bind ApiDownloader::class //Use the old DSL so that we can specify which params to fill.
+    factory { DefaultApiDownloader(get(), json = get()) } bind ApiDownloader::class
+    factory(named("custom")) { (customRepo: String) -> DefaultApiDownloader(get(), customRepo, get()) } bind ApiDownloader::class
     factory {
         Json {
             ignoreUnknownKeys = true
             prettyPrint = true
         }
     }
-    factory(named("installation")) { (installationToken: String) ->
-        GitHubBuilder().withAppInstallationToken(installationToken).withConnector(get() as GitHubConnector).build()
-    }
-    factory(named("jwt")) { (jwt: String) ->
-        GitHubBuilder().withJwtToken(jwt).withConnector(get() as GitHubConnector).build()
-    }
-    factory(named("oAuth")) { (oAuthToken: String) ->
+
+    factory { (oAuthToken: String) ->
         GitHubBuilder().withJwtToken(oAuthToken).withConnector(get() as GitHubConnector).build()
     }
     factory { OkHttpGitHubConnector(get()) } bind GitHubConnector::class
