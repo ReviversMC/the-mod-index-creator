@@ -7,7 +7,7 @@ import org.koin.dsl.module
 
 val updateSenderModule = module {
     factory {(config: AppConfig) ->
-        GitHubUpdateSender(get(), get(), config, get())
+        GitHubUpdateSender(get(), config, get())
     } bind UpdateSender::class
     includes(dependencyModule)
 }

@@ -1,8 +1,8 @@
 package com.github.reviversmc.themodindex.creator.ghapp.github
 
+import com.github.reviversmc.themodindex.api.data.IndexJson
+import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
-import com.github.reviversmc.themodindex.creator.core.Creator
-
 import com.github.reviversmc.themodindex.creator.ghapp.data.AppConfig
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
 import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
@@ -18,7 +18,6 @@ import org.kohsuke.github.GitHub
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 import org.koin.core.parameter.parametersOf
-import org.koin.core.qualifier.named
 import java.io.File
 import java.io.IOException
 import java.time.ZoneOffset
@@ -26,17 +25,18 @@ import java.time.ZonedDateTime
 
 class GitHubUpdateSender(
     private val apiDownloader: ApiDownloader,
-    private val creator: Creator,
     config: AppConfig,
     private val json: Json,
 ) : KoinComponent, UpdateSender {
 
     private val logger = KotlinLogging.logger {}
 
-    val branchName: String
+    private val branchName: String
     private val gitHubInstallationApi: GitHub
     private val gitHubUserRepo = "${config.targetedGitHubRepoOwner}/${config.targetedGitHubRepoName}"
     private val gitHubRepo: GHRepository
+
+    override val gitHubInstallationToken: String
 
     init {
         val jwtSigner = RSASigner.newSHA256Signer(File(config.gitHubPrivateKeyPath).readText())
@@ -46,13 +46,13 @@ class GitHubUpdateSender(
         logger.debug { "Signed JWT created." }
 
 
-        val gitHubAppApi = get<GitHub>(named("jwt")) { parametersOf(signedJwt) }
-        val gitHubInstallationToken = gitHubAppApi.app.getInstallationByRepository(
+        val gitHubAppApi = get<GitHub> { parametersOf(signedJwt) }
+        gitHubInstallationToken = gitHubAppApi.app.getInstallationByRepository(
             config.targetedGitHubRepoOwner, config.targetedGitHubRepoName
         ).createToken().create().token
         logger.debug { "GitHub installation token created: $gitHubInstallationToken" }
 
-        gitHubInstallationApi = get(named("installation")) { parametersOf(gitHubInstallationToken) }
+        gitHubInstallationApi = get { parametersOf(gitHubInstallationToken) }
         gitHubRepo = gitHubInstallationApi.getRepository(gitHubUserRepo)
         logger.debug { "Obtained repository \"${gitHubRepo.owner.name}/${gitHubRepo.name}\"" }
 
@@ -69,6 +69,7 @@ class GitHubUpdateSender(
 
     override fun sendManifestUpdate(manifestFlow: Flow<ManifestWithCreationStatus>) = flow {
         // TODO Find a way to remove files from a tree. Our current solution doesn't allow for branches or removal via a tree.
+        logger.debug { "Preparing to send manifest update..." }
         var indexJson = apiDownloader.downloadIndexJson() ?: throw IOException("Could not download index.json")
         val updateTree = gitHubRepo.createTree()
 
@@ -84,7 +85,7 @@ class GitHubUpdateSender(
                     }
 
                     if (reviewStatus == ReviewStatus.APPROVED_GENERIC_IDENTIFIER_CHANGE) {
-                        indexJson = creator.removeFromIndex(indexJson, originalManifest)
+                        indexJson = indexJson.removeFromIndex(originalManifest)
                         genericIdentifiersToReplace[originalManifest.genericIdentifier] =
                             latestManifest.genericIdentifier
                         logger.info { "To remove ${originalManifest.genericIdentifier}, in favour of ${latestManifest.genericIdentifier}" }
@@ -95,12 +96,12 @@ class GitHubUpdateSender(
                         json.encodeToString(latestManifest),
                         false
                     )
-                    indexJson = creator.addToIndex(indexJson, latestManifest)
+                    indexJson = indexJson.addToIndex(latestManifest)
                     logger.info { "Added ${latestManifest.genericIdentifier} to update" }
                 }
 
                 ReviewStatus.MARKED_FOR_REMOVAL -> {
-                    indexJson = creator.removeFromIndex(indexJson, originalManifest)
+                    indexJson = indexJson.removeFromIndex(originalManifest)
                     genericIdentifiersToRemove.add(originalManifest.genericIdentifier)
                     logger.info { "To remove ${originalManifest.genericIdentifier}" }
                 }
@@ -116,11 +117,12 @@ class GitHubUpdateSender(
             }
         }
 
+        updateTree.add("mods/index.json", json.encodeToString(indexJson), false)
+
         val commit =
             gitHubRepo.createCommit().tree(updateTree.baseTree(gitHubRepo.getBranch(branchName).shA1).create().sha)
                 .parent(gitHubRepo.getBranch(branchName).shA1)
-                .message("Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}")
-                .create()
+                .message("Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}").create()
         gitHubRepo.getRef("refs/heads/$branchName").updateTo(commit.shA1)
         logger.info { "Commit created and sent." }
 
@@ -139,4 +141,29 @@ class GitHubUpdateSender(
         logger.info { "Manifest update completed." }
 
     }
+
+    /**
+     * Adds [ManifestJson] entries to the [IndexJson] if they are not already present.
+     * Returns the [IndexJson] with the new entries added, or the same index if no new entries were added.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    private fun IndexJson.addToIndex(manifest: ManifestJson): IndexJson =
+        copy(identifiers = identifiers.toMutableList().apply {
+            manifest.files.forEach {
+                val identifier = "${manifest.genericIdentifier}:${it.sha512Hash}"
+                if (identifier !in this) this.add(identifier)
+            }
+        }.toList())
+
+    /**
+     * Removes [ManifestJson] entries from the [IndexJson].
+     * Returns the [IndexJson] with the removed entries removed, or the same index if no entries were removed.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    private fun IndexJson.removeFromIndex(manifest: ManifestJson): IndexJson =
+        copy(identifiers = identifiers.toMutableList().apply {
+            manifest.files.forEach { remove("${manifest.genericIdentifier}:${it.sha512Hash}") }
+        }.toList())
 }
