@@ -12,7 +12,7 @@ interface ManifestReviewer {
      * @author ReviversMC
      * @since 1.0.0
      */
-    suspend fun downloadOriginalManifests(): Flow<ManifestJson>
+    fun downloadOriginalManifests(): Flow<ManifestJson>
 
     /**
      * Reviews newly generated [ManifestJson]s against the original [ManifestJson]s from [originalManifests] that are already in use,
@@ -21,5 +21,5 @@ interface ManifestReviewer {
      * @author ReviversMc
      * @since 1.0.0
      */
-    suspend fun reviewExistingManifests(originalManifests: Flow<ManifestJson>): Flow<ManifestWithCreationStatus>
+    fun reviewExistingManifests(originalManifests: Flow<ManifestJson>): Flow<ManifestWithCreationStatus>
 }
