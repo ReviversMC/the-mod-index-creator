@@ -1,6 +1,7 @@
 package com.github.reviversmc.themodindex.creator.ghapp
 
 import com.github.reviversmc.themodindex.creator.core.creatorModule
+import com.github.reviversmc.themodindex.creator.ghapp.apicalls.githubGraphqlModule
 import com.github.reviversmc.themodindex.creator.ghapp.data.AppConfig
 import com.github.reviversmc.themodindex.creator.ghapp.github.UpdateSender
 import com.github.reviversmc.themodindex.creator.ghapp.github.updateSenderModule
@@ -72,7 +73,7 @@ fun main(args: Array<String>) {
 
         val koin = startKoin {
             modules(
-                appModule, creatorModule, manifestReviewModule, updateSenderModule
+                appModule, creatorModule, githubGraphqlModule, manifestReviewModule, updateSenderModule
             )
         }.koin
 
@@ -86,18 +87,45 @@ fun main(args: Array<String>) {
             ArgType.Int, shortName = "d", description = "How long to delay between updates"
         ).default(3)
 
+        val sus by commandParser.option(
+            ArgType.Boolean,
+            shortName = "s",
+            description = "Whether to be suspicious of all updates, and push to a separate branch for PR review"
+        ).default(false)
+
+        val testMode by commandParser.option(
+            ArgType.Boolean,
+            shortName = "t",
+            description = "Whether to be in test mode, and push to the maintainer-test branch"
+        ).default(false)
+
+
         commandParser.parse(args)
         val config = getOrCreateConfig(koin.get(), configLocation)
 
         // val discordBot = koin.get<Kord> { parametersOf(config.discordBotToken) }
-        // discordBot.getChannel(Snowflake(config.discordChannel))
+        // discordBot.createGuildChatInputCommand(
+        //     Snowflake(config.discordServer),
+        //     "force-stop",
+        //     "Immediately terminate the-mod-index-maintainer"
+        // )
         // discordBot.login()
         while (true) {
-            val updateSender = koin.get<UpdateSender> { parametersOf(config) }
+
+            val updateSender = koin.get<UpdateSender> {
+                parametersOf(
+                    config.gitHubRepoName,
+                    config.gitHubRepoOwner,
+                    if (testMode) "maintainer-test" else "update",
+                    config.gitHubAppId,
+                    config.gitHubPrivateKeyPath,
+                    sus
+                )
+            }
             val manifestReviewer =
                 koin.get<ManifestReviewer> {
                     parametersOf(
-                        "https://raw.githubusercontent.com/${config.targetedGitHubRepoOwner}/${config.targetedGitHubRepoName}/",
+                        "https://raw.githubusercontent.com/${config.gitHubRepoOwner}/${config.gitHubRepoName}/",
                         CURSEFORGE_API_KEY,
                         updateSender.gitHubInstallationToken
                     )
@@ -109,7 +137,7 @@ fun main(args: Array<String>) {
                     val existingManifests =
                         manifestReviewer.reviewExistingManifests(manifestReviewer.downloadOriginalManifests())
                     val manualReviewNeeded = updateSender.sendManifestUpdate(existingManifests)
-                    manualReviewNeeded.collect() //TODO Send this info to Discord
+                    manualReviewNeeded.collect() // TODO Send this info to Discord
                 }
 
             updateExistingManifests.await()
