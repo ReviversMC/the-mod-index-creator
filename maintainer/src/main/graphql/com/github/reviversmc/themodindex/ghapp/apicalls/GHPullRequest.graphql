@@ -1,0 +1,13 @@
+query RepoId($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    id
+  }
+}
+
+mutation createPR($prFromRepo: ID!, $refTo: String!, $refFrom: String!, $prTitle: String!, $prMessage: String) {
+    createPullRequest(
+        input: {repositoryId: $prFromRepo, baseRefName: $refTo, headRefName: $refFrom, title: $prTitle, body: $prMessage}
+    ) {
+        clientMutationId
+    }
+}

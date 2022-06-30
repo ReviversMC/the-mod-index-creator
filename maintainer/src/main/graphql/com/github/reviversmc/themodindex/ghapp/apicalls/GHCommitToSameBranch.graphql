@@ -1,0 +1,25 @@
+query BranchHeadOid($repoOwner: String!, $repoName: String!, $refName: String!) {
+    repository(owner: $repoOwner, name: $repoName) {
+        ref(qualifiedName: $refName) {
+            target {
+                oid
+            }
+        }
+    }
+}
+
+mutation UpdateBranch($repoOwnerAndName: String!,$refName: String!, $commitMessage: String!, $oid: GitObjectID!, $fileDeletions: [FileDeletion!]!, $fileAdditions: [FileAddition!]!) {
+    createCommitOnBranch(
+        input: {
+            branch: {repositoryNameWithOwner: $repoOwnerAndName, branchName: $refName},
+            message: {headline: $commitMessage},
+            expectedHeadOid: $oid,
+            fileChanges: {
+                deletions: $fileDeletions,
+                additions: $fileAdditions
+            }
+        }
+    ) {
+        clientMutationId
+    }
+}

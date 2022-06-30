@@ -3,7 +3,9 @@ package com.github.reviversmc.themodindex.creator.ghapp.github
 import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
-import com.github.reviversmc.themodindex.creator.ghapp.data.AppConfig
+import com.github.reviversmc.themodindex.creator.ghapp.apicalls.GHGraphQLBranch
+import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileAddition
+import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileDeletion
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
 import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
 import io.fusionauth.jwt.domain.JWT
@@ -13,68 +15,73 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
-import org.kohsuke.github.GHRepository
 import org.kohsuke.github.GitHub
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
+import org.koin.core.component.inject
 import org.koin.core.parameter.parametersOf
 import java.io.File
 import java.io.IOException
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import java.util.*
 
 class GitHubUpdateSender(
     private val apiDownloader: ApiDownloader,
-    config: AppConfig,
     private val json: Json,
+    private val repoName: String,
+    private val repoOwner: String,
+    private val targetedBranch: String,
+    private val gitHubAppId: String,
+    private val gitHubPrivateKeyPath: String,
+    private val prInsteadOfPush: Boolean,
 ) : KoinComponent, UpdateSender {
 
     private val logger = KotlinLogging.logger {}
 
-    private val branchName: String
-    private val gitHubInstallationApi: GitHub
-    private val gitHubUserRepo = "${config.targetedGitHubRepoOwner}/${config.targetedGitHubRepoName}"
-    private val gitHubRepo: GHRepository
+    override lateinit var gitHubInstallationToken: String
+        private set
 
-    override val gitHubInstallationToken: String
+    private val ghGraphqlUpdateBranch by inject<GHGraphQLBranch> {
+        parametersOf(
+            gitHubInstallationToken,
+            repoOwner,
+            repoName
+        )
+    }
 
+    /*
+    We should use the GraphQL API to update the repository (i.e. push, pr, etc.)
+    However, the REST API be more useful at times, such as the creation of installation tokens.
+    The REST API should be used sparingly, as it is likely that we will hit our REST API rate limit faster than the GraphQL API limit.
+     */
     init {
-        val jwtSigner = RSASigner.newSHA256Signer(File(config.gitHubPrivateKeyPath).readText())
+        refreshInstallationTokenAndApi()
+    }
+
+    private fun refreshInstallationTokenAndApi(): String {
+        val jwtSigner = RSASigner.newSHA256Signer(File(gitHubPrivateKeyPath).readText())
         val jwt = JWT().setIssuedAt(ZonedDateTime.now(ZoneOffset.UTC).minusMinutes(1))
-            .setExpiration(ZonedDateTime.now(ZoneOffset.UTC).plusMinutes(10)).setIssuer(config.gitHubAppId)
+            .setExpiration(ZonedDateTime.now(ZoneOffset.UTC).plusMinutes(10)).setIssuer(gitHubAppId)
         val signedJwt = JWT.getEncoder().encode(jwt, jwtSigner)
         logger.debug { "Signed JWT created." }
 
 
         val gitHubAppApi = get<GitHub> { parametersOf(signedJwt) }
         gitHubInstallationToken = gitHubAppApi.app.getInstallationByRepository(
-            config.targetedGitHubRepoOwner, config.targetedGitHubRepoName
+            repoOwner, repoName
         ).createToken().create().token
         logger.debug { "GitHub installation token created: $gitHubInstallationToken" }
 
-        gitHubInstallationApi = get { parametersOf(gitHubInstallationToken) }
-        gitHubRepo = gitHubInstallationApi.getRepository(gitHubUserRepo)
-        logger.debug { "Obtained repository \"${gitHubRepo.owner.name}/${gitHubRepo.name}\"" }
-
-        branchName = gitHubRepo.defaultBranch
-        if (branchName !in gitHubRepo.branches) {
-            gitHubRepo.createRef( // Creates branch
-                "refs/heads/$branchName", gitHubRepo.getBranch(gitHubRepo.defaultBranch).shA1
-            )
-
-            logger.info { "Created branch $branchName." }
-        } else logger.info { "Branch $branchName already exists, and will be used." }
-
+        return gitHubInstallationToken
     }
 
     override fun sendManifestUpdate(manifestFlow: Flow<ManifestWithCreationStatus>) = flow {
-        // TODO Find a way to remove files from a tree. Our current solution doesn't allow for branches or removal via a tree.
         logger.debug { "Preparing to send manifest update..." }
         var indexJson = apiDownloader.downloadIndexJson() ?: throw IOException("Could not download index.json")
-        val updateTree = gitHubRepo.createTree()
 
-        val genericIdentifiersToRemove = mutableListOf<String>()
-        val genericIdentifiersToReplace = mutableMapOf<String, String>()
+        val additions = mutableListOf<FileAddition>()
+        val deletions = mutableListOf<FileDeletion>()
 
         manifestFlow.collect { (reviewStatus, latestManifest, originalManifest) ->
             when (reviewStatus) {
@@ -86,15 +93,19 @@ class GitHubUpdateSender(
 
                     if (reviewStatus == ReviewStatus.APPROVED_GENERIC_IDENTIFIER_CHANGE) {
                         indexJson = indexJson.removeFromIndex(originalManifest)
-                        genericIdentifiersToReplace[originalManifest.genericIdentifier] =
-                            latestManifest.genericIdentifier
+                        deletions.add(
+                            FileDeletion(
+                                "mods/${originalManifest.genericIdentifier.replaceFirst(':', '/')}.json"
+                            )
+                        )
                         logger.info { "To remove ${originalManifest.genericIdentifier}, in favour of ${latestManifest.genericIdentifier}" }
                     }
 
-                    updateTree.add(
-                        "mods/${latestManifest.genericIdentifier.replaceFirst(':', '/')}.json",
-                        json.encodeToString(latestManifest),
-                        false
+                    additions.add(
+                        FileAddition(
+                            "mods/${latestManifest.genericIdentifier.replaceFirst(':', '/')}.json",
+                            json.encodeToString(latestManifest).toBase64(),
+                        )
                     )
                     indexJson = indexJson.addToIndex(latestManifest)
                     logger.info { "Added ${latestManifest.genericIdentifier} to update" }
@@ -102,7 +113,11 @@ class GitHubUpdateSender(
 
                 ReviewStatus.MARKED_FOR_REMOVAL -> {
                     indexJson = indexJson.removeFromIndex(originalManifest)
-                    genericIdentifiersToRemove.add(originalManifest.genericIdentifier)
+                    deletions.add(
+                        FileDeletion(
+                            "mods/${originalManifest.genericIdentifier.replaceFirst(':', '/')}.json"
+                        )
+                    )
                     logger.info { "To remove ${originalManifest.genericIdentifier}" }
                 }
 
@@ -117,30 +132,62 @@ class GitHubUpdateSender(
             }
         }
 
-        updateTree.add("mods/index.json", json.encodeToString(indexJson), false)
-
-        val commit =
-            gitHubRepo.createCommit().tree(updateTree.baseTree(gitHubRepo.getBranch(branchName).shA1).create().sha)
-                .parent(gitHubRepo.getBranch(branchName).shA1)
-                .message("Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}").create()
-        gitHubRepo.getRef("refs/heads/$branchName").updateTo(commit.shA1)
-        logger.info { "Commit created and sent." }
-
-        genericIdentifiersToRemove.forEach {
-            val deleteCommit = gitHubRepo.getFileContent("mods/${it.replaceFirst(':', '/')}.json")
-                .delete("Manifest $it removed").commit
-            gitHubRepo.getRef("refs/heads/$branchName").updateTo(deleteCommit.shA1)
+        if (apiDownloader.downloadIndexJson() == indexJson) {
+            logger.info { "No changes to index.json, no push to repository required." }
+            return@flow
         }
 
-        genericIdentifiersToReplace.forEach { (oldGenericIdentifier, newGenericIdentifier) ->
-            val replaceCommit = gitHubRepo.getFileContent("mods/${oldGenericIdentifier.replaceFirst(':', '/')}.json")
-                .delete("Manifest $oldGenericIdentifier replaced with $newGenericIdentifier").commit
-            gitHubRepo.getRef("refs/heads/$branchName").updateTo(replaceCommit.shA1)
+        if (!get<GitHub> { parametersOf(gitHubInstallationToken) }.isCredentialValid) refreshInstallationTokenAndApi()
+
+        additions.add(FileAddition("mods/index.json", json.encodeToString(indexJson).toBase64()))
+
+        if (!ghGraphqlUpdateBranch.doesRefExist(targetedBranch)) {
+            ghGraphqlUpdateBranch.createRef(
+                ghGraphqlUpdateBranch.defaultBranchRef(),
+                targetedBranch
+            )
         }
+
+        if (!prInsteadOfPush) {
+            ghGraphqlUpdateBranch.commitAndUpdateRef(
+                targetedBranch,
+                "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}",
+                additions,
+                deletions
+            )
+
+            logger.info { "Pushed manifest updates to branch $targetedBranch." }
+        } else {
+            val time = ZonedDateTime.now(ZoneOffset.UTC)
+            val prBranch = "$targetedBranch-UTC-${time.toString().replace(' ', '-').replace(':', '-')}"
+
+            ghGraphqlUpdateBranch.createRef(targetedBranch, prBranch)
+            ghGraphqlUpdateBranch.commitAndUpdateRef(
+                prBranch,
+                "Automated manifest update: UTC $time",
+                additions,
+                deletions
+            )
+
+            ghGraphqlUpdateBranch.createPullRequest(
+                prBranch,
+                targetedBranch,
+                "Automated manifest update: UTC $time",
+                "Manual merger was requested when the maintainer was started. Please merge this PR manually should it meet standards."
+            )
+
+            logger.info { "Pushed manifest updates to branch $prBranch. Manual PR merger required, as requested by startup flags." }
+        }
+
 
         logger.info { "Manifest update completed." }
 
     }
+
+    /**
+     * Converts a [String] into a Base64 string.
+     */
+    private fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
 
     /**
      * Adds [ManifestJson] entries to the [IndexJson] if they are not already present.

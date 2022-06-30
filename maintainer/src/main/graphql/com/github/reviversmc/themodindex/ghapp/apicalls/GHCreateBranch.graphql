@@ -1,0 +1,40 @@
+query DefaultBranchRef($repoOwner: String!, $repoName: String!) {
+    repository(owner: $repoOwner, name: $repoName) {
+    defaultBranchRef {
+      name
+    }
+  }
+}
+
+query RepoIdAndBranchHeadOid($repoOwner: String!, $repoName: String!, $refName: String!) {
+    repository(owner: $repoOwner, name: $repoName) {
+        id
+        ref(qualifiedName: $refName) {
+            target {
+                oid
+            }
+        }
+    }
+}
+
+query GetRefs($repoOwner: String!, $repoName: String!, $refName: String!) {
+    repository(owner: $repoOwner, name: $repoName) {
+        refs(first: 5, refPrefix: "refs/heads/", query: $refName) {
+            edges {
+                node {
+                    name
+                }
+            }
+        }
+    }
+}
+
+mutation createBranch($createdBranchName: String!, $createdFromOid: GitObjectID!,$repoId: ID!) {
+    createRef(input: {
+        oid: $createdFromOid
+        name: $createdBranchName
+        repositoryId: $repoId
+    }) {
+        clientMutationId
+    }
+}
