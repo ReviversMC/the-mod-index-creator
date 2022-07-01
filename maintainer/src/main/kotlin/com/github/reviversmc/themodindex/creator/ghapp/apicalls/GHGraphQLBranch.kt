@@ -127,7 +127,7 @@ class GHGraphQLBranch(
         }
     }
 
-    override suspend fun mergeBranchWithoutPR(mergedIntoName: String, mergedFromBranchName: String) {
+    override suspend fun mergeBranchWithoutPR(mergedIntoName: String, mergedFromBranchName: String, commitMessage: String) {
         val query = apolloClient.query(RepoIdQuery(repoOwner, repoName)).execute()
 
         if (query.hasErrors()) {
@@ -140,6 +140,7 @@ class GHGraphQLBranch(
             MergeBranchWithoutPRMutation(
                 mergedIntoName,
                 mergedFromBranchName,
+                commitMessage,
                 query.data?.repository?.id ?: throw IllegalStateException("No repo id found for $repoOwner/$repoName"),
             )
         ).execute()

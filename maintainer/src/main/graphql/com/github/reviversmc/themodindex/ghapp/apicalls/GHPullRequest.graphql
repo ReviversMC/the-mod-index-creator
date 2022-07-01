@@ -12,9 +12,9 @@ mutation CreatePR($prFromRepo: ID!, $refTo: String!, $refFrom: String!, $prTitle
     }
 }
 
-mutation MergeBranchWithoutPR($mergedIntoName: String!, $mergedFromHeadName: String!, $repositoryId: ID!) {
+mutation MergeBranchWithoutPR($mergedIntoName: String!, $mergedFromHeadName: String!, $message: String!, $repositoryId: ID!) {
     mergeBranch(
-        input: {base: $mergedIntoName, head: $mergedFromHeadName, repositoryId: $repositoryId}
+        input: {base: $mergedIntoName, head: $mergedFromHeadName, commitMessage: $message, repositoryId: $repositoryId}
     ) {
         clientMutationId
     }

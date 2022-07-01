@@ -1,9 +1,9 @@
 query DefaultBranchRef($repoOwner: String!, $repoName: String!) {
     repository(owner: $repoOwner, name: $repoName) {
-    defaultBranchRef {
-      name
+        defaultBranchRef {
+            name
+        }
     }
-  }
 }
 
 query RepoIdAndBranchHeadOid($repoOwner: String!, $repoName: String!, $refName: String!) {
@@ -29,7 +29,7 @@ query GetRefs($repoOwner: String!, $repoName: String!, $refName: String!) {
     }
 }
 
-mutation CreateBranch($createdBranchName: String!, $createdFromOid: GitObjectID!,$repoId: ID!) {
+mutation CreateBranch($createdBranchName: String!, $createdFromOid: GitObjectID!, $repoId: ID!) {
     createRef(input: {
         oid: $createdFromOid
         name: $createdBranchName
