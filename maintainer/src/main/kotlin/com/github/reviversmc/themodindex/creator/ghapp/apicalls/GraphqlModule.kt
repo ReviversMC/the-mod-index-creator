@@ -30,5 +30,5 @@ val githubGraphqlModule = module {
 
     factory {(githubToken: String, repoOwner: String, repoName: String) ->
         GHGraphQLBranch(get { parametersOf(githubToken) }, repoOwner, repoName)
-    } bind GHGraphQLBranch::class
+    } bind GHBranch::class
 }

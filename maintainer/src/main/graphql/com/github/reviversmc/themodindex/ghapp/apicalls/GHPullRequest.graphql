@@ -4,9 +4,17 @@ query RepoId($owner: String!, $name: String!) {
   }
 }
 
-mutation createPR($prFromRepo: ID!, $refTo: String!, $refFrom: String!, $prTitle: String!, $prMessage: String) {
+mutation CreatePR($prFromRepo: ID!, $refTo: String!, $refFrom: String!, $prTitle: String!, $prMessage: String) {
     createPullRequest(
         input: {repositoryId: $prFromRepo, baseRefName: $refTo, headRefName: $refFrom, title: $prTitle, body: $prMessage}
+    ) {
+        clientMutationId
+    }
+}
+
+mutation MergeBranchWithoutPR($mergedIntoName: String!, $mergedFromHeadName: String!, $repositoryId: ID!) {
+    mergeBranch(
+        input: {base: $mergedIntoName, head: $mergedFromHeadName, repositoryId: $repositoryId}
     ) {
         clientMutationId
     }

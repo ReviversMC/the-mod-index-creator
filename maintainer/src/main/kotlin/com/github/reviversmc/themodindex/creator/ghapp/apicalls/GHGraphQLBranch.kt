@@ -23,7 +23,8 @@ class GHGraphQLBranch(
             throw IllegalStateException("Error getting default branch ref")
         }
 
-        return query.data?.repository?.defaultBranchRef?.name ?: throw IllegalStateException("Error getting default branch ref")
+        return query.data?.repository?.defaultBranchRef?.name
+            ?: throw IllegalStateException("Error getting default branch ref")
     }
 
     override suspend fun doesRefExist(branchName: String): Boolean {
@@ -123,6 +124,30 @@ class GHGraphQLBranch(
             logger.error { "Error creating pull request" }
             mutation.errors!!.forEach { logger.error { it.message } }
             throw IllegalStateException("Error creating pull request")
+        }
+    }
+
+    override suspend fun mergeBranchWithoutPR(mergedIntoName: String, mergedFromBranchName: String) {
+        val query = apolloClient.query(RepoIdQuery(repoOwner, repoName)).execute()
+
+        if (query.hasErrors()) {
+            logger.error { "Error getting repo id" }
+            query.errors!!.forEach { logger.error { it.message } }
+            throw IllegalStateException("Error getting repo id")
+        }
+
+        val mutation = apolloClient.mutation(
+            MergeBranchWithoutPRMutation(
+                mergedIntoName,
+                mergedFromBranchName,
+                query.data?.repository?.id ?: throw IllegalStateException("No repo id found for $repoOwner/$repoName"),
+            )
+        ).execute()
+
+        if (mutation.hasErrors()) {
+            logger.error { "Error merging branch without PR" }
+            mutation.errors!!.forEach { logger.error { it.message } }
+            throw IllegalStateException("Error merging branch without PR")
         }
     }
 }

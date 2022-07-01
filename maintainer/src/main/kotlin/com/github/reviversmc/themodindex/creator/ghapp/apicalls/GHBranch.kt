@@ -46,4 +46,10 @@ interface GHBranch {
      */
     suspend fun createPullRequest(prFromBranch: String, prToBranch: String, prTitle: String, prMessage: String?)
 
+    /**
+     * Merge branch [mergedFromBranchName] into branch [mergedIntoName], without a PR.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    suspend fun mergeBranchWithoutPR(mergedIntoName: String, mergedFromBranchName: String)
 }
