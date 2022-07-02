@@ -13,7 +13,7 @@ val manifestReviewModule = module {
             get { parametersOf(curseApiKey, gitHubApiKey) })
     } bind ExistingManifestReviewer::class
 
-    factory { (manifestRepo: String, curseApiKey: String, gitHubApiKey: String) ->
+    factory(named("curseforge")) { (manifestRepo: String, curseApiKey: String, gitHubApiKey: String) ->
         CurseForgeManifestReviewer(get(named("custom")) { parametersOf(manifestRepo) },
             get { parametersOf(curseApiKey, gitHubApiKey) },
             get(),
