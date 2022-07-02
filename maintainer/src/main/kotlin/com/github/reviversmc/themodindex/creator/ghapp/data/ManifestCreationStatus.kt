@@ -1,6 +1,7 @@
 package com.github.reviversmc.themodindex.creator.ghapp.data
 
 import com.github.reviversmc.themodindex.api.data.ManifestJson
+import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 
 /**
  * Specify the review status of generated [ManifestJson]s
@@ -8,7 +9,7 @@ import com.github.reviversmc.themodindex.api.data.ManifestJson
  * @since 1.0.0
  */
 enum class ReviewStatus {
-    APPROVED_GENERIC_IDENTIFIER_CHANGE, APPROVED_UPDATE, MANUAL_REVIEW_REQUIRED, MARKED_FOR_REMOVAL, NO_CHANGE, THIRD_PARTY_API_FAILURE
+    APPROVED_GENERIC_IDENTIFIER_CHANGE, APPROVED_UPDATE, CREATION_CONFLICT, MARKED_FOR_REMOVAL, NO_CHANGE, THIRD_PARTY_API_FAILURE, UPDATE_CONFLICT
 }
 
 /**
@@ -22,3 +23,11 @@ data class ManifestWithCreationStatus(
     val latestManifest: ManifestJson?,
     val originalManifest: ManifestJson,
 )
+
+/**
+ * A class to neatly bundle a comparison between the [latestManifest] and the [originalManifest].
+ * The manifests have not been reviewed. [thirdPartyApiUsage] is provided to assist in the review process.
+ * @author ReviversMC
+ * @since 1.0.0
+ */
+data class ManifestPendingReview(val thirdPartyApiUsage: List<ThirdPartyApiUsage>, val latestManifest: ManifestJson?, val originalManifest: ManifestJson)
