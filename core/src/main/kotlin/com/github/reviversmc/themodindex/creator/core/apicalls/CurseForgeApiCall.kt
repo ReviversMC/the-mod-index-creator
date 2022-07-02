@@ -52,7 +52,7 @@ interface CurseForgeApiCall {
     /**
      * Returns a [CurseSearchResponse] for a search query, offset by [index].
      * In order to make a successful api call, A [curseForgeApiKey] is required for authentication.
-     * A query will return results starting from [index] to [maxNumberOfResults] from a 0 index list of mods.
+     * A query will return results starting from [index] to [index] + [maxNumberOfResults] from a 0 index list of mods.
      * It is recommended to leave [maxNumberOfResults] null, for CF to decide a number of results to return that is guaranteed to work.
      */
     @GET("/v1/mods/search")
