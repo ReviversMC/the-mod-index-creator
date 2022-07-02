@@ -59,7 +59,7 @@ interface CurseForgeApiCall {
     @Headers("gameId: 432", "classId: 6") // Minecraft's game id is 432, and the class id for mods is 6
     fun search(
         @Header("x-api-key") curseForgeApiKey: String,
-        @Query("index") index: Int = 10000,
+        @Query("index") index: Int,
         @Query("pageSize") maxNumberOfResults: Int? = null,
     ): Call<CurseSearchResponse>
 }
