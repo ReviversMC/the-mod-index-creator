@@ -3,7 +3,7 @@ package com.github.reviversmc.themodindex.creator.ghapp.github
 import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
-import com.github.reviversmc.themodindex.creator.ghapp.apicalls.GHGraphQLBranch
+import com.github.reviversmc.themodindex.creator.ghapp.apicalls.GHBranch
 import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileAddition
 import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileDeletion
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
@@ -29,20 +29,19 @@ import java.util.*
 class GitHubUpdateSender(
     private val apiDownloader: ApiDownloader,
     private val json: Json,
-    private val repoName: String,
     private val repoOwner: String,
+    private val repoName: String,
     private val targetedBranch: String,
     private val gitHubAppId: String,
     private val gitHubPrivateKeyPath: String,
-    private val prInsteadOfPush: Boolean,
 ) : KoinComponent, UpdateSender {
 
     private val logger = KotlinLogging.logger {}
 
-    override lateinit var gitHubInstallationToken: String
-        private set
+    override val gitHubInstallationToken: String
+        get() = refreshInstallationTokenAndApi()
 
-    private val ghGraphqlUpdateBranch by inject<GHGraphQLBranch> {
+    private val ghBranch by inject<GHBranch> {
         parametersOf(
             gitHubInstallationToken,
             repoOwner,
@@ -68,12 +67,12 @@ class GitHubUpdateSender(
 
 
         val gitHubAppApi = get<GitHub> { parametersOf(signedJwt) }
-        gitHubInstallationToken = gitHubAppApi.app.getInstallationByRepository(
+        val installationToken = gitHubAppApi.app.getInstallationByRepository(
             repoOwner, repoName
         ).createToken().create().token
-        logger.debug { "GitHub installation token created: $gitHubInstallationToken" }
+        logger.debug { "GitHub installation token created: $installationToken" }
 
-        return gitHubInstallationToken
+        return installationToken
     }
 
     override fun sendManifestUpdate(manifestFlow: Flow<ManifestWithCreationStatus>) = flow {
@@ -121,7 +120,7 @@ class GitHubUpdateSender(
                     logger.info { "To remove ${originalManifest.genericIdentifier}" }
                 }
 
-                ReviewStatus.MANUAL_REVIEW_REQUIRED -> {
+                ReviewStatus.CREATION_CONFLICT, ReviewStatus.UPDATE_CONFLICT -> {
                     logger.info { "Manual review required for ${originalManifest.genericIdentifier}. Emitting manifest for handling." }
                     emit(ManifestWithCreationStatus(reviewStatus, latestManifest, originalManifest))
                 }
@@ -141,46 +140,21 @@ class GitHubUpdateSender(
 
         additions.add(FileAddition("mods/index.json", json.encodeToString(indexJson).toBase64()))
 
-        if (!ghGraphqlUpdateBranch.doesRefExist(targetedBranch)) {
-            ghGraphqlUpdateBranch.createRef(
-                ghGraphqlUpdateBranch.defaultBranchRef(),
+        if (!ghBranch.doesRefExist(targetedBranch)) {
+            ghBranch.createRef(
+                ghBranch.defaultBranchRef(),
                 targetedBranch
             )
         }
 
-        if (!prInsteadOfPush) {
-            ghGraphqlUpdateBranch.commitAndUpdateRef(
-                targetedBranch,
-                "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}",
-                additions,
-                deletions
-            )
+        ghBranch.commitAndUpdateRef(
+            targetedBranch,
+            "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}",
+            additions,
+            deletions
+        )
 
-            logger.info { "Pushed manifest updates to branch $targetedBranch." }
-        } else {
-            val time = ZonedDateTime.now(ZoneOffset.UTC)
-            val prBranch = "$targetedBranch-UTC-${time.toString().replace(' ', '-').replace(':', '-')}"
-
-            ghGraphqlUpdateBranch.createRef(targetedBranch, prBranch)
-            ghGraphqlUpdateBranch.commitAndUpdateRef(
-                prBranch,
-                "Automated manifest update: UTC $time",
-                additions,
-                deletions
-            )
-
-            ghGraphqlUpdateBranch.createPullRequest(
-                prBranch,
-                targetedBranch,
-                "Automated manifest update: UTC $time",
-                "Manual merger was requested when the maintainer was started. Please merge this PR manually should it meet standards."
-            )
-
-            logger.info { "Pushed manifest updates to branch $prBranch. Manual PR merger required, as requested by startup flags." }
-        }
-
-
-        logger.info { "Manifest update completed." }
+        logger.info { "Pushed manifest updates to branch $targetedBranch." }
 
     }
 

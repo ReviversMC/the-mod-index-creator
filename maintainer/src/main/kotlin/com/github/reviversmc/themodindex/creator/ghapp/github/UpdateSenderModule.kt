@@ -6,16 +6,15 @@ import org.koin.dsl.module
 
 val updateSenderModule = module {
 
-    factory {
+    factory { (repoOwner: String, repoName: String, targetedBranch: String, gitHubAppId: String, gitHubPrivateKeyPath: String) ->
         GitHubUpdateSender(
             get(),
             get(),
-            repoName = it.get(),
-            repoOwner = it[1],
-            targetedBranch = it[2],
-            gitHubAppId = it[3],
-            gitHubPrivateKeyPath = it[4],
-            prInsteadOfPush = it.get(),
+            repoOwner,
+            repoName,
+            targetedBranch,
+            gitHubAppId,
+            gitHubPrivateKeyPath
         )
     } bind UpdateSender::class
     includes(dependencyModule)
