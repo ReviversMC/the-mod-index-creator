@@ -43,9 +43,7 @@ class GitHubUpdateSender(
 
     private val ghBranch by inject<GHBranch> {
         parametersOf(
-            gitHubInstallationToken,
-            repoOwner,
-            repoName
+            gitHubInstallationToken, repoOwner, repoName
         )
     }
 
@@ -103,7 +101,7 @@ class GitHubUpdateSender(
                     additions.add(
                         FileAddition(
                             "mods/${latestManifest.genericIdentifier.replaceFirst(':', '/')}.json",
-                            json.encodeToString(latestManifest).toBase64(),
+                            json.encodeToString(latestManifest).toBase64WithNewline(),
                         )
                     )
                     indexJson = indexJson.addToIndex(latestManifest)
@@ -138,20 +136,16 @@ class GitHubUpdateSender(
 
         if (!get<GitHub> { parametersOf(gitHubInstallationToken) }.isCredentialValid) refreshInstallationTokenAndApi()
 
-        additions.add(FileAddition("mods/index.json", json.encodeToString(indexJson).toBase64()))
+        additions.add(FileAddition("mods/index.json", json.encodeToString(indexJson).toBase64WithNewline()))
 
         if (!ghBranch.doesRefExist(targetedBranch)) {
             ghBranch.createRef(
-                ghBranch.defaultBranchRef(),
-                targetedBranch
+                ghBranch.defaultBranchRef(), targetedBranch
             )
         }
 
         ghBranch.commitAndUpdateRef(
-            targetedBranch,
-            "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}",
-            additions,
-            deletions
+            targetedBranch, "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}", additions, deletions
         )
 
         logger.info { "Pushed manifest updates to branch $targetedBranch." }
@@ -161,7 +155,8 @@ class GitHubUpdateSender(
     /**
      * Converts a [String] into a Base64 string.
      */
-    private fun String.toBase64() = Base64.getEncoder().encodeToString(this.toByteArray())
+    private fun String.toBase64WithNewline() =
+        Base64.getEncoder().encodeToString((this + if (this.endsWith("\n")) "" else "\n").toByteArray())
 
     /**
      * Adds [ManifestJson] entries to the [IndexJson] if they are not already present.
