@@ -96,4 +96,5 @@ data class CurseFileResponse(
  * @author ReviversMC
  * @since 1.0.0
  */
+@kotlinx.serialization.Serializable
 data class CurseSearchResponse(val data: List<CurseModData>, val pagination: CursePagination)
