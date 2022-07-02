@@ -49,7 +49,7 @@ data class CurseModAuthor(val id: Int, val name: String, val url: String)
 
 
 /**
- * The [data] wrapper when searching for CF files, as required by CurseForge :(
+ * The [data] wrapper when searching for CF files
  * @param pagination The pagination info.
  * @author ReviversMC
  * @since 1.0.0
@@ -88,3 +88,12 @@ data class CurseFileResponse(
     val downloadUrl: String?,
     val gameVersions: List<String>,
 )
+
+/**
+ * The api response for a CF search.
+ * @param data The data of the search.
+ * @param pagination The pagination info.
+ * @author ReviversMC
+ * @since 1.0.0
+ */
+data class CurseSearchResponse(val data: List<CurseModData>, val pagination: CursePagination)
