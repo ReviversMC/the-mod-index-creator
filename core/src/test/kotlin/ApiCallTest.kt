@@ -43,7 +43,7 @@ class ApiCallTest : KoinTest {
         val curseForgeMod = curseForgeApiCall.mod(curseApiKey(), 533960).execute().body()!!.data
         assertNotNull(curseForgeMod)
         assertEquals("modget", curseForgeMod.name.lowercase())
-        assertEquals("https://github.com/reviversmc/modget", curseForgeMod.links.sourceUrl?.lowercase())
+        assertEquals("https://github.com/reviversmc/modget-minecraft", curseForgeMod.links.sourceUrl?.lowercase())
         //Other urls left out as assumed to be working since source url is working
         assertContains(
             curseForgeMod.authors, CurseModAuthor(
@@ -72,6 +72,13 @@ class ApiCallTest : KoinTest {
 
         //We did not specify max files, so we should get all files
         assertTrue { curseForgeFiles.pagination.resultCount == curseForgeFiles.pagination.totalCount }
+
+        val curseForgeSearch = curseForgeApiCall.search(curseApiKey(), 0, 1).execute().body()!!
+        println(curseForgeSearch)
+        assertEquals(1, curseForgeSearch.data.size)
+        assertEquals(1, curseForgeSearch.pagination.pageSize)
+        assertEquals(1, curseForgeSearch.pagination.resultCount)
+        assertEquals(0, curseForgeSearch.pagination.index)
     }
 
     /**
@@ -90,7 +97,7 @@ class ApiCallTest : KoinTest {
         assertEquals("2NpFE0R3", modrinthProject.id)
         assertEquals("modget", modrinthProject.title.lowercase())
         assertEquals("lgpl-3", modrinthProject.license!!.id.lowercase())
-        assertEquals("https://github.com/reviversmc/modget", modrinthProject.sourceUrl!!.lowercase())
+        assertEquals("https://github.com/reviversmc/modget-minecraft", modrinthProject.sourceUrl!!.lowercase())
 
         val modrinthProjectSearch = modrinthApiCall.search("modget").execute().body()
         assertNotNull(modrinthProjectSearch)
