@@ -55,8 +55,7 @@ interface CurseForgeApiCall {
      * A query will return results starting from [index] to [index] + [maxNumberOfResults] from a 0 index list of mods.
      * It is recommended to leave [maxNumberOfResults] null, for CF to decide a number of results to return that is guaranteed to work.
      */
-    @GET("/v1/mods/search")
-    @Headers("gameId: 432", "classId: 6") // Minecraft's game id is 432, and the class id for mods is 6
+    @GET("/v1/mods/search?gameId=432&classId=6") // Minecraft's game id is 432, and the class id for mods is 6
     fun search(
         @Header("x-api-key") curseForgeApiKey: String,
         @Query("index") index: Int,
