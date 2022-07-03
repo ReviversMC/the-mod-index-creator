@@ -1,29 +1,48 @@
 package com.github.reviversmc.themodindex.creator.ghapp
 
 import com.github.reviversmc.themodindex.creator.core.creatorModule
+import com.github.reviversmc.themodindex.creator.ghapp.apicalls.GHBranch
 import com.github.reviversmc.themodindex.creator.ghapp.apicalls.githubGraphqlModule
 import com.github.reviversmc.themodindex.creator.ghapp.data.AppConfig
+import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
+import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
 import com.github.reviversmc.themodindex.creator.ghapp.github.UpdateSender
 import com.github.reviversmc.themodindex.creator.ghapp.github.updateSenderModule
-import com.github.reviversmc.themodindex.creator.ghapp.reviewer.ManifestReviewer
+import com.github.reviversmc.themodindex.creator.ghapp.reviewer.ExistingManifestReviewer
+import com.github.reviversmc.themodindex.creator.ghapp.reviewer.NewManifestReviewer
 import com.github.reviversmc.themodindex.creator.ghapp.reviewer.manifestReviewModule
+import dev.kord.common.entity.Snowflake
+import dev.kord.core.Kord
+import dev.kord.core.behavior.interaction.response.edit
+import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
+import dev.kord.core.on
+import dev.kord.gateway.Intent
+import dev.kord.gateway.Intents
+import dev.kord.gateway.UpdateStatus
+import dev.kord.rest.builder.interaction.int
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
+import okhttp3.internal.wait
+import org.koin.core.Koin
 import org.koin.core.context.startKoin
 import org.koin.core.parameter.parametersOf
+import org.koin.core.qualifier.named
 import java.io.File
 import java.io.IOException
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import kotlin.system.exitProcess
 
-const val CURSEFORGE_API_KEY = ""
+const val CURSEFORGE_API_KEY = "\$2a\$10\$VM7TVUzpLUKp1MwvLOyG3uTMl1gVen39dL8uZsLd2tCX00D1Sw7V2"
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
+const val INDEX_MAJOR = 4
 
 private val logger = KotlinLogging.logger {}
 
@@ -68,6 +87,49 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
     }
 }
 
+private suspend fun startDiscordBot(koin: Koin, config: AppConfig) {
+    val discordBot = koin.get<Kord> { parametersOf(config.discordBotToken) }
+
+    // discordBot.createGuildChatInputCommand(
+    //     Snowflake(config.discordServer),
+    //     "force-stop",
+    //     "Immediately terminate the-mod-index-maintainer"
+    // )
+    //
+    // discordBot.on<GuildChatInputCommandInteractionCreateEvent> {
+    //     val response = interaction.deferPublicResponse()
+    //     if (interaction.command.rootName == "force-stop") {
+    //         response.getFollowupMessageOrNull(Snowflake("Stopping the-mod-index-maintainer..."))
+    //         discordBot.shutdown()
+    //         exitProcess(0)
+    //     }
+    // }
+
+    discordBot.createGuildChatInputCommand(
+        Snowflake(894817834046201916), "sum", "A slash command that sums two numbers"
+    ) {
+        int("first_number", "The first operand") {
+            required = true
+        }
+        int("second_number", "The second operand") {
+            required = true
+        }
+    }
+    discordBot.on<GuildChatInputCommandInteractionCreateEvent> {
+        val response = interaction.deferPublicMessage()
+        val command = interaction.command
+        val first = command.integers["first_number"]!! // it's required so it's never null
+        val second = command.integers["second_number"]!!
+        response.edit { content = "$first + $second = ${first + second}" }
+    }
+
+
+    discordBot.login { // Reminder: Login is suspending!
+        intents = Intents(Intent.Guilds, Intent.GuildMessages)
+    }
+}
+
+@OptIn(DelicateCoroutinesApi::class)
 fun main(args: Array<String>) {
     runBlocking {
 
@@ -83,9 +145,9 @@ fun main(args: Array<String>) {
             ArgType.String, shortName = "c", description = "The location of the config file"
         ).default("the-mod-index-automated-creator-config.json")
 
-        val delayInHours by commandParser.option(
+        val cooldownInHours by commandParser.option(
             ArgType.Int, shortName = "d", description = "How long to delay between updates"
-        ).default(3)
+        ).default(12)
 
         val sus by commandParser.option(
             ArgType.Boolean,
@@ -103,160 +165,125 @@ fun main(args: Array<String>) {
         commandParser.parse(args)
         val config = getOrCreateConfig(koin.get(), configLocation)
 
-        // val discordBot = koin.get<Kord> { parametersOf(config.discordBotToken) }
-        // discordBot.createGuildChatInputCommand(
-        //     Snowflake(config.discordServer),
-        //     "force-stop",
-        //     "Immediately terminate the-mod-index-maintainer"
-        // )
-        // discordBot.login()
-        while (true) {
+        // launch { startDiscordBot(koin, config) }
+        // delay(1000 * 60 * 60)
 
-            val updateSender = koin.get<UpdateSender> {
-                parametersOf(
-                    config.gitHubRepoName,
-                    config.gitHubRepoOwner,
-                    if (testMode) "maintainer-test" else "update",
-                    config.gitHubAppId,
-                    config.gitHubPrivateKeyPath,
-                    sus
-                )
-            }
-            val manifestReviewer =
-                koin.get<ManifestReviewer> {
+        val updateSender by koin.inject<UpdateSender> {
+            parametersOf(
+                config.gitHubRepoName,
+                config.gitHubRepoOwner,
+                if (testMode) "maintainer-test" else "update",
+                config.gitHubAppId,
+                config.gitHubPrivateKeyPath,
+                sus
+            )
+        }
+
+        val manifestRepo = "https://raw.githubusercontent.com/${config.gitHubRepoOwner}/${config.gitHubRepoName}/"
+
+
+        // All variables that need to be refreshed (i.e. that use a gh api key) should be in the while loop.
+        var operationLoopNum = 0
+
+        @Suppress("KotlinConstantConditions")
+        while (++operationLoopNum != 0) {
+
+            logger.info { "Starting operation loop $operationLoopNum" }
+
+            val updateExistingManifests =
+                launch {// This can take some time. Let's push this into a separate coroutine, and do other things as well
+                    logger.debug { "Starting the update of existing manifests" }
+                    val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
+                        parametersOf(
+                            manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
+                        )
+                    }
+                    val existingManifests = existingManifestReviewer.reviewManifests()
+                    val manualReviewNeeded = updateSender.sendManifestUpdate(existingManifests)
+                    manualReviewNeeded.collect {} // TODO Send this info to Discord
+                }
+
+            val createNewManifests = launch {
+                logger.debug { "Starting the creation of new manifests" }
+                val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
                     parametersOf(
-                        "https://raw.githubusercontent.com/${config.gitHubRepoOwner}/${config.gitHubRepoName}/",
-                        CURSEFORGE_API_KEY,
-                        updateSender.gitHubInstallationToken
+                        manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
                     )
                 }
 
-            val updateExistingManifests =
-                async {// This can take some time. Let's async await this, so that other things can get done.
-                    logger.debug { "Starting the update of existing manifests" }
-                    val existingManifests =
-                        manifestReviewer.reviewExistingManifests(manifestReviewer.downloadOriginalManifests())
-                    val manualReviewNeeded = updateSender.sendManifestUpdate(existingManifests)
-                    manualReviewNeeded.collect() // TODO Send this info to Discord
+                val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
+                    parametersOf(
+                        manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
+                    )
                 }
 
-            updateExistingManifests.await()
+                val newManifests = mutableMapOf<String, ManifestWithCreationStatus>()
 
-            // TODO delay in hours, and repeat instead of exiting.
+                val newManifestContext = newSingleThreadContext("new-manifest-context")
+                withContext(newManifestContext) {
+
+                    suspend fun collectNewManifests(newManifestReviewer: NewManifestReviewer) =
+                        newManifestReviewer.reviewManifests().collect {
+                            if (it.originalManifest.genericIdentifier !in newManifests) {
+                                newManifests[it.originalManifest.genericIdentifier] = it
+                            } else {
+                                newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
+                                    ReviewStatus.CREATION_CONFLICT,
+                                    it.latestManifest,
+                                    newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
+                                )
+                            }
+                        }
+
+                    val curseManifests = launch { collectNewManifests(curseForgeManifestReviewer) }
+                    val modrinthManifests = launch { collectNewManifests(modrinthManifestReviewer) }
+                    curseManifests.wait()
+                    modrinthManifests.wait()
+                }
+
+                updateExistingManifests.join() // Wait for the update of existing manifests to finish, as we don't want to send a conflict.
+
+                val manualReviewNeeded = updateSender.sendManifestUpdate(newManifests.values.asFlow())
+                manualReviewNeeded.collect {} // TODO Send this info to Discord
+            }
+
+            updateExistingManifests.join()
+            createNewManifests.join()
+
+
+            val ghGraphQLBranch = koin.get<GHBranch> {
+                parametersOf(
+                    updateSender.gitHubInstallationToken, config.gitHubRepoOwner, config.gitHubRepoName
+                )
+            }
+
+            // If in test mode, we'll push to the maintainer-test branch. Don't PR or direct merge.
+            if (!testMode) {
+                if (!sus) {
+                    ghGraphQLBranch.mergeBranchWithoutPR(
+                        "v$INDEX_MAJOR",
+                        "update",
+                        "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}"
+                    )
+                    logger.info { "Merged all update info into branch \"v$INDEX_MAJOR\"" }
+                } else {
+                    ghGraphQLBranch.createPullRequest(
+                        "update",
+                        "v$INDEX_MAJOR",
+                        "Automated manifest update: UTC ${
+                            ZonedDateTime.now(ZoneOffset.UTC).toString().replace(' ', '-').replace(':', '-')
+                        }",
+                        "Manual merger was requested when the maintainer was started. Please merge this PR manually should it meet standards."
+                    )
+
+                    logger.info { "Pushed manifest updates to branch \"update\". Manual PR merger required, as requested by startup flags." }
+                }
+            }
+
+            logger.info { "Finished operation loop $operationLoopNum" }
             exitProcess(0)
+            //Replace the exitProcess with a delay, and then restart the loop.
+            //delay(1000 * 60 * 60 * cooldownInHours)
         }
     }
 }
-
-//     val apiDownloader = appComponent.indexApiDownloader
-//     val index = apiDownloader.downloadIndexJson() ?: throw IOException("Could not download manifest index")
-// /*
-//         val manifestDownloadSemaphore = Semaphore(COROUTINES_PER_TASK)
-//         val existingManifestIdentifiers = index.identifiers.map { it.substringBeforeLast(":") }
-//         val existingManifestRequests = existingManifestIdentifiers.distinct().map {
-//             async {
-//                 manifestDownloadSemaphore.withPermit {
-//                     apiDownloader.downloadManifestJson(it) ?: throw IOException("Could not download manifest $it")
-//                 }
-//             }
-//         }
-//
-//         val modrinthApiCall = gitHubComponent.modrinthApiCall
-//         val modrinthSearchChannel =
-//             produceModrinthSearchResults(modrinthApiCall, doStarterSearch(modrinthApiCall).first())
-//
-//         val existingManifests = existingManifestRequests.awaitAll()
-//         /*
-//         Now that we have all existing manifests, we can start cross-referencing with modrinth & curse results to see what's missing
-//         Discard Modrinth and Curse ids that are already in the existing manifests.
-//         Those just need updating, and should be done separately (no need to repair Modrinth and Curse ids)
-//          */
-//         val newModrinthProjects = findNewModrinthProjects(existingManifests, modrinthSearchChannel)
-//             .buffer(COROUTINES_PER_TASK)
-//
-//         //TODO Collect and create complete clause. Perhaps don't use a flow if that's more advantageous?
-// */
-//
-// }
-//
-// // TODO timer thread that allocates when to do create manifests
-// // TODO At pre-planned time of day, create new jobs for the day
-// // TODO Then, create and push. We are likely be limited by gh rate limits. Maybe use BOTH the rest api and graphql api for more calls?
-// // TODO Start off with retrieving all current manifests, modrinth projects, and CF mods. Find out what manifests need updating, and what manifests need creating
-//
-// fun findNewModrinthProjects(
-//     existingManifests: List<ManifestJson>,
-//     modrinthSearchChannel: ReceiveChannel<ModrinthResponse.SearchResponse.SearchHit>,
-// ) = flow {
-//     val existingIds = existingManifests.map { it.modrinthId }
-//
-//     for (modrinthProject in modrinthSearchChannel) {
-//         if (modrinthProject.id !in existingIds) emit(modrinthProject)
-//     }
-// }
-//
-// fun doStarterSearch(modrinthApiCall: ModrinthApiCall) = flow {
-//     val searchResponse = modrinthApiCall.search(limit = Int.MAX_VALUE).execute()
-//
-//     val starterSearch = searchResponse.body() ?: searchResponse.headers().get("x-ratelimit-remaining")?.let {
-//         if (it.toInt() == 0) {
-//             delay(searchResponse.headers().get("x-ratelimit-reset")!!.toLong())
-//             modrinthApiCall.search(limit = Int.MAX_VALUE).execute().body()
-//         } else throw IOException("Could not search modrinth")
-//     } ?: throw IOException("Could not search modrinth")
-//
-//     emit(starterSearch)
-// }
-//
-// // We require starter search to be done outside this function, as we need it to designate the buffer capacity.
-// @ExperimentalCoroutinesApi
-// fun CoroutineScope.produceModrinthSearchResults(
-//     modrinthApiCall: ModrinthApiCall, starterSearch: ModrinthResponse.SearchResponse,
-// ) = produce(capacity = starterSearch.limit * COROUTINES_PER_TASK) {
-//     val totalNumOfProjects = starterSearch.totalHits
-//     val maxSearchSize = starterSearch.limit
-//     val nextToRequest = AtomicInteger(starterSearch.limit)
-//     val modrinthRateLimitedSeconds = AtomicLong(0L)
-//
-//     launch { starterSearch.hits.forEach { send(it) } } // We already have the first batch of results, no need to make another call for it.
-//
-//     val searchResults = (1..COROUTINES_PER_TASK).map {
-//
-//         async {
-//             while (nextToRequest.get() < totalNumOfProjects) {
-//
-//                 // Wait if rate limited. Else, 0L * 1000L == 0L delay
-//                 delay(modrinthRateLimitedSeconds.get() * 1000L)
-//
-//                 val searchResponse = modrinthApiCall.search(
-//                     offset = nextToRequest.get(), limit = maxSearchSize
-//                 ).awaitResponse()
-//
-//                 searchResponse.body()?.hits?.let { hits ->
-//                     nextToRequest.addAndGet(hits.size)
-//                     hits.forEach { send(it) }
-//                 }
-//                 // Check if fail is due to rate limit
-//                     ?: searchResponse.headers().get("x-ratelimit-remaining")?.let {
-//                         if (it.toInt() == 0) {
-//                             modrinthRateLimitedSeconds.set(
-//                                 searchResponse.headers().get("x-ratelimit-reset")!!.toLong()
-//                             )
-//                         }
-//
-//                         while (modrinthRateLimitedSeconds.get() > 0) {
-//                             delay(1000)
-//                             modrinthRateLimitedSeconds.decrementAndGet()
-//                         }
-//                     }
-//
-//                     // Nope, fail not due to rate limit. Throw exception as we don't know what happened
-//                     ?: throw IOException("Could not search modrinth")
-//             }
-//         }
-//
-//     }
-//
-//     searchResults.awaitAll() // Blocks, and waits for all given coroutines to finish (by doing all searches)
-//     close()
-// }
