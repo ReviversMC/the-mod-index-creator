@@ -28,6 +28,7 @@ class ModrinthManifestReviewer(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun obtainModrinthInfo() = coroutineScope {
+        logger.debug { "Obtaining Modrinth info..." }
         produce(capacity = COROUTINES_PER_TASK * 2) {
 
             val existingModrinthIdsDeferred = async {
@@ -41,8 +42,10 @@ class ModrinthManifestReviewer(
             var limitPerSearch = Int.MAX_VALUE
             val firstSearch = modrinthApiCall.search(limit = limitPerSearch).execute().body()
                 ?: throw IOException("No response from modrinth")
+            logger.debug { "Made first search to modrinth" }
             limitPerSearch = firstSearch.limit
             val totalCount = firstSearch.totalHits
+            logger.debug { "Total of $totalCount Modrinth projects found" }
 
             val totalOffset = AtomicInteger(firstSearch.limit)
 
@@ -58,12 +61,18 @@ class ModrinthManifestReviewer(
                             if (search.hits.isEmpty()) return@launch
 
                             val existingModrinthIds = existingModrinthIdsDeferred.await()
-                            search.hits.forEach { if (it.id !in existingModrinthIds) send(it.id) }
+                            search.hits.forEach {
+                                if (it.id !in existingModrinthIds) {
+                                    send(it.id)
+                                    logger.debug { "Found new Modrinth project ${it.id}" }
+                                }
+                            }
                         }
                     }
                 }
             }
             close()
+            logger.debug { "Finished obtaining modrinth info" }
         }
     }
 
@@ -97,8 +106,10 @@ class ModrinthManifestReviewer(
         for ((thirdPartyApiStatus, latestManifest, originalManifest) in createdManifestChannel) {
             if (ThirdPartyApiUsage.MODRINTH_USED !in thirdPartyApiStatus) {
                 emit(ManifestWithCreationStatus(ReviewStatus.THIRD_PARTY_API_FAILURE, latestManifest, originalManifest))
+                logger.debug { "Third party api failure for ${originalManifest.genericIdentifier}" }
             } else {
                 emit(ManifestWithCreationStatus(ReviewStatus.APPROVED_UPDATE, latestManifest, originalManifest))
+                logger.debug { "Creation of ${originalManifest.genericIdentifier} is approved" }
             }
         }
 
