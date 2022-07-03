@@ -2,6 +2,7 @@ package com.github.reviversmc.themodindex.creator.core.apicalls
 
 import retrofit2.Call
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -12,12 +13,17 @@ import retrofit2.http.Query
  */
 interface ModrinthApiCall {
 
+    companion object {
+        const val userAgent = "User-Agent: reviversmc/the-mod-index-creator/1.0.0"
+    }
+
     /**
      * Returns a Modrinth [ModrinthProjectResponse], obtained by its [projectId].
      * @author ReviversMC
      * @since 1.0.0
      */
     @GET("/v2/project/{projectId}")
+    @Headers(userAgent)
     fun project(@Path("projectId") projectId: String): Call<ModrinthProjectResponse>
 
     /**
@@ -26,6 +32,7 @@ interface ModrinthApiCall {
      * @since 1.0.0
      */
     @GET("/v2/project/{projectId}/members")
+    @Headers(userAgent)
     fun projectMembers(@Path("projectId") projectId: String): Call<List<ModrinthTeamResponse>>
 
     /**
@@ -43,6 +50,7 @@ interface ModrinthApiCall {
      * @since 1.0.0
      */
     @GET("/v2/search")
+    @Headers(userAgent)
     fun search(
         @Query("query") query: String? = null,
         @Query("index") searchMethod: String? = SearchMethod.DEFAULT.modrinthString,
@@ -68,5 +76,6 @@ interface ModrinthApiCall {
      * @since 1.0.0
      */
     @GET("/v2/project/{projectId}/version")
+    @Headers(userAgent)
     fun versions(@Path("projectId") projectId: String): Call<List<ModrinthVersionResponse>>
 }
