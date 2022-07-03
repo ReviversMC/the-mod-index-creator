@@ -74,7 +74,6 @@ class ApiCallTest : KoinTest {
         assertTrue { curseForgeFiles.pagination.resultCount == curseForgeFiles.pagination.totalCount }
 
         val curseForgeSearch = curseForgeApiCall.search(curseApiKey(), 0, 1).execute().body()!!
-        println(curseForgeSearch)
         assertEquals(1, curseForgeSearch.data.size)
         assertEquals(1, curseForgeSearch.pagination.pageSize)
         assertEquals(1, curseForgeSearch.pagination.resultCount)
