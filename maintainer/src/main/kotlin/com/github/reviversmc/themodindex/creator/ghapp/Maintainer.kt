@@ -227,11 +227,31 @@ fun main(args: Array<String>) {
                             if (it.originalManifest.genericIdentifier !in newManifests) {
                                 newManifests[it.originalManifest.genericIdentifier] = it
                             } else {
-                                newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
-                                    ReviewStatus.CREATION_CONFLICT,
-                                    it.latestManifest,
-                                    newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
-                                )
+
+                                // Attempt to do a merger of the two manifests.
+                                val generatedManifest = it
+                                val conflictingManifest = newManifests[it.originalManifest.genericIdentifier]!!
+
+                                if ((generatedManifest.latestManifest!!.curseForgeId != null && conflictingManifest.latestManifest!!.curseForgeId != null) ||
+                                    (generatedManifest.latestManifest.modrinthId != null && conflictingManifest.latestManifest!!.modrinthId != null) ||
+                                    (generatedManifest.latestManifest.license != conflictingManifest.latestManifest!!.license) ||
+                                    (generatedManifest.latestManifest.fancyName != generatedManifest.latestManifest.fancyName)) {
+                                    newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
+                                        ReviewStatus.CREATION_CONFLICT,
+                                        it.latestManifest,
+                                        newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
+                                    )
+                                } else {
+                                    // TODO in the future, replace this with automatic merging. At this time, we still need real world data to determine strictness.
+                                    newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
+                                        ReviewStatus.CREATION_CONFLICT,
+                                        it.latestManifest,
+                                        newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
+                                    )
+                                }
+
+
+
                             }
                         }
 
@@ -282,8 +302,8 @@ fun main(args: Array<String>) {
 
             logger.info { "Finished operation loop $operationLoopNum" }
             exitProcess(0)
-            //Replace the exitProcess with a delay, and then restart the loop.
-            //delay(1000 * 60 * 60 * cooldownInHours)
+            // Replace the exitProcess with a delay, and then restart the loop.
+            // delay(1000 * 60 * 60 * cooldownInHours)
         }
     }
 }
