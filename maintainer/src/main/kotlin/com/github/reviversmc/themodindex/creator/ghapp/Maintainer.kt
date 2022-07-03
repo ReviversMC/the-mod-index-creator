@@ -18,7 +18,6 @@ import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEve
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.Intents
-import dev.kord.gateway.UpdateStatus
 import dev.kord.rest.builder.interaction.int
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
@@ -40,7 +39,7 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import kotlin.system.exitProcess
 
-const val CURSEFORGE_API_KEY = "\$2a\$10\$VM7TVUzpLUKp1MwvLOyG3uTMl1gVen39dL8uZsLd2tCX00D1Sw7V2"
+const val CURSEFORGE_API_KEY = ""
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
 const val INDEX_MAJOR = 4
 
