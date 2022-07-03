@@ -21,7 +21,7 @@ val manifestReviewModule = module {
         )
     } bind NewManifestReviewer::class
 
-    factory(named("modrinth")) { (manifestRepo: String?, curseApiKey: String, gitHubApiKey: String) ->
+    factory(named("modrinth")) { (manifestRepo: String, curseApiKey: String, gitHubApiKey: String) ->
         ModrinthManifestReviewer(get(named("custom")) { parametersOf(manifestRepo) },
             get { parametersOf(curseApiKey, gitHubApiKey) },
             get()
