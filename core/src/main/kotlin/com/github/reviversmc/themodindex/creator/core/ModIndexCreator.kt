@@ -337,7 +337,7 @@ class ModIndexCreator(
                             modData.links.sourceUrl ?: modrinthProject?.sourceUrl,
                             otherLinks
                         ),
-                        manifestFiles))
+                        manifestFiles.sortedByDescending { it.mcVersions.first() }))
                 }
                 return true
             } ?: false
@@ -345,31 +345,27 @@ class ModIndexCreator(
             suspend fun modrinthToManifest(curseData: CurseModData?) =
                 modrinthProject?.let { _ -> // No better alias for this
                     combinedFiles.forEach { (modLoader, manifestFiles) ->
-                        add(
-                            ManifestJson(
-                                indexVersion,
-                                "$modLoader:${modrinthProject.title.lowercase().replace(' ', '-')}",
-                                modrinthProject.title,
-                                modrinthApiCall.projectMembers(modrinthId).execute().run {
-                                    if (body() != null) body() else {
-                                        delay(((headers()["x-ratelimit-reset"]?.toLong() ?: -1) + 1) * 1000)
-                                        modrinthApiCall.projectMembers(modrinthId).execute().body()
-                                    }
+                        add(ManifestJson(indexVersion,
+                            "$modLoader:${modrinthProject.title.lowercase().replace(' ', '-')}",
+                            modrinthProject.title,
+                            modrinthApiCall.projectMembers(modrinthId).execute().run {
+                                if (body() != null) body() else {
+                                    delay(((headers()["x-ratelimit-reset"]?.toLong() ?: -1) + 1) * 1000)
+                                    modrinthApiCall.projectMembers(modrinthId).execute().body()
                                 }
-                                    ?.first { member -> member.role == "Owner" }?.userResponse?.username
-                                    ?: curseData?.authors?.first()?.name
-                                    ?: throw IOException("No owner found for modrinth project: $modrinthId"),
-                                modrinthProject.license?.id
-                                    ?: gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key },
-                                curseData?.id,
-                                modrinthProject.id,
-                                ManifestLinks(
-                                    modrinthProject.issuesUrl ?: curseData?.links?.issuesUrl,
-                                    modrinthProject.sourceUrl ?: curseData?.links?.sourceUrl,
-                                    otherLinks
-                                ),
-                                manifestFiles
-                            )
+                            }?.first { member -> member.role == "Owner" }?.userResponse?.username
+                                ?: curseData?.authors?.first()?.name
+                                ?: throw IOException("No owner found for modrinth project: $modrinthId"),
+                            modrinthProject.license?.id
+                                ?: gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key },
+                            curseData?.id,
+                            modrinthProject.id,
+                            ManifestLinks(
+                                modrinthProject.issuesUrl ?: curseData?.links?.issuesUrl,
+                                modrinthProject.sourceUrl ?: curseData?.links?.sourceUrl,
+                                otherLinks
+                            ),
+                            manifestFiles.sortedByDescending { it.mcVersions.first() })
                         )
                     }
                     return true
