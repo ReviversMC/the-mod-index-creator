@@ -150,6 +150,7 @@ fun main(args: Array<String>) = runBlocking {
     }
 
     launch { maintainerBot.start() } // This suspends till the bot is shutdown. Move it to a separate coroutine so that we can still do stuff
+    logger.info { "Started Discord Bot" }
     launch {
         for (resolvedConflict in maintainerBot.resolvedConflicts) updateSender.sendManifestUpdate(
             flowOf(
@@ -174,6 +175,7 @@ fun main(args: Array<String>) = runBlocking {
                     val existingManifests = existingManifestReviewer.reviewManifests()
                     val manualReviewNeeded = updateSender.sendManifestUpdate(existingManifests)
                     manualReviewNeeded.collect { maintainerBot.sendConflict(it) }
+                    logger.info { "Updated existing manifests" }
                 }
 
             val createNewManifests = launch {
@@ -234,6 +236,7 @@ fun main(args: Array<String>) = runBlocking {
 
                 val manualReviewNeeded = updateSender.sendManifestUpdate(newManifests.values.asFlow())
                 manualReviewNeeded.collect { maintainerBot.sendConflict(it) }
+                logger.info { "Created new manifests" }
             }
 
             updateExistingManifests.join()
