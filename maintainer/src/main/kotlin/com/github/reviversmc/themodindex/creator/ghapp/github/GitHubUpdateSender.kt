@@ -95,7 +95,7 @@ class GitHubUpdateSender(
                                 "mods/${originalManifest.genericIdentifier.replaceFirst(':', '/')}.json"
                             )
                         )
-                        logger.info { "To remove ${originalManifest.genericIdentifier}, in favour of ${latestManifest.genericIdentifier}" }
+                        logger.debug { "To remove ${originalManifest.genericIdentifier}, in favour of ${latestManifest.genericIdentifier}" }
                     }
 
                     additions.add(
@@ -105,7 +105,7 @@ class GitHubUpdateSender(
                         )
                     )
                     indexJson = indexJson.addToIndex(latestManifest)
-                    logger.info { "Added ${latestManifest.genericIdentifier} to update" }
+                    logger.debug { "Added ${latestManifest.genericIdentifier} to update" }
                 }
 
                 ReviewStatus.MARKED_FOR_REMOVAL -> {
@@ -115,22 +115,22 @@ class GitHubUpdateSender(
                             "mods/${originalManifest.genericIdentifier.replaceFirst(':', '/')}.json"
                         )
                     )
-                    logger.info { "To remove ${originalManifest.genericIdentifier}" }
+                    logger.debug { "To remove ${originalManifest.genericIdentifier}" }
                 }
 
                 ReviewStatus.CREATION_CONFLICT, ReviewStatus.UPDATE_CONFLICT -> {
-                    logger.info { "Manual review required for ${originalManifest.genericIdentifier}. Emitting manifest for handling." }
+                    logger.debug { "Manual review required for ${originalManifest.genericIdentifier}. Emitting manifest for handling." }
                     emit(ManifestWithCreationStatus(reviewStatus, latestManifest, originalManifest))
                 }
 
                 ReviewStatus.NO_CHANGE -> logger.debug { "No change for ${latestManifest?.genericIdentifier ?: originalManifest.genericIdentifier}" }
-                ReviewStatus.THIRD_PARTY_API_FAILURE -> logger.error { "Third party API failure for ${latestManifest?.genericIdentifier ?: originalManifest.genericIdentifier}" }
+                ReviewStatus.THIRD_PARTY_API_FAILURE -> logger.debug { "Third party API failure for ${latestManifest?.genericIdentifier ?: originalManifest.genericIdentifier}" }
 
             }
         }
 
         if (apiDownloader.downloadIndexJson() == indexJson) {
-            logger.info { "No changes to index.json, no push to repository required." }
+            logger.debug { "No changes to index.json, no push to repository required." }
             return@flow
         }
 
@@ -148,7 +148,7 @@ class GitHubUpdateSender(
             targetedBranch, "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}", additions, deletions
         )
 
-        logger.info { "Pushed manifest updates to branch $targetedBranch." }
+        logger.debug { "Pushed manifest updates to branch $targetedBranch." }
 
     }
 
