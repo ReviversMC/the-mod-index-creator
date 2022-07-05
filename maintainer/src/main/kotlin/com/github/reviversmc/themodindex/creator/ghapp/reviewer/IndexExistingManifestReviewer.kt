@@ -16,9 +16,10 @@ import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
 
 class IndexExistingManifestReviewer(
-    private val apiDownloader: ApiDownloader, private val creator: Creator,
+    private val apiDownloader: ApiDownloader, private val creator: Creator, private val testMode: Boolean,
 ) : ExistingManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -38,10 +39,14 @@ class IndexExistingManifestReviewer(
         outputChannel: SendChannel<ManifestPendingReview>,
     ) {
         val updatedManifestsContext = newSingleThreadContext("updatedExistingManifests")
+        val counter = AtomicInteger(0)
 
         withContext(updatedManifestsContext) {
             repeat(COROUTINES_PER_TASK) {
                 launch {
+                    if (testMode) {
+                        if (counter.getAndIncrement() >= 20) return@launch // Test mode, only process 20 manifests
+                    }
                     for (originalManifest in inputChannel) {
                         logger.debug { "Creating manifest for ${originalManifest.genericIdentifier}" }
 
@@ -81,6 +86,7 @@ class IndexExistingManifestReviewer(
                                 createdManifests.thirdPartyApiUsage, latestManifest, originalManifest
                             )
                         )
+                        logger.debug { "Created manifest for ${originalManifest.genericIdentifier}" }
                     }
                 }
             }

@@ -22,6 +22,7 @@ class ModrinthManifestReviewer(
     private val apiDownloader: ApiDownloader,
     private val creator: Creator,
     private val modrinthApiCall: ModrinthApiCall,
+    private val testMode: Boolean
 ) : NewManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -41,10 +42,13 @@ class ModrinthManifestReviewer(
 
             var limitPerSearch = Int.MAX_VALUE
             val firstSearch = modrinthApiCall.search(limit = limitPerSearch).execute().body()
-                ?: throw IOException("No response from modrinth")
-            logger.debug { "Made first search to modrinth" }
+                ?: throw IOException("No response from Modrinth")
+            logger.debug { "Made first search to Modrinth" }
             limitPerSearch = firstSearch.limit
-            val totalCount = firstSearch.totalHits
+
+            val totalCount = if (testMode) limitPerSearch // Just test with a small number of results
+            else firstSearch.totalHits // Otherwise, use the total count from the first search
+
             logger.debug { "Total of $totalCount Modrinth projects found" }
 
             val totalOffset = AtomicInteger(firstSearch.limit)
@@ -56,7 +60,7 @@ class ModrinthManifestReviewer(
                         while (offset < totalCount) {
                             val search =
                                 modrinthApiCall.search(limit = limitPerSearch, offset = offset).execute().body()
-                                    ?: throw IOException("No response from modrinth")
+                                    ?: throw IOException("No response from Modrinth")
 
                             if (search.hits.isEmpty()) return@launch
 
@@ -72,7 +76,7 @@ class ModrinthManifestReviewer(
                 }
             }
             close()
-            logger.debug { "Finished obtaining modrinth info" }
+            logger.debug { "Finished obtaining Modrinth info" }
         }
     }
 

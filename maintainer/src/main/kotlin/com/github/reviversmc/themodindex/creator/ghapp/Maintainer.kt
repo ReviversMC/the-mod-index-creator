@@ -26,7 +26,6 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
-import okhttp3.internal.wait
 import org.koin.core.context.startKoin
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
@@ -169,7 +168,7 @@ fun main(args: Array<String>) = runBlocking {
                     logger.debug { "Starting the update of existing manifests" }
                     val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
                         parametersOf(
-                            manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
+                            manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken, testMode
                         )
                     }
                     val existingManifests = existingManifestReviewer.reviewManifests()
@@ -181,13 +180,13 @@ fun main(args: Array<String>) = runBlocking {
                 logger.debug { "Starting the creation of new manifests" }
                 val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
                     parametersOf(
-                        manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
+                        manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken, testMode
                     )
                 }
 
                 val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
                     parametersOf(
-                        manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
+                        manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken, testMode
                     )
                 }
 
@@ -227,8 +226,8 @@ fun main(args: Array<String>) = runBlocking {
 
                     val curseManifests = launch { collectNewManifests(curseForgeManifestReviewer) }
                     val modrinthManifests = launch { collectNewManifests(modrinthManifestReviewer) }
-                    curseManifests.wait()
-                    modrinthManifests.wait()
+                    curseManifests.join()
+                    modrinthManifests.join()
                 }
 
                 updateExistingManifests.join() // Wait for the update of existing manifests to finish, as we don't want to send a conflict.

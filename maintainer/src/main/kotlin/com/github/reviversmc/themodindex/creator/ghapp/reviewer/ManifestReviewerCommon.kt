@@ -11,6 +11,12 @@ import kotlinx.coroutines.sync.withPermit
 import mu.KLogger
 import java.io.IOException
 
+/**
+ * Downloads and returns existing manifests from the manifest repo from [ApiDownloader.formattedBaseUrl], logging events with [logger]
+ * @throws IOException if the download fails
+ * @author ReviversMC
+ * @since 1.0.0
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal suspend fun ApiDownloader.downloadExistingManifests(logger: KLogger) = coroutineScope {
     produce(capacity = COROUTINES_PER_TASK * 2) {

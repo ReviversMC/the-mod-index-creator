@@ -26,6 +26,7 @@ class CurseForgeManifestReviewer(
     private val creator: Creator,
     private val curseForgeApiCall: CurseForgeApiCall,
     private val curseForgeApiKey: String,
+    private val testMode: Boolean,
 ) : NewManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -40,14 +41,18 @@ class CurseForgeManifestReviewer(
                 for (existingManifest in apiDownloader.downloadExistingManifests(logger)) {
                     existingManifest.curseForgeId?.let { returnList.add(it) }
                 }
+                logger.debug { "Downloaded existing manifests" }
                 return@async returnList
             }
 
             val firstSearch = curseForgeApiCall.search(curseForgeApiKey, 0).execute().body()
                 ?: throw IOException("No response from CurseForge")
-            logger.debug { "Made first search to modrinth" }
+            logger.debug { "Made first search to CurseForge" }
             val limitPerSearch = firstSearch.pagination.pageSize
-            val totalCount = firstSearch.pagination.totalCount
+
+            val totalCount = if (testMode) limitPerSearch // Just test with a small number of results
+            else firstSearch.pagination.totalCount // Otherwise, use the total count from the first search
+
             logger.debug { "Total of $totalCount CurseForge mods found" }
 
             val totalOffset = AtomicInteger(firstSearch.pagination.pageSize)
@@ -63,10 +68,12 @@ class CurseForgeManifestReviewer(
                             if (search.data.isEmpty()) return@launch
 
                             val existingCurseIds = existingCurseIdsDeferred.await()
-                            search.data.forEach { if (it.id !in existingCurseIds) {
-                                send(it.id.toString())
-                                logger.debug { "Found new CurseForge project ${it.id}" }
-                            } }
+                            search.data.forEach {
+                                if (it.id !in existingCurseIds) {
+                                    send(it.id.toString())
+                                    logger.debug { "Found new CurseForge project ${it.id}" }
+                                }
+                            }
                         }
                     }
                 }
