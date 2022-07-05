@@ -13,6 +13,13 @@ import kotlinx.coroutines.channels.Channel
 interface MaintainerBot {
 
     /**
+     * Specifies the default shutdown message used when the bot is shut down.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    val defaultShutdownMessage get() = "The maintainer is now **offline**, successful shutdown"
+
+    /**
      * When conflicts have been manually resolved, the results will be sent here.
      * This should only contain results which are [ReviewStatus.APPROVED_UPDATE]
      * @author ReviversMC
@@ -21,11 +28,11 @@ interface MaintainerBot {
     val resolvedConflicts: Channel<ManifestWithCreationStatus>
 
     /**
-     * Make the Discord bot cleanup and shutdown
+     * Make the Discord bot cleanup and shutdown, using the [exitMessage] and [exitCode].
      * @author ReviversMC
      * @since 1.0.0
      */
-    suspend fun exit(exitMessage: String = "The maintainer is now **offline**, successful shutdown", exitCode: Int = 0)
+    suspend fun exit(exitMessage: String = defaultShutdownMessage, exitCode: Int = 0)
 
     /**
      * Setup and start the Discord Bot. This makes the bot ready to receive commands as well

@@ -170,7 +170,7 @@ class ModIndexMaintainerBot(
                 logger.debug { "Maintainer status thread already has a startup message" }
 
             } ?: maintainerStatusThread.messages.firstOrNull {
-                it.content == "The maintainer is now **offline**"
+                it.content == defaultShutdownMessage
             }?.edit {
                 content = "The maintainer is now **online**"
                 actionRow {
@@ -182,6 +182,7 @@ class ModIndexMaintainerBot(
                     }
                 }
 
+                // It could be possible that the last shutdown message was an error message. Thus, we should leave it for reference, and create a new message
             } ?: maintainerStatusThread.createMessage {
                 content = "The maintainer is now **online**"
                 actionRow {
