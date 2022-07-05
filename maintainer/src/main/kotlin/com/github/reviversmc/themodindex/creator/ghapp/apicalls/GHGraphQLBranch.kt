@@ -1,6 +1,7 @@
 package com.github.reviversmc.themodindex.creator.ghapp.apicalls
 
 import com.apollographql.apollo3.ApolloClient
+import com.apollographql.apollo3.api.ApolloResponse
 import com.apollographql.apollo3.api.Optional
 import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileAddition
 import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileDeletion
@@ -16,6 +17,7 @@ class GHGraphQLBranch(
 
     override suspend fun defaultBranchRef(): String {
         val query = apolloClient.query(DefaultBranchRefQuery(repoOwner, repoName)).execute()
+        logger.debug { "Executed default ref query for $repoOwner/$repoName" }
 
         if (query.hasErrors()) {
             logger.error { "Error getting default branch ref: ${query.errors}" }
@@ -29,18 +31,20 @@ class GHGraphQLBranch(
 
     override suspend fun doesRefExist(branchName: String): Boolean {
         val query = apolloClient.query(GetRefsQuery(repoOwner, repoName, branchName)).execute()
+        logger.debug { "Executed query to check if branch $branchName exists in $repoOwner/$repoName" }
 
         if (query.hasErrors()) {
             logger.error { "Error while checking if ref exists: ${query.errors}" }
             query.errors!!.forEach { logger.error { it.toString() } }
-            throw Exception("Error while checking if ref exists")
+            throw IllegalStateException("Error while checking if ref exists")
         }
-        logger.debug { query.data?.repository?.refs?.edges?.map { it?.node?.name } }
+        
         return query.data?.repository?.refs?.edges?.map { it?.node?.name }?.contains(branchName) == true
     }
 
     override suspend fun createRef(branchFrom: String, branchCreated: String) {
         val query = apolloClient.query(RepoIdAndBranchHeadOidQuery(repoOwner, repoName, branchFrom)).execute()
+        logger.debug { "Executed query to obtain the repo id of $repoOwner/$repoName and the head object id of branch $branchFrom" }
 
         if (query.hasErrors()) {
             logger.error { "Error getting ref $branchFrom" }
@@ -56,6 +60,7 @@ class GHGraphQLBranch(
                 query.data?.repository?.id ?: throw IllegalStateException("No repo id found for $branchFrom")
             )
         ).execute()
+        logger.debug { "Executed mutation to create branch $branchCreated from $branchFrom" }
 
         if (mutation.hasErrors()) {
             logger.error { "Error creating ref $branchFrom" }
@@ -71,8 +76,10 @@ class GHGraphQLBranch(
         deletions: List<FileDeletion>,
     ) {
         if (additions.isEmpty() && deletions.isEmpty()) return // No need to make call if no changes
+        logger.debug { "No changes to commit were provided" }
 
         val query = apolloClient.query(BranchHeadOidQuery(repoOwner, repoName, "refs/heads/$branchName")).execute()
+        logger.debug { "Executed query to obtain the head object id of branch $branchName in repo $repoOwner/$repoName" }
 
         if (query.hasErrors()) {
             logger.error("Error getting branch head oid")
@@ -88,6 +95,7 @@ class GHGraphQLBranch(
                 "$repoOwner/$repoName", branchName, message, headOid, deletions, additions
             )
         ).execute()
+        logger.debug { "Executed mutation to update branch $branchName in repo $repoOwner/$repoName" }
 
         if (mutation.hasErrors()) {
             logger.error { "Error updating branch $branchName in $repoOwner/$repoName" }
@@ -96,19 +104,26 @@ class GHGraphQLBranch(
         }
     }
 
-    override suspend fun createPullRequest(
-        prFromBranch: String,
-        prToBranch: String,
-        prTitle: String,
-        prMessage: String?,
-    ) {
+    private suspend fun obtainRepoIdQuery(): ApolloResponse<RepoIdQuery.Data> {
         val query = apolloClient.query(RepoIdQuery(repoOwner, repoName)).execute()
+        logger.debug { "Executed query to obtain the repo id of $repoOwner/$repoName" }
 
         if (query.hasErrors()) {
             logger.error { "Error getting repo id" }
             query.errors!!.forEach { logger.error { it.message } }
             throw IllegalStateException("Error getting repo id")
         }
+
+        return query
+    }
+
+    override suspend fun createPullRequest(
+        prFromBranch: String,
+        prToBranch: String,
+        prTitle: String,
+        prMessage: String?,
+    ) {
+        val query = obtainRepoIdQuery()
 
         val mutation = apolloClient.mutation(
             CreatePRMutation(
@@ -119,6 +134,7 @@ class GHGraphQLBranch(
                 Optional.presentIfNotNull(prMessage)
             )
         ).execute()
+        logger.debug { "Executed mutation to create pull request from $prFromBranch to $prToBranch" }
 
         if (mutation.hasErrors()) {
             logger.error { "Error creating pull request" }
@@ -128,13 +144,7 @@ class GHGraphQLBranch(
     }
 
     override suspend fun mergeBranchWithoutPR(mergedIntoName: String, mergedFromBranchName: String, commitMessage: String) {
-        val query = apolloClient.query(RepoIdQuery(repoOwner, repoName)).execute()
-
-        if (query.hasErrors()) {
-            logger.error { "Error getting repo id" }
-            query.errors!!.forEach { logger.error { it.message } }
-            throw IllegalStateException("Error getting repo id")
-        }
+        val query = obtainRepoIdQuery()
 
         val mutation = apolloClient.mutation(
             MergeBranchWithoutPRMutation(
@@ -144,6 +154,7 @@ class GHGraphQLBranch(
                 query.data?.repository?.id ?: throw IllegalStateException("No repo id found for $repoOwner/$repoName"),
             )
         ).execute()
+        logger.debug { "Executed mutation to merge branch $mergedFromBranchName into $mergedIntoName" }
 
         if (mutation.hasErrors()) {
             logger.error { "Error merging branch without PR" }

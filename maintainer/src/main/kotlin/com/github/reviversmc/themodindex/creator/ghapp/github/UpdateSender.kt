@@ -4,6 +4,11 @@ import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreation
 import kotlinx.coroutines.flow.Flow
 import java.io.IOException
 
+/**
+ * A class to manage sending updates to GitHub.
+ * @author ReviversMC
+ * @since 1.0.0
+ */
 interface UpdateSender {
 
     /**

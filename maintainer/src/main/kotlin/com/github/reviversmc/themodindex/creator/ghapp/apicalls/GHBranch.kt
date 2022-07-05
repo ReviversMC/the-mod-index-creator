@@ -3,17 +3,22 @@ package com.github.reviversmc.themodindex.creator.ghapp.apicalls
 import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileAddition
 import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileDeletion
 
+/**
+ * Contains GH actions that can be done involving a branch (or ref) of a repository
+ * @author ReviversMC
+ * @since 1.0.0
+ */
 interface GHBranch {
 
     /**
-     * Gets the default branch ref of the repository.
+     * Gets the default branch ref of the repository, throwing an [IllegalStateException] if something unexpected happens
      * @author ReviversMC
      * @since 1.0.0
      */
     suspend fun defaultBranchRef(): String
 
     /**
-     * Check if a [branchName] exists in the repository.
+     * Check if a [branchName] exists in the repository, throwing an [IllegalStateException] if something unexpected happens
      * @author ReviversMC
      * @since 1.0.0
      */
@@ -22,6 +27,7 @@ interface GHBranch {
     /**
      * Create a new branch with name from [branchCreated]. The branch will be created off the last commit from [branchFrom].
      * It is recommended to call [doesRefExist] before creating a new branch, to avoid creating a branch that already exists.
+     * This throws an [IllegalStateException] if something unexpected happens.
      * @author ReviversMC
      * @since 1.0.0
      */
@@ -29,6 +35,7 @@ interface GHBranch {
 
     /**
      * Commit the changes in [additions] and [deletions] and update the [branchName] to the new commit, with message [message].
+     * This throws an [IllegalStateException] if something unexpected happens.
      * @author ReviversMC
      * @since 1.0.0
      */
@@ -41,6 +48,7 @@ interface GHBranch {
 
     /**
      * Create a pull request from [prFromBranch] to [prToBranch] with title [prTitle] and description [prMessage].
+     * This throws an [IllegalStateException] if something unexpected happens.
      * @author ReviversMC
      * @since 1.0.0
      */
@@ -48,6 +56,7 @@ interface GHBranch {
 
     /**
      * Merge branch [mergedFromBranchName] into branch [mergedIntoName] with message [commitMessage], without a PR.
+     * This throws an [IllegalStateException] if something unexpected happens.
      * @author ReviversMC
      * @since 1.0.0
      */
