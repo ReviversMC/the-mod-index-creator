@@ -145,10 +145,10 @@ class ModIndexMaintainerBot(
         logger.debug { "Registered command \"force-exit\"" }
     }
 
-    override suspend fun exit() {
+    override suspend fun exit(exitMessage: String, exitCode: Int) {
         resolvedConflicts.close()
         startupMessage?.edit {
-            content = "The maintainer is now **offline**"
+            content = if (exitMessage.length < 2000) exitMessage else exitMessage.substring(0, 1997) + "..."
             components = mutableListOf() // Clear the action row
         }
         logger.debug { "Edited startup message" }
@@ -156,7 +156,7 @@ class ModIndexMaintainerBot(
         conflictMessages.forEach { it.value.first.delete("Maintainer shutdown, references to conflicts deleted") }
         logger.debug { "Deleted all conflict messages" }
         kord.shutdown()
-        exitProcess(0)
+        exitProcess(1)
     }
 
     private suspend fun sendStartupMessage() {

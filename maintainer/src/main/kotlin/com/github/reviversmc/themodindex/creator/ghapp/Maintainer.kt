@@ -36,7 +36,8 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import kotlin.system.exitProcess
 
-val CURSEFORGE_API_KEY = System.getenv("CURSEFORGE_API_KEY") ?: throw IllegalStateException("CURSEFORGE_API_KEY not set")
+val CURSEFORGE_API_KEY =
+    System.getenv("CURSEFORGE_API_KEY") ?: throw IllegalStateException("CURSEFORGE_API_KEY not set")
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
 const val INDEX_MAJOR = 4
 
@@ -150,121 +151,125 @@ fun main(args: Array<String>) = runBlocking {
 
     launch { maintainerBot.start() } // This suspends till the bot is shutdown. Move it to a separate coroutine so that we can still do stuff
     launch {
-        for (resolvedConflict in maintainerBot.resolvedConflicts) updateSender.sendManifestUpdate(flowOf(resolvedConflict))
+        for (resolvedConflict in maintainerBot.resolvedConflicts) updateSender.sendManifestUpdate(
+            flowOf(
+                resolvedConflict
+            )
+        )
     }
+    try {
+        while (shouldContinueUpdating) {
+            ++operationLoopNum
+            isCurrentlyUpdating = true
+            logger.info { "Starting operation loop $operationLoopNum" }
 
-    while (shouldContinueUpdating) {
-        ++operationLoopNum
-        isCurrentlyUpdating = true
-        logger.info { "Starting operation loop $operationLoopNum" }
+            val updateExistingManifests =
+                launch {// This can take some time. Let's push this into a separate coroutine, and do other things as well
+                    logger.debug { "Starting the update of existing manifests" }
+                    val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
+                        parametersOf(
+                            manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
+                        )
+                    }
+                    val existingManifests = existingManifestReviewer.reviewManifests()
+                    val manualReviewNeeded = updateSender.sendManifestUpdate(existingManifests)
+                    manualReviewNeeded.collect { maintainerBot.sendConflict(it) }
+                }
 
-        val updateExistingManifests =
-            launch {// This can take some time. Let's push this into a separate coroutine, and do other things as well
-                logger.debug { "Starting the update of existing manifests" }
-                val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
+            val createNewManifests = launch {
+                logger.debug { "Starting the creation of new manifests" }
+                val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
                     parametersOf(
                         manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
                     )
                 }
-                val existingManifests = existingManifestReviewer.reviewManifests()
-                val manualReviewNeeded = updateSender.sendManifestUpdate(existingManifests)
+
+                val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
+                    parametersOf(
+                        manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
+                    )
+                }
+
+                val newManifests = mutableMapOf<String, ManifestWithCreationStatus>()
+
+                val newManifestContext = newSingleThreadContext("new-manifest-context")
+                withContext(newManifestContext) {
+
+                    suspend fun collectNewManifests(newManifestReviewer: NewManifestReviewer) =
+                        newManifestReviewer.reviewManifests().collect {
+                            if (it.originalManifest.genericIdentifier !in newManifests) {
+                                newManifests[it.originalManifest.genericIdentifier] = it
+                            } else {
+
+                                // Attempt to do a merger of the two manifests.
+                                val generatedManifest = it
+                                val conflictingManifest = newManifests[it.originalManifest.genericIdentifier]!!
+
+                                if ((generatedManifest.latestManifest!!.curseForgeId != null && conflictingManifest.latestManifest!!.curseForgeId != null) || (generatedManifest.latestManifest.modrinthId != null && conflictingManifest.latestManifest!!.modrinthId != null) || (generatedManifest.latestManifest.license != conflictingManifest.latestManifest!!.license) || (generatedManifest.latestManifest.fancyName != generatedManifest.latestManifest.fancyName)) {
+                                    newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
+                                        ReviewStatus.CREATION_CONFLICT,
+                                        it.latestManifest,
+                                        newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
+                                    )
+                                } else {
+                                    // TODO in the future, replace this with automatic merging. At this time, we still need real world data to determine strictness.
+                                    newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
+                                        ReviewStatus.CREATION_CONFLICT,
+                                        it.latestManifest,
+                                        newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
+                                    )
+                                }
+
+
+                            }
+                        }
+
+                    val curseManifests = launch { collectNewManifests(curseForgeManifestReviewer) }
+                    val modrinthManifests = launch { collectNewManifests(modrinthManifestReviewer) }
+                    curseManifests.wait()
+                    modrinthManifests.wait()
+                }
+
+                updateExistingManifests.join() // Wait for the update of existing manifests to finish, as we don't want to send a conflict.
+
+                val manualReviewNeeded = updateSender.sendManifestUpdate(newManifests.values.asFlow())
                 manualReviewNeeded.collect { maintainerBot.sendConflict(it) }
             }
 
-        val createNewManifests = launch {
-            logger.debug { "Starting the creation of new manifests" }
-            val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
+            updateExistingManifests.join()
+            createNewManifests.join()
+
+
+            val ghGraphQLBranch = koin.get<GHBranch> {
                 parametersOf(
-                    manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
+                    updateSender.gitHubInstallationToken, config.gitHubRepoOwner, config.gitHubRepoName
                 )
             }
 
-            val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
-                parametersOf(
-                    manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken
-                )
+            // If in test mode, we'll push to the maintainer-test branch. Don't PR or direct merge.
+            if (!testMode) {
+                if (!sus) {
+                    ghGraphQLBranch.mergeBranchWithoutPR(
+                        "v$INDEX_MAJOR", "update", "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}"
+                    )
+                    logger.info { "Merged all update info into branch \"v$INDEX_MAJOR\"" }
+                } else {
+                    ghGraphQLBranch.createPullRequest(
+                        "update",
+                        "v$INDEX_MAJOR",
+                        "Automated manifest update: UTC ${
+                            ZonedDateTime.now(ZoneOffset.UTC).toString().replace(' ', '-').replace(':', '-')
+                        }",
+                        "Manual merger was requested when the maintainer was started. Please merge this PR manually should it meet standards."
+                    )
+
+                    logger.info { "Pushed manifest updates to branch \"update\". Manual PR merger required, as requested by startup flags." }
+                }
             }
 
-            val newManifests = mutableMapOf<String, ManifestWithCreationStatus>()
+            logger.info { "Finished operation loop $operationLoopNum" }
 
-            val newManifestContext = newSingleThreadContext("new-manifest-context")
-            withContext(newManifestContext) {
-
-                suspend fun collectNewManifests(newManifestReviewer: NewManifestReviewer) =
-                    newManifestReviewer.reviewManifests().collect {
-                        if (it.originalManifest.genericIdentifier !in newManifests) {
-                            newManifests[it.originalManifest.genericIdentifier] = it
-                        } else {
-
-                            // Attempt to do a merger of the two manifests.
-                            val generatedManifest = it
-                            val conflictingManifest = newManifests[it.originalManifest.genericIdentifier]!!
-
-                            if ((generatedManifest.latestManifest!!.curseForgeId != null && conflictingManifest.latestManifest!!.curseForgeId != null) || (generatedManifest.latestManifest.modrinthId != null && conflictingManifest.latestManifest!!.modrinthId != null) || (generatedManifest.latestManifest.license != conflictingManifest.latestManifest!!.license) || (generatedManifest.latestManifest.fancyName != generatedManifest.latestManifest.fancyName)) {
-                                newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
-                                    ReviewStatus.CREATION_CONFLICT,
-                                    it.latestManifest,
-                                    newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
-                                )
-                            } else {
-                                // TODO in the future, replace this with automatic merging. At this time, we still need real world data to determine strictness.
-                                newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
-                                    ReviewStatus.CREATION_CONFLICT,
-                                    it.latestManifest,
-                                    newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
-                                )
-                            }
-
-
-                        }
-                    }
-
-                val curseManifests = launch { collectNewManifests(curseForgeManifestReviewer) }
-                val modrinthManifests = launch { collectNewManifests(modrinthManifestReviewer) }
-                curseManifests.wait()
-                modrinthManifests.wait()
-            }
-
-            updateExistingManifests.join() // Wait for the update of existing manifests to finish, as we don't want to send a conflict.
-
-            val manualReviewNeeded = updateSender.sendManifestUpdate(newManifests.values.asFlow())
-            manualReviewNeeded.collect { maintainerBot.sendConflict(it) }
-        }
-
-        updateExistingManifests.join()
-        createNewManifests.join()
-
-
-        val ghGraphQLBranch = koin.get<GHBranch> {
-            parametersOf(
-                updateSender.gitHubInstallationToken, config.gitHubRepoOwner, config.gitHubRepoName
-            )
-        }
-
-        // If in test mode, we'll push to the maintainer-test branch. Don't PR or direct merge.
-        if (!testMode) {
-            if (!sus) {
-                ghGraphQLBranch.mergeBranchWithoutPR(
-                    "v$INDEX_MAJOR", "update", "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}"
-                )
-                logger.info { "Merged all update info into branch \"v$INDEX_MAJOR\"" }
-            } else {
-                ghGraphQLBranch.createPullRequest(
-                    "update",
-                    "v$INDEX_MAJOR",
-                    "Automated manifest update: UTC ${
-                        ZonedDateTime.now(ZoneOffset.UTC).toString().replace(' ', '-').replace(':', '-')
-                    }",
-                    "Manual merger was requested when the maintainer was started. Please merge this PR manually should it meet standards."
-                )
-
-                logger.info { "Pushed manifest updates to branch \"update\". Manual PR merger required, as requested by startup flags." }
-            }
-        }
-
-        logger.info { "Finished operation loop $operationLoopNum" }
-
-        /*
+            /*
         Notably, we do NOT wait for manifests sent for manual review to be reviewed before we move on to the next operation loop.
         The review process could take a long time if no one reviews it,
         and we don't want to stop regular updates for the few manifests that are not reviewed.
@@ -272,14 +277,25 @@ fun main(args: Array<String>) = runBlocking {
         Then, depending on settings, either quit or sleep for a while.
         */
 
-        isCurrentlyUpdating = false
-        if (shouldContinueUpdating) {
-            logger.info { "Sleeping for $cooldownInHours hours" }
-            delay(1000L * 60 * 60 * cooldownInHours)
-        } else {
-            maintainerBot.exit()
-            exitProcess(0)
+            isCurrentlyUpdating = false
+            if (shouldContinueUpdating) {
+                logger.info { "Sleeping for $cooldownInHours hours" }
+                delay(1000L * 60 * 60 * cooldownInHours)
+            } else {
+                maintainerBot.exit()
+                exitProcess(0)
+            }
         }
+    } catch (ex: Exception) {
+        /*
+        Our intent here isn't to do a global catch-all to prevent the maintainer from crashing.
+        If the exception is not handled by this point, we probably want the maintainer to crash, instead of pretending that everything is fine.
+        Thus, the point of this try catch is to log the exception to Discord, and clean up the maintainer.
+         */
+
+        logger.error(ex) { "Exception in maintainer loop $operationLoopNum" }
+        maintainerBot.exit(ex.message ?: "An unknown exception occurred!\n $ex", 1)
+        exitProcess(1)
     }
 }
 

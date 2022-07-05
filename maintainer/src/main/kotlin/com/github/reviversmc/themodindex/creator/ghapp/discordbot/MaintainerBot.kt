@@ -25,7 +25,7 @@ interface MaintainerBot {
      * @author ReviversMC
      * @since 1.0.0
      */
-    suspend fun exit()
+    suspend fun exit(exitMessage: String = "The maintainer is now **offline**, successful shutdown", exitCode: Int = 0)
 
     /**
      * Setup and start the Discord Bot. This makes the bot ready to receive commands as well
