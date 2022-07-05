@@ -77,6 +77,7 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
     val repoName = readlnOrNull() ?: throw IOException("No repository provided.")
 
     return AppConfig(botToken, serverId, channelId, appId, privateKey, owner, repoName).also {
+        configFile.parentFile.mkdirs()
         configFile.writeText(json.encodeToString(it))
         logger.info { "Config file created at ${configFile.absolutePath}." }
 
@@ -100,7 +101,7 @@ fun main(args: Array<String>) = runBlocking {
 
     val configLocation by commandParser.option(
         ArgType.String, shortName = "c", description = "The location of the config file"
-    ).default("the-mod-index-automated-creator-config.json")
+    ).default("the-mod-index-maintainer/config.json")
 
     val cooldownInHours by commandParser.option(
         ArgType.Int, shortName = "d", description = "How long to delay between updates"
