@@ -38,7 +38,18 @@ import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import kotlin.system.exitProcess
 
+/**
+ * Represents a related pair of a [Message] and a [ManifestWithCreationStatus], where the [Message] is sent to resolve the [ManifestWithCreationStatus]
+ * @author ReviversMC
+ * @since 1.0.0
+ */
 private typealias ConflictMessageWithInfo = Pair<Message, ManifestWithCreationStatus>
+
+/**
+ * Just another way to specify a [String], while hopefully providing a bit more clarity into what the string is meant to represent.
+ * @author ReviversMC
+ * @since 1.0.0
+ */
 private typealias GenericIdentifier = String
 
 class ModIndexMaintainerBot(
