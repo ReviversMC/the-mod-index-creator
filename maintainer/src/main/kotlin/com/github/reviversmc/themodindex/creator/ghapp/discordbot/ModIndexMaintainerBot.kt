@@ -275,7 +275,7 @@ class ModIndexMaintainerBot(
             "mods/${genericIdentifier.replaceFirst(':', '/')}.json",
             originalManifestSplit,
             diff,
-            originalManifestSplit.size.coerceAtLeast(latestManifestSplit.size) // Show the full files, not just the diff
+            3 // Not the full file, in an attempt to prevent the message from going over the 2000 char limit
         )
 
         val messageContent =
