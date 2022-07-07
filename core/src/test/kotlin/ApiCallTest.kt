@@ -15,7 +15,7 @@ class ApiCallTest : KoinTest {
     @JvmField
     @RegisterExtension
     val koinTestExtension = KoinTestExtension.create {
-        modules( //We be testing the default api call classes, therefore no custom module needed
+        modules( // We be testing the default api call classes, therefore no custom module needed
             apiCallModule
         )
     }
@@ -44,7 +44,7 @@ class ApiCallTest : KoinTest {
         assertNotNull(curseForgeMod)
         assertEquals("modget", curseForgeMod.name.lowercase())
         assertEquals("https://github.com/reviversmc/modget-minecraft", curseForgeMod.links.sourceUrl?.lowercase())
-        //Other urls left out as assumed to be working since source url is working
+        // Other urls left out as assumed to be working since source url is working
         assertContains(
             curseForgeMod.authors, CurseModAuthor(
                 452596, "NebelNidas", "https://www.curseforge.com/members/100230862-nebelnidas?username=nebelnidas"
@@ -66,11 +66,15 @@ class ApiCallTest : KoinTest {
                 true,
                 "Modget 0.1.0",
                 "https://edge.forgecdn.net/files/3481/563/modget-0.1.0.jar",
-                listOf("Fabric", "1.16.5", "1.16.4")
+                listOf("Fabric", "1.16.5", "1.16.4"),
+                listOf(
+                    CurseFileDependency(400548, RelationType.EMBEDDED_LIBRARY.curseNumber),
+                    CurseFileDependency(306612, RelationType.REQUIRED_DEPENDENCY.curseNumber)
+                ).sortedBy { it.relationType }
             ), curseForgeFiles.data.last()
         )
 
-        //We did not specify max files, so we should get all files
+        // We did not specify max files, so we should get all files
         assertTrue { curseForgeFiles.pagination.resultCount == curseForgeFiles.pagination.totalCount }
 
         val curseForgeSearch = curseForgeApiCall.search(curseApiKey(), 0, 1).execute().body()!!
@@ -90,7 +94,7 @@ class ApiCallTest : KoinTest {
     fun `modrinth api test`() {
         val modrinthApiCall by inject<ModrinthApiCall>()
 
-        //Lowercase all the fields we can for reliability. Those not lowercase are from case-sensitive fields (e.g. id)
+        // Lowercase all the fields we can for reliability. Those not lowercase are from case-sensitive fields (e.g. id)
         val modrinthProject = modrinthApiCall.project("2NpFE0R3").execute().body()
         assertNotNull(modrinthProject)
         assertEquals("2NpFE0R3", modrinthProject.id)
@@ -107,6 +111,7 @@ class ApiCallTest : KoinTest {
         val modgetVersion001 = modrinthApiCall.versions("2NpFE0R3").execute().body()!!.last()
         assertNotNull(modgetVersion001)
         assertEquals("Modget 0.0.1", modgetVersion001.name)
+        assertEquals(emptyList(), modgetVersion001.dependencies)
         assertEquals(listOf("1.16.5", "1.16.4"), modgetVersion001.gameVersions.sortedDescending())
         assertEquals(listOf("fabric"), modgetVersion001.loaders.map { it.lowercase() })
         assertEquals(

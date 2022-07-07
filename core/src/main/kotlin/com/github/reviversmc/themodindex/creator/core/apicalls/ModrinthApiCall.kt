@@ -78,4 +78,12 @@ interface ModrinthApiCall {
     @GET("/v2/project/{projectId}/version")
     @Headers(userAgent)
     fun versions(@Path("projectId") projectId: String): Call<List<ModrinthVersionResponse>>
+
+    /**
+     * Returns a specific modrinth [ModrinthVersionResponse], obtained by its [versionId].
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    @GET("/v2/version/{id}")
+    fun version(@Path("id") versionId: String): Call<ModrinthVersionResponse>
 }

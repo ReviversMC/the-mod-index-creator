@@ -77,6 +77,7 @@ data class CursePagination(val index: Int, val pageSize: Int, val resultCount: I
  * @param displayName The display name of the file.
  * @param downloadUrl The download url of the file.
  * @param gameVersions The game versions that the file is available for.
+ * @param dependencies The relations this file has with other mods.
  * @author ReviversMC
  * @since 1.0.0
  */
@@ -87,7 +88,28 @@ data class CurseFileResponse(
     val displayName: String,
     val downloadUrl: String?,
     val gameVersions: List<String>,
+    val dependencies: List<CurseFileDependency>,
 )
+
+/**
+ * The dependencies of a CF file.
+ * @param modId The mod id of the dependency
+ * @param relationType The relation type of the dependency, which can be decoded using [RelationType]
+ * @author ReviversMC
+ * @since 1.0.0
+ */
+@kotlinx.serialization.Serializable
+data class CurseFileDependency(val modId: Int, val relationType: Int)
+
+/**
+ * A convenience enum for understanding what the [CurseFileDependency.relationType] is.
+ * @author ReviversMC
+ * @since 1.0.0
+ */
+@Suppress("unused") // Want all fields to be shown in enum
+enum class RelationType(val curseNumber: Int) {
+    EMBEDDED_LIBRARY(1), OPTIONAL_DEPENDENCY(2), REQUIRED_DEPENDENCY(3), TOOL(4), INCOMPATIBLE(5), INCLUDE(6),
+}
 
 /**
  * The api response for a CF search.

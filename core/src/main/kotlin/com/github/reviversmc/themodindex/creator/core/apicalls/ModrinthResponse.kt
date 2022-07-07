@@ -104,8 +104,10 @@ data class ModrinthUserResponse(val username: String)
 /**
  * The api response for a Modrinth version. This does NOT contain all the info from the api call.
  * @param name The name of the version.
+ * @param dependencies The relations this version has with other projects.
  * @param gameVersions The Minecraft versions of this Modrinth version.
  * @param loaders The loaders of this Modrinth version (e.g. quilt, fabric, forge, etc).
+ * @param projectId The id of the project this version belongs to.
  * @param files The files of the version.
  * @author ReviversMC
  * @since 1.0.0
@@ -113,10 +115,40 @@ data class ModrinthUserResponse(val username: String)
 @kotlinx.serialization.Serializable
 data class ModrinthVersionResponse(
     val name: String,
+    val dependencies: List<ModrinthDependency>,
     @SerialName("game_versions") val gameVersions: List<String>,
     val loaders: List<String>,
+    @SerialName("project_id") val projectId: String,
     val files: List<ModrinthVersionFile>,
 )
+
+/**
+ * The api response for a modrinth dependency.
+ * @param versionId The id for a specific dependency version.
+ * @param projectId The id of the project this dependency belongs to.
+ * @param dependencyType The type of dependency (or relation) that the dependency has with the parent project. All options can be found in [ModrinthDependencyType].
+ * @author ReviversMC
+ * @since 1.0.0
+ */
+@kotlinx.serialization.Serializable
+data class ModrinthDependency(
+    @SerialName("version_id") val versionId: String? = null,
+    @SerialName("project_id") val projectId: String? = null,
+    @SerialName("dependency_type") val dependencyType: String,
+)
+
+/**
+ * All possible dependency types for a Modrinth dependency.
+ * @author ReviversMC
+ * @since 1.0.0
+ */
+@Suppress("unused") // Want all fields to be shown in enum
+enum class ModrinthDependencyType(val modrinthString: String) {
+    REQUIRED("required"),
+    OPTIONAL("optional"),
+    INCOMPATIBLE("incompatible"),
+    EMBEDDED("embedded"),
+}
 
 /**
  * A file of a Modrinth version. This does NOT contain all the info from the api call.
