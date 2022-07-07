@@ -4,6 +4,7 @@ import com.github.difflib.DiffUtils
 import com.github.difflib.UnifiedDiffUtils
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.data.ManifestLinks
+import com.github.reviversmc.themodindex.api.data.RelationsToOtherMods
 import com.github.reviversmc.themodindex.api.data.VersionFile
 import com.github.reviversmc.themodindex.creator.ghapp.COROUTINES_PER_TASK
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
@@ -402,11 +403,11 @@ class ModIndexMaintainerBot(
                                     latestManifest?.curseForgeId ?: originalManifest.curseForgeId,
                                     latestManifest?.modrinthId ?: originalManifest.modrinthId,
                                     ManifestLinks(
-                                        latestManifest?.links?.issue ?: originalManifest.links?.issue,
+                                        latestManifest?.links?.issue ?: originalManifest.links.issue,
                                         latestManifest?.links?.sourceControl
-                                            ?: originalManifest.links?.sourceControl,
+                                            ?: originalManifest.links.sourceControl,
                                         (latestManifest?.links?.others
-                                            ?: emptyList()) + (originalManifest.links?.others ?: emptyList())
+                                            ?: emptyList()) + originalManifest.links.others
                                     ),
 
                                     (latestManifest?.files?.map { versionFile ->
@@ -417,17 +418,20 @@ class ModIndexMaintainerBot(
                                             versionFile.sha512Hash,
                                             versionFile.downloadUrls + (originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.downloadUrls
                                                 ?: emptyList()),
-                                            versionFile.curseDownloadAvailable || originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.curseDownloadAvailable == true
+                                            versionFile.curseDownloadAvailable || originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.curseDownloadAvailable == true,
+                                            RelationsToOtherMods(
+                                                (versionFile.relationsToOtherMods.required + (originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.relationsToOtherMods?.required
+                                                    ?: emptyList())).distinct(),
+                                                (versionFile.relationsToOtherMods.incompatible + (originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.relationsToOtherMods?.incompatible
+                                                    ?: emptyList())).distinct()
+                                            )
                                         )
-                                    }
-                                        ?: emptyList()) +
-
+                                    } ?: emptyList()) +
                                             // Find all files that were not in the latest manifest, and add them. No configuration required, as there is nothing to compare to
                                             originalManifest.files.filter { versionFile ->
                                                 versionFile.sha512Hash !in (latestManifest?.files?.map { it.sha512Hash }
                                                     ?: emptyList())
                                             }
-
                                 )
                             }
                         }
