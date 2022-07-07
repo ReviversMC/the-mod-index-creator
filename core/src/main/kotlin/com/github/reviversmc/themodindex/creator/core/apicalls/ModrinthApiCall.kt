@@ -72,12 +72,13 @@ interface ModrinthApiCall {
 
     /**
      * Returns all modrinth [ModrinthVersionResponse]s for a project, obtained using its [projectId].
+     * [modLoaders] should be a list in string form, e.g. ["forge", "fabric"], not [forge, fabric]
      * @author ReviversMC
      * @since 1.0.0
      */
     @GET("/v2/project/{projectId}/version")
     @Headers(userAgent)
-    fun versions(@Path("projectId") projectId: String): Call<List<ModrinthVersionResponse>>
+    fun versions(@Path("projectId") projectId: String, @Query("loaders") modLoaders: String? = null): Call<List<ModrinthVersionResponse>>
 
     /**
      * Returns a specific modrinth [ModrinthVersionResponse], obtained by its [versionId].
@@ -85,5 +86,6 @@ interface ModrinthApiCall {
      * @since 1.0.0
      */
     @GET("/v2/version/{id}")
+    @Headers(userAgent)
     fun version(@Path("id") versionId: String): Call<ModrinthVersionResponse>
 }
