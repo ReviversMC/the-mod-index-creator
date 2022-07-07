@@ -115,7 +115,7 @@ data class ModrinthUserResponse(val username: String)
 @kotlinx.serialization.Serializable
 data class ModrinthVersionResponse(
     val name: String,
-    val dependencies: List<ModrinthDependency>,
+    val dependencies: List<ModrinthDependency> = emptyList(),
     @SerialName("game_versions") val gameVersions: List<String>,
     val loaders: List<String>,
     @SerialName("project_id") val projectId: String,
