@@ -2,11 +2,10 @@ package com.github.reviversmc.themodindex.creator.core
 
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.data.ManifestLinks
+import com.github.reviversmc.themodindex.api.data.RelationsToOtherMods
 import com.github.reviversmc.themodindex.api.data.VersionFile
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
-import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
-import com.github.reviversmc.themodindex.creator.core.apicalls.CurseModData
-import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
+import com.github.reviversmc.themodindex.creator.core.apicalls.*
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import kotlinx.coroutines.delay
@@ -19,11 +18,15 @@ import java.security.MessageDigest
 
 /**
  * Helps to clarify what the underlying [String] stands for.
+ * @author ReviversMC
+ * @since 1.0.0
  */
 private typealias ModLoaderType = String
 
 /**
  * Helps to clarify what the underlying [Map] stands for.
+ * @author ReviversMC
+ * @since 1.0.0
  */
 private typealias ManifestVersionsPerLoader = Map<ModLoaderType, List<VersionFile>>
 
@@ -36,7 +39,7 @@ class ModIndexCreator(
     private val okHttpClient: OkHttpClient,
 ) : Creator {
 
-    private val indexVersion = "4.1.0"
+    private val indexVersion = "4.2.0"
 
     /**
      * Creates a sha512 hash for the given [input] bytes
@@ -88,14 +91,30 @@ class ModIndexCreator(
                     }
                 } else loaderFiles.add(
                     VersionFile(
-                        file.displayName, file.gameVersions.sortedDescending().mapNotNull {
+                        file.displayName,
+                        file.gameVersions.sortedDescending().mapNotNull {
                             try {
                                 CurseForgeApiCall.ModLoaderType.valueOf(it.uppercase())
                                 null// Do not add if detected to be loader
                             } catch (_: IllegalArgumentException) {
                                 it
                             }
-                        }, fileHash, emptyList(), true
+                        },
+                        fileHash,
+                        emptyList(),
+                        true,
+                        RelationsToOtherMods(
+                            file.dependencies.filter { RelationType.REQUIRED_DEPENDENCY.curseNumber == it.relationType }
+                                .mapNotNull {
+                                    curseForgeApiCall.mod(curseApiKey, it.modId).execute()
+                                        .body()?.data?.name?.lowercase()?.replace(' ', '-')
+                                },
+                            file.dependencies.filter { RelationType.OPTIONAL_DEPENDENCY.curseNumber == it.relationType }
+                                .mapNotNull {
+                                    curseForgeApiCall.mod(curseApiKey, it.modId).execute()
+                                        .body()?.data?.name?.lowercase()?.replace(' ', '-')
+                                }
+                        )
                     )
                 )
 
@@ -168,6 +187,25 @@ class ModIndexCreator(
 
                 for (file in versionResponse.files) {
 
+                    fun obtainRelation(dependencyType: ModrinthDependencyType): List<String> {
+                        val projectIdDependencies =
+                            versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId != null }
+                                .mapNotNull { it.projectId }
+                        val versionIdDependencies =
+                            versionResponse.dependencies.filter { ModrinthDependencyType.REQUIRED.modrinthString == it.dependencyType && it.versionId != null }
+                        val versionIdInProjectIds = versionIdDependencies.mapNotNull { modrinthDependency ->
+                            modrinthDependency.versionId?.let {
+                                modrinthApiCall.version(it).execute().body()?.projectId
+                            }
+                        }
+
+                        return projectIdDependencies.mapNotNull {
+                            modrinthApiCall.project(it).execute().body()?.title?.lowercase()?.replace(' ', '-')
+                        } + versionIdInProjectIds.mapNotNull {
+                            modrinthApiCall.project(it).execute().body()?.title?.lowercase()?.replace(' ', '-')
+                        }
+                    }
+
                     if (loaderFileHashes.contains(file.hashes.sha512)) {
                         loaderFileHashes.forEachIndexed { index, existingHash ->
                             if (existingHash.equals(file.hashes.sha512, true)) loaderFiles[index] =
@@ -179,7 +217,11 @@ class ModIndexCreator(
                             versionResponse.gameVersions.sortedDescending(),
                             file.hashes.sha512,
                             listOf(file.url),
-                            false // We don't know if it's available, so assume false
+                            false, // We don't know if it's available, so assume false
+                            RelationsToOtherMods(
+                                obtainRelation(ModrinthDependencyType.REQUIRED),
+                                obtainRelation(ModrinthDependencyType.INCOMPATIBLE)
+                            )
                         )
                     )
                 }
@@ -210,7 +252,7 @@ class ModIndexCreator(
     ): ManifestWithApiStatus {
 
         if (apiDownloader.getOrDownloadIndexJson()?.indexVersion != indexVersion) {
-            throw IllegalStateException(
+            throw IllegalArgumentException(
                 "Attempted index version to target: $indexVersion,\nbut found: ${apiDownloader.getOrDownloadIndexJson()?.indexVersion ?: "UNKNOWN"}"
             )
         }
@@ -337,7 +379,8 @@ class ModIndexCreator(
                             modData.links.sourceUrl ?: modrinthProject?.sourceUrl,
                             otherLinks
                         ),
-                        manifestFiles.sortedByDescending { it.mcVersions.first() }))
+                        manifestFiles.sortedByDescending { it.mcVersions.first() })
+                    )
                 }
                 return true
             } ?: false
