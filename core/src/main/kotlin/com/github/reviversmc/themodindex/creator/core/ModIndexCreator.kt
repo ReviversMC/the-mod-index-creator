@@ -55,6 +55,8 @@ class ModIndexCreator(
         return out
     }
 
+    // TODO Possibly fix file generation ranking snapshots above minecraft versions for all download/creation methods
+
     /**
      * Creates a [ManifestVersionsPerLoader] for the CurseForge mod, which is found using its [curseForgeId].
      * The results can be merged with any [existingFiles] that have already been generated.
@@ -84,6 +86,33 @@ class ModIndexCreator(
                 val fileHash = createSHA512Hash(fileResponse.body()?.bytes() ?: continue)
                 fileResponse.close()
 
+                fun obtainRelation(relationType: RelationType): List<String> = file.dependencies.filter {
+                    relationType.curseNumber == it.relationType
+                }.mapNotNull { curseFileDependency ->
+                    curseForgeApiCall.mod(curseApiKey, curseFileDependency.modId).execute()
+                        .body()?.data?.name?.lowercase()?.replace(' ', '-')?.let {
+
+                            if (curseForgeApiCall.files(
+                                    curseApiKey, curseFileDependency.modId, modLoader.curseNumber
+                                ).execute().body()?.data?.isNotEmpty() == true
+                            ) {
+                                "${modLoader.name.lowercase()}:$it"
+
+                            } else if (modLoader == CurseForgeApiCall.ModLoaderType.QUILT && curseForgeApiCall.files(
+                                    curseApiKey,
+                                    curseFileDependency.modId,
+                                    CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber
+                                ).execute().body()?.data?.isNotEmpty() == true
+                            ) {
+                                // Special concession for Quilt, where we will also check for Fabric files
+                                "${CurseForgeApiCall.ModLoaderType.FABRIC.name.lowercase()}:$it"
+
+                            } else null// If we can't find an appropriate file, don't add the dependency
+
+                        }
+                }
+
+
                 if (loaderFileHashes.contains(fileHash)) {
                     loaderFileHashes.forEachIndexed { index, existingHash ->
                         if (existingHash.equals(fileHash, true)) loaderFiles[index] =
@@ -91,29 +120,15 @@ class ModIndexCreator(
                     }
                 } else loaderFiles.add(
                     VersionFile(
-                        file.displayName,
-                        file.gameVersions.sortedDescending().mapNotNull {
+                        file.displayName, file.gameVersions.sortedDescending().mapNotNull {
                             try {
                                 CurseForgeApiCall.ModLoaderType.valueOf(it.uppercase())
                                 null// Do not add if detected to be loader
                             } catch (_: IllegalArgumentException) {
                                 it
                             }
-                        },
-                        fileHash,
-                        emptyList(),
-                        true,
-                        RelationsToOtherMods(
-                            file.dependencies.filter { RelationType.REQUIRED_DEPENDENCY.curseNumber == it.relationType }
-                                .mapNotNull {
-                                    curseForgeApiCall.mod(curseApiKey, it.modId).execute()
-                                        .body()?.data?.name?.lowercase()?.replace(' ', '-')
-                                },
-                            file.dependencies.filter { RelationType.OPTIONAL_DEPENDENCY.curseNumber == it.relationType }
-                                .mapNotNull {
-                                    curseForgeApiCall.mod(curseApiKey, it.modId).execute()
-                                        .body()?.data?.name?.lowercase()?.replace(' ', '-')
-                                }
+                        }, fileHash, emptyList(), true, RelationsToOtherMods(
+                            obtainRelation(RelationType.REQUIRED_DEPENDENCY), obtainRelation(RelationType.INCOMPATIBLE)
                         )
                     )
                 )
@@ -191,18 +206,39 @@ class ModIndexCreator(
                         val projectIdDependencies =
                             versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId != null }
                                 .mapNotNull { it.projectId }
-                        val versionIdDependencies =
-                            versionResponse.dependencies.filter { ModrinthDependencyType.REQUIRED.modrinthString == it.dependencyType && it.versionId != null }
-                        val versionIdInProjectIds = versionIdDependencies.mapNotNull { modrinthDependency ->
-                            modrinthDependency.versionId?.let {
-                                modrinthApiCall.version(it).execute().body()?.projectId
-                            }
-                        }
 
-                        return projectIdDependencies.mapNotNull {
-                            modrinthApiCall.project(it).execute().body()?.title?.lowercase()?.replace(' ', '-')
-                        } + versionIdInProjectIds.mapNotNull {
-                            modrinthApiCall.project(it).execute().body()?.title?.lowercase()?.replace(' ', '-')
+                        val versionIdDependencies =
+                            versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId == null && it.versionId != null }
+
+                        return projectIdDependencies.mapNotNull { projectId ->
+                            modrinthApiCall.project(projectId).execute().body()?.title?.lowercase()
+                                ?.replace(' ', '-')?.let {
+                                    if (modrinthApiCall.versions(projectId, "[\"$loader\"]").execute().body()
+                                            ?.isNotEmpty() == true
+                                    ) {
+                                        "$loader:$it"
+
+                                    } else if (loader == "quilt" && modrinthApiCall.versions(
+                                            projectId, "[\"fabric\"]"
+                                        ).execute().body()?.isNotEmpty() == true
+                                    ) {
+                                        // Special concession for Quilt, where we will also check for Fabric files
+                                        "fabric:$it"
+                                    } else null// If we can't find an appropriate file, don't add the dependency
+                                }
+                        } + versionIdDependencies.mapNotNull { modrinthDependency ->
+                            modrinthDependency.versionId?.let { versionId ->
+                                modrinthApiCall.version(versionId).execute().body()?.let { version ->
+                                    if (loader in version.loaders) {
+                                        modrinthApiCall.project(version.projectId).execute().body()?.title?.lowercase()
+                                            ?.replace(' ', '-')?.let { "$loader:$it" }
+
+                                    } else if (loader == "quilt" && "fabric" in version.loaders) {
+                                        modrinthApiCall.project(version.projectId).execute().body()?.title?.lowercase()
+                                            ?.replace(' ', '-')?.let { "fabric:$it" }
+                                    } else null
+                                }
+                            }
                         }
                     }
 
