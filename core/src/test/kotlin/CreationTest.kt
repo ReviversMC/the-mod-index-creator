@@ -29,24 +29,39 @@ class CreationTest : KoinTest {
     We want the json with unrecognized fields to be sent as an api response.
     */
     private val baseUrl = "http://localhost" // Ensure not https!
-    private val curseForgeModId = 463481
-    private val modrinthProjectId = "2NpFE0R3"
 
-    private val curseForgeModResponse = readResource("/apiResponse/curseForge/curseMod.json")
+    private val curseForgeConsumerModId = 463481
+    private val modrinthConsumerProjectId = "2NpFE0R3"
+    private val curseForgeConsumerModResponse = readResource("/apiResponse/tmi-consumer/curseForge/curseMod.json")
+    private val modrinthConsumerProjectResponse =
+        readResource("/apiResponse/tmi-consumer/modrinth/modrinthProject.json")
+    private val modrinthConsumerTeamResponse = readResource("/apiResponse/tmi-consumer/modrinth/modrinthTeam.json")
+    private val modrinthConsumerVersionResponse =
+        readResource("/apiResponse/tmi-consumer/modrinth/modrinthVersions.json")
 
-    private val modrinthProjectResponse = readResource("/apiResponse/modrinth/modrinthProject.json")
-    private val modrinthTeamResponse = readResource("/apiResponse/modrinth/modrinthTeam.json")
-    private val modrinthVersionResponse = readResource("/apiResponse/modrinth/modrinthVersions.json")
+    private val curseForgeBridgeModId = 1234
+    private val modrinthBridgeProjectId = "1A3BC"
+    private val curseForgeBridgeModResponse = readResource("/apiResponse/tmi-bridge/curseForge/curseMod.json")
+    private val modrinthBridgeProjectResponse = readResource("/apiResponse/tmi-bridge/modrinth/modrinthProject.json")
+    private val modrinthBridgeVersionResponse = readResource("/apiResponse/tmi-bridge/modrinth/modrinthVersions.json")
+
+    private val curseForgeEaterModId = 5678
+    private val modrinthEaterProjectId = "2A3BC"
+    private val curseForgeEaterModResponse = readResource("/apiResponse/tmi-eater/curseForge/curseMod.json")
+    private val modrinthEaterProjectResponse = readResource("/apiResponse/tmi-eater/modrinth/modrinthProject.json")
+    private val modrinthEaterVersionResponse = readResource("/apiResponse/tmi-eater/modrinth/modrinthVersions.json")
+    private val modrinthEaterSpecificVersionResponse =
+        readResource("/apiResponse/tmi-eater/modrinth/modrinthVersion.json")
 
     private var isCurseForgeDistribution = true
     private var isTestingForGitHub = false
 
     @Suppress("KotlinConstantConditions") // We want to use the curse number constants
-    private fun curseForgeFilesResponse(curseNumber: Int = 0) = when (curseNumber) {
-        CurseForgeApiCall.ModLoaderType.ANY.curseNumber -> readResource("/apiResponse/curseForge/curseAllFiles.json")
-        CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber -> readResource("/apiResponse/curseForge/curseFabricFiles.json")
-        CurseForgeApiCall.ModLoaderType.QUILT.curseNumber -> readResource("/apiResponse/curseForge/curseQuiltFiles.json")
-        else -> readResource("/apiResponse/curseForge/curseEmptyFiles.json")
+    private fun curseConsumerFilesResponse(curseNumber: Int = 0) = when (curseNumber) {
+        CurseForgeApiCall.ModLoaderType.ANY.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseAllFiles.json")
+        CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseFabricFiles.json")
+        CurseForgeApiCall.ModLoaderType.QUILT.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseQuiltFiles.json")
+        else -> readResource("/apiResponse/tmi-consumer/curseForge/curseEmptyFiles.json")
     }
 
 
@@ -55,31 +70,50 @@ class CreationTest : KoinTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 if (request.getHeader("x-api-key") == null) return MockResponse().setResponseCode(401)
 
-                return when (request.path?.substringBefore("?")) {
-                    "/v1/mods/$curseForgeModId" -> MockResponse().setResponseCode(200)
-                        .setBody(if (isTestingForGitHub) curseForgeModResponse else buildString {
-                            curseForgeModResponse.split("\n").forEach {
+                return when (request.path?.substringBefore('?')) {
+                    "/v1/mods/$curseForgeConsumerModId" -> MockResponse().setResponseCode(200)
+                        .setBody(if (isTestingForGitHub) curseForgeConsumerModResponse else buildString {
+                            curseForgeConsumerModResponse.split("\n").forEach {
                                 if (it.contains("\"sourceUrl\":")) {
                                     append("${it.substringBefore("\"sourceUrl\":")}\"sourceUrl\": null\n")
                                 } else append("$it\n")
                             }
                         })
 
-                    "/v1/mods/$curseForgeModId/files" -> MockResponse().setResponseCode(200).setBody(buildString {
-                        curseForgeFilesResponse( // Get the modLoaderType path param
-                            request.path!!.substringAfter("?").split("&").first { it.startsWith("modLoaderType=") }
-                                .substringAfter("modLoaderType=").toInt()
-                        ).split("\n").forEach {
-                            if (it.contains("\"downloadUrl\"")) {
-                                if (isCurseForgeDistribution) append(
-                                    it.replace(
-                                        "{port}", downloadServer.port.toString()
+                    "/v1/mods/$curseForgeConsumerModId/files" -> MockResponse().setResponseCode(200)
+                        .setBody(buildString {
+                            curseConsumerFilesResponse( // Get the modLoaderType path param
+                                request.path!!.substringAfter('?').split('&').first { it.startsWith("modLoaderType=") }
+                                    .substringAfter("modLoaderType=").toInt()
+                            ).split("\n").forEach {
+                                if (it.contains("\"downloadUrl\"")) {
+                                    if (isCurseForgeDistribution) append(
+                                        it.replace(
+                                            "{port}", downloadServer.port.toString()
+                                        )
                                     )
-                                )
-                                else append("${it.substringBefore("\"downloadUrl\"")}\"downloadUrl\": null,\n")
-                            } else append("$it\n")
-                        }
-                    })
+                                    else append("${it.substringBefore("\"downloadUrl\"")}\"downloadUrl\": null,\n")
+                                } else append("$it\n")
+                            }
+                        })
+
+                    "/v1/mods/$curseForgeBridgeModId" -> MockResponse().setResponseCode(200)
+                        .setBody(curseForgeBridgeModResponse)
+                    "/v1/mods/$curseForgeBridgeModId/files" -> {
+                        if (request.path!!.substringAfter('?') == "modLoaderType=5") {
+                            MockResponse().setResponseCode(200)
+                                .setBody(readResource("/apiResponse/tmi-bridge/curseForge/curseQuiltFiles.json"))
+                        } else MockResponse().setResponseCode(404)
+                    }
+
+                    "/v1/mods/$curseForgeEaterModId" -> MockResponse().setResponseCode(200)
+                        .setBody(curseForgeEaterModResponse)
+                    "/v1/mods/$curseForgeEaterModId/files" -> {
+                        if (request.path!!.substringAfter('?') == "modLoaderType=5") {
+                            MockResponse().setResponseCode(200)
+                                .setBody(readResource("/apiResponse/tmi-eater/curseForge/curseQuiltFiles.json"))
+                        } else MockResponse().setResponseCode(404)
+                    }
 
                     else -> MockResponse().setResponseCode(404).setBody(request.path.toString())
                 }
@@ -90,20 +124,40 @@ class CreationTest : KoinTest {
     private val modrinthServer = MockWebServer().apply {
         dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
-                return when (request.path?.substringBefore("?")) {
-                    "/v2/project/$modrinthProjectId" -> MockResponse().setResponseCode(200)
-                        .setBody(if (isTestingForGitHub) modrinthProjectResponse else buildString {
-                            modrinthProjectResponse.split("\n").forEach {
+                if (request.getHeader("User-Agent") == null) return MockResponse().setResponseCode(401)
+                if (!request.getHeader("User-Agent")!!
+                        .startsWith("reviversmc/the-mod-index-creator/", true)
+                ) return MockResponse().setResponseCode(403)
+
+                return when (request.path) {
+                    "/v2/project/$modrinthConsumerProjectId" -> MockResponse().setResponseCode(200)
+                        .setBody(if (isTestingForGitHub) modrinthConsumerProjectResponse else buildString {
+                            modrinthConsumerProjectResponse.split("\n").forEach {
                                 if (it.contains("\"source_url\":")) {
                                     append("${it.substringBefore("\"source_url\":")}\"source_url\": null,\n")
                                 } else append("$it\n")
                             }
                         })
 
-                    "/v2/project/$modrinthProjectId/members" -> MockResponse().setResponseCode(200)
-                        .setBody(modrinthTeamResponse)
-                    "/v2/project/$modrinthProjectId/version" -> MockResponse().setResponseCode(200)
-                        .setBody(modrinthVersionResponse)
+                    "/v2/project/$modrinthConsumerProjectId/members" -> MockResponse().setResponseCode(200)
+                        .setBody(modrinthConsumerTeamResponse)
+                    "/v2/project/$modrinthConsumerProjectId/version" -> MockResponse().setResponseCode(200)
+                        .setBody(modrinthConsumerVersionResponse)
+
+                    "/v2/project/$modrinthBridgeProjectId" -> MockResponse().setResponseCode(200)
+                        .setBody(modrinthBridgeProjectResponse)
+                    "/v2/project/$modrinthBridgeProjectId/version?loaders=%5B%22quilt%22%5D" -> MockResponse().setResponseCode(
+                        200
+                    )
+                        .setBody(modrinthBridgeVersionResponse)
+                    "/v2/project/$modrinthEaterProjectId" -> MockResponse().setResponseCode(200)
+                        .setBody(modrinthEaterProjectResponse)
+                    "/v2/project/$modrinthEaterProjectId/version?loaders=%5B%22quilt%22%5D" -> MockResponse().setResponseCode(
+                        200
+                    )
+                        .setBody(modrinthEaterVersionResponse)
+                    "/v2/version/e2e3f" -> MockResponse().setResponseCode(200)
+                        .setBody(modrinthEaterSpecificVersionResponse)
                     else -> MockResponse().setResponseCode(404).setBody(request.path.toString())
                 }
             }
@@ -116,7 +170,9 @@ class CreationTest : KoinTest {
                 return if (request.path?.startsWith("/files/") == true) {
                     MockResponse().setResponseCode(200).setBody(
                         readResource(
-                            "/apiResponse/downloadableFiles/${request.path!!.removePrefix("/files/").removeSuffix("/")}"
+                            "/apiResponse/tmi-consumer/downloadableFiles/${
+                                request.path!!.removePrefix("/files/").removeSuffix("/")
+                            }"
                         )
                     )
                 } else MockResponse().setResponseCode(404).setBody(request.path.toString())
@@ -158,7 +214,7 @@ class CreationTest : KoinTest {
     private fun assertManifestEquals(testType: String, manifest: ManifestJson) = assertEquals(
         get<Json>().decodeFromString(
             readResource(
-                "/expectedManifest/$testType/${
+                "/expectedManifest/tmi-consumer/$testType/${
                     manifest.genericIdentifier.substringBefore(
                         ":"
                     )
@@ -176,17 +232,17 @@ class CreationTest : KoinTest {
         }.let { creator ->
             assertTrue {
                 creator.createManifestCurseForge(
-                    curseForgeModId,
-                    modrinthProjectId
-                ) == creator.createManifestModrinth(modrinthProjectId, curseForgeModId, false)
+                    curseForgeConsumerModId,
+                    modrinthConsumerProjectId
+                ) == creator.createManifestModrinth(modrinthConsumerProjectId, curseForgeConsumerModId, false)
             }
 
             assertTrue {
                 creator.createManifestCurseForge(
-                    curseForgeModId,
-                    modrinthProjectId,
+                    curseForgeConsumerModId,
+                    modrinthConsumerProjectId,
                     false
-                ) == creator.createManifestModrinth(modrinthProjectId, curseForgeModId)
+                ) == creator.createManifestModrinth(modrinthConsumerProjectId, curseForgeConsumerModId)
             }
         }
     }
@@ -205,13 +261,13 @@ class CreationTest : KoinTest {
             isCurseForgeDistribution = false
             isTestingForGitHub = false
 
-            creator.createManifestModrinth(modrinthProjectId).run pureModrinth@{
+            creator.createManifestModrinth(modrinthConsumerProjectId).run pureModrinth@{
                 assertEquals(listOf(ThirdPartyApiUsage.MODRINTH_USED), thirdPartyApiUsage)
                 assertEquals(2, manifests.size)
                 manifests.forEach { assertManifestEquals("pureModrinth", it) }
             }
 
-            creator.createManifestCurseForge(curseForgeModId).run curseForgeDisabled@{
+            creator.createManifestCurseForge(curseForgeConsumerModId).run curseForgeDisabled@{
                 assertEquals(thirdPartyApiUsage, listOf(ThirdPartyApiUsage.CURSEFORGE_USED))
                 assertEquals(0, manifests.size)
                 assertEquals(
@@ -220,23 +276,25 @@ class CreationTest : KoinTest {
                 ) // No manifests should be generated, as all files are disabled.
             }
 
-            creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseDisabledPlusModrinth@{
-                assertEquals(
-                    listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                    thirdPartyApiUsage.sorted()
-                )
-                assertEquals(2, manifests.size)
-                manifests.forEach { assertManifestEquals("curseDisabledPlusModrinth", it) }
-            }
+            creator.createManifestCurseForge(curseForgeConsumerModId, modrinthConsumerProjectId)
+                .run curseDisabledPlusModrinth@{
+                    assertEquals(
+                        listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                        thirdPartyApiUsage.sorted()
+                    )
+                    assertEquals(2, manifests.size)
+                    manifests.forEach { assertManifestEquals("curseDisabledPlusModrinth", it) }
+                }
 
-            creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeDisabled@{
-                assertEquals(
-                    listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                    thirdPartyApiUsage.sorted()
-                )
-                assertEquals(2, manifests.size)
-                manifests.forEach { assertManifestEquals("modrinthPlusCurseDisabled", it) }
-            }
+            creator.createManifestModrinth(modrinthConsumerProjectId, curseForgeConsumerModId)
+                .run modrinthPlusCurseForgeDisabled@{
+                    assertEquals(
+                        listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                        thirdPartyApiUsage.sorted()
+                    )
+                    assertEquals(2, manifests.size)
+                    manifests.forEach { assertManifestEquals("modrinthPlusCurseDisabled", it) }
+                }
         }
     }
 
@@ -254,35 +312,37 @@ class CreationTest : KoinTest {
             isCurseForgeDistribution = true
             isTestingForGitHub = false
 
-            creator.createManifestModrinth(modrinthProjectId).run pureModrinth@{
+            creator.createManifestModrinth(modrinthConsumerProjectId).run pureModrinth@{
                 assertEquals(listOf(ThirdPartyApiUsage.MODRINTH_USED), thirdPartyApiUsage)
                 assertEquals(2, manifests.size)
                 manifests.forEach { assertManifestEquals("pureModrinth", it) }
             }
 
-            creator.createManifestCurseForge(curseForgeModId).run pureCurseForge@{
+            creator.createManifestCurseForge(curseForgeConsumerModId).run pureCurseForge@{
                 assertEquals(listOf(ThirdPartyApiUsage.CURSEFORGE_USED), thirdPartyApiUsage)
                 assertEquals(2, manifests.size)
                 manifests.forEach { assertManifestEquals("pureCurseForge", it) }
             }
 
-            creator.createManifestCurseForge(curseForgeModId, modrinthProjectId).run curseEnabledPlusModrinth@{
-                assertEquals(
-                    listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                    thirdPartyApiUsage.sorted()
-                )
-                assertEquals(2, manifests.size)
-                manifests.forEach { assertManifestEquals("curseEnabledPlusModrinth", it) }
-            }
+            creator.createManifestCurseForge(curseForgeConsumerModId, modrinthConsumerProjectId)
+                .run curseEnabledPlusModrinth@{
+                    assertEquals(
+                        listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                        thirdPartyApiUsage.sorted()
+                    )
+                    assertEquals(2, manifests.size)
+                    manifests.forEach { assertManifestEquals("curseEnabledPlusModrinth", it) }
+                }
 
-            creator.createManifestModrinth(modrinthProjectId, curseForgeModId).run modrinthPlusCurseForgeEnabled@{
-                assertEquals(
-                    listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
-                    thirdPartyApiUsage.sorted()
-                )
-                assertEquals(2, manifests.size)
-                manifests.forEach { assertManifestEquals("modrinthPlusCurseEnabled", it) }
-            }
+            creator.createManifestModrinth(modrinthConsumerProjectId, curseForgeConsumerModId)
+                .run modrinthPlusCurseForgeEnabled@{
+                    assertEquals(
+                        listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
+                        thirdPartyApiUsage.sorted()
+                    )
+                    assertEquals(2, manifests.size)
+                    manifests.forEach { assertManifestEquals("modrinthPlusCurseEnabled", it) }
+                }
         }
     }
 

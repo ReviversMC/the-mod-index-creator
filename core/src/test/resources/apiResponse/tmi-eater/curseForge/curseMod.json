@@ -1,0 +1,89 @@
+{
+  "data": {
+    "id": 5678,
+    "gameId": 432,
+    "name": "TMI Eater",
+    "slug": "tmi-eater",
+    "links": {
+      "websiteUrl": "https://github.com/reviversmc/the-mod-index-creator",
+      "wikiUrl": "https://github.com/reviversmc/the-mod-index-creator/wiki",
+      "issuesUrl": "https://github.com/reviversmc/the-mod-index-creator/issues",
+      "sourceUrl": "https://github.com/reviversmc/the-mod-index-creator"
+    },
+    "summary": "Consuming is bad. Eating ftw",
+    "status": 4,
+    "downloadCount": 0,
+    "isFeatured": false,
+    "primaryCategoryId": 412,
+    "categories": [
+      {
+        "id": 435,
+        "gameId": 432,
+        "name": "Server Utility",
+        "slug": "server-utility",
+        "url": "https://www.curseforge.com/minecraft/mc-mods/server-utility",
+        "iconUrl": "https://media.forgecdn.net/avatars/6/48/635351498950580836.png",
+        "dateModified": "2014-05-08T17:44:55.057Z",
+        "isClass": false,
+        "classId": 6,
+        "parentCategoryId": 6
+      },
+      {
+        "id": 412,
+        "gameId": 432,
+        "name": "Technology",
+        "slug": "technology",
+        "url": "https://www.curseforge.com/minecraft/mc-mods/technology",
+        "iconUrl": "https://media.forgecdn.net/avatars/6/27/635351494745973439.png",
+        "dateModified": "2014-05-08T17:37:54.597Z",
+        "isClass": false,
+        "classId": 6,
+        "parentCategoryId": 6
+      }
+    ],
+    "classId": 6,
+    "authors": [
+      {
+        "id": 376747,
+        "name": "Cloudate8",
+        "url": "http://localhost/members/102060242-cloudate8?username=cloudate8"
+      }
+    ],
+    "logo": {
+      "id": 361960,
+      "modId": 463481,
+      "title": "637528125676392143.png",
+      "description": "",
+      "thumbnailUrl": "http://localhost/curseLogoThumbnail",
+      "url": "http://localhost/curseLogoThumbnailUrl"
+    },
+    "screenshots": [
+      {
+        "id": 361960,
+        "modId": 463481,
+        "title": "Picture A",
+        "description": "",
+        "thumbnailUrl": "http://localhost/cursePictureAThumbnail",
+        "url": "http://localhost/cursePictureAThumbnailUrl"
+      },
+      {
+        "id": 361960,
+        "modId": 463481,
+        "title": "Picture B",
+        "description": "",
+        "thumbnailUrl": "http://localhost/cursePictureBThumbnail",
+        "url": "http://localhost/cursePictureBThumbnailUrl"
+      }
+    ],
+    "mainFileId": 3256972,
+    "latestFiles": [],
+    "latestFilesIndexes": [],
+    "dateCreated": "2022-06-13T18:32:48.36Z",
+    "dateModified": "2022-06-15T15:33:39.367Z",
+    "dateReleased": "2022-06-15T14:46:46.947Z",
+    "allowModDistribution": true,
+    "gamePopularityRank": 100000,
+    "isAvailable": true,
+    "thumbsUpCount": 0
+  }
+}

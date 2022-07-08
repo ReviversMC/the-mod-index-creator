@@ -1,0 +1,69 @@
+{
+  "data": [
+    {
+      "id": 139,
+      "gameId": 432,
+      "modId": 1234,
+      "isAvailable": true,
+      "displayName": "Version-3.0.0",
+      "fileName": "version-1-1.0.jar",
+      "releaseType": 1,
+      "fileStatus": 4,
+      "hashes": [
+        {
+          "value": "acf1acecc93be99b0d13739a7be78bfd935b23c6",
+          "algo": 1
+        },
+        {
+          "value": "1a3ffeeb57dd5aff77c3c2e7994da8ef",
+          "algo": 2
+        }
+      ],
+      "fileDate": "2022-06-15T14:46:46.947Z",
+      "fileLength": 10314,
+      "downloadCount": 0,
+      "downloadUrl": "http://localhost:{port}/files/tmic-1.1.0.jar",
+      "gameVersions": [
+        "Fabric",
+        "Quilt",
+        "1.18.2"
+      ],
+      "sortableGameVersions": [
+        {
+          "gameVersionName": "Fabric",
+          "gameVersionPadded": "0",
+          "gameVersion": "",
+          "gameVersionReleaseDate": "2019-08-01T00:00:00Z",
+          "gameVersionTypeId": 68441
+        },
+        {
+          "gameVersionName": "Quilt",
+          "gameVersionPadded": "0",
+          "gameVersion": "",
+          "gameVersionReleaseDate": "2022-05-26T00:00:00Z",
+          "gameVersionTypeId": 68441
+        },
+        {
+          "gameVersionName": "1.18.2",
+          "gameVersionPadded": "0000000001.0000000018.0000000002",
+          "gameVersion": "1.18.2",
+          "gameVersionReleaseDate": "2022-02-28T14:23:37.723Z",
+          "gameVersionTypeId": 73250
+        }
+      ],
+      "dependencies": [
+      ],
+      "alternateFileId": 0,
+      "isServerPack": false,
+      "fileFingerprint": 1268209641,
+      "modules": [
+      ]
+    }
+  ],
+  "pagination": {
+    "index": 0,
+    "pageSize": 50,
+    "resultCount": 1,
+    "totalCount": 1
+  }
+}

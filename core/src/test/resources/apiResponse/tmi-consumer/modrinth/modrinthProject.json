@@ -1,0 +1,38 @@
+{
+  "slug": "tmi-consumer",
+  "title": "TMI Consumer",
+  "description": "A fake consumer for the-mod-index",
+  "categories": [
+    "quilt",
+    "fabric"
+  ],
+  "client_side": "required",
+  "server_side": "optional",
+  "body": "A fake consumer that is used to test the-mod-index-creator",
+  "issues_url": "https://github.com/reviversmc/the-mod-index-creator/issues",
+  "source_url": "https://github.com/reviversmc/the-mod-index-creator",
+  "wiki_url": "https://github.com/reviversmc/the-mod-index-creator/wiki",
+  "discord_url": "https://discord.gg/6bTGYFppfz",
+  "donation_urls": [],
+  "project_type": "mod",
+  "downloads": 0,
+  "icon_url": null,
+  "id": "2NpFE0R3",
+  "team": "n8WoL2OI",
+  "moderator_message": null,
+  "published": "2021-07-03T08:27:29+00:00",
+  "updated": "2021-07-03T08:27:29+00:00",
+  "followers": 0,
+  "status": "unlisted",
+  "license": {
+    "id": "lgpl-3",
+    "name": "GNU Lesser General Public License v3",
+    "url": "https://github.com/ReviversMC/modget/blob/1.16.x/stable/LICENSE"
+  },
+  "versions": [
+    "NNm7VW4j",
+    "D4Zrji5i",
+    "bg65YBBY"
+  ],
+  "gallery": []
+}
