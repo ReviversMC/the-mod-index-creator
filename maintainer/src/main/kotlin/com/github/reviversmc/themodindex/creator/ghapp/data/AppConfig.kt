@@ -2,7 +2,7 @@ package com.github.reviversmc.themodindex.creator.ghapp.data
 
 /**
  * Contains all config values for the-mod-index-maintainer.
- * @param curseforgeApiKey An API key for accessing the CurseForge API.
+ * @param curseForgeApiKey An API key for accessing the CurseForge API.
  * @param discordBotToken The token for the discord bot. (This should be secret!)
  * @param discordServer The discord server the bot should target. The bot should already be in the server.
  * @param discordTextChannel The discord channel the bot should target. This SHOULD NOT be a thread, and the bot should have access to the channel.
@@ -15,7 +15,7 @@ package com.github.reviversmc.themodindex.creator.ghapp.data
  */
 @kotlinx.serialization.Serializable
 data class AppConfig(
-    val curseforgeApiKey: String,
+    val curseForgeApiKey: String,
     val discordBotToken: String,
     val discordServer: Long,
     val discordTextChannel: Long,
