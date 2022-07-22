@@ -35,8 +35,6 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import kotlin.system.exitProcess
 
-val CURSEFORGE_API_KEY =
-    System.getenv("CURSEFORGE_API_KEY") ?: throw IllegalStateException("CURSEFORGE_API_KEY not set")
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
 const val INDEX_MAJOR = 4
 
@@ -53,6 +51,9 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
     }
 
     logger.info { "No config file found at $location. Creating one now." }
+
+    print("Please enter you CurseForge Api Key: \n > ")
+    val apiKey = readlnOrNull() ?: throw IOException("No API key provided")
 
     print("Please indicate your Discord bot token: \n > ")
     val botToken = readlnOrNull() ?: throw IOException("No token provided.")
@@ -75,7 +76,7 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
     print("Please indicate name of the GitHub manifest repository: \n > ")
     val repoName = readlnOrNull() ?: throw IOException("No repository provided.")
 
-    return AppConfig(botToken, serverId, channelId, appId, privateKey, owner, repoName).also {
+    return AppConfig(apiKey, botToken, serverId, channelId, appId, privateKey, owner, repoName).also {
         configFile.parentFile.mkdirs()
         configFile.writeText(json.encodeToString(it))
         logger.info { "Config file created at ${configFile.absolutePath}." }
@@ -169,7 +170,7 @@ fun main(args: Array<String>) = runBlocking {
                     logger.debug { "Starting the update of existing manifests" }
                     val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
                         parametersOf(
-                            manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken, testMode
+                            manifestRepo, config.curseforgeApiKey, updateSender.gitHubInstallationToken, testMode
                         )
                     }
                     val existingManifests = existingManifestReviewer.reviewManifests()
@@ -182,13 +183,13 @@ fun main(args: Array<String>) = runBlocking {
                 logger.debug { "Starting the creation of new manifests" }
                 val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
                     parametersOf(
-                        manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken, testMode
+                        manifestRepo, config.curseforgeApiKey, updateSender.gitHubInstallationToken, testMode
                     )
                 }
 
                 val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
                     parametersOf(
-                        manifestRepo, CURSEFORGE_API_KEY, updateSender.gitHubInstallationToken, testMode
+                        manifestRepo, config.curseforgeApiKey, updateSender.gitHubInstallationToken, testMode
                     )
                 }
 
