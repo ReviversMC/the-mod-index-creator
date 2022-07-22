@@ -126,8 +126,8 @@ fun main(args: Array<String>) = runBlocking {
 
     val updateSender by koin.inject<UpdateSender> {
         parametersOf(
-            config.gitHubRepoName,
             config.gitHubRepoOwner,
+            config.gitHubRepoName,
             if (testMode) "maintainer-test" else "update",
             config.gitHubAppId,
             config.gitHubPrivateKeyPath,
@@ -170,7 +170,7 @@ fun main(args: Array<String>) = runBlocking {
                     logger.debug { "Starting the update of existing manifests" }
                     val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
                         parametersOf(
-                            manifestRepo, config.curseforgeApiKey, updateSender.gitHubInstallationToken, testMode
+                            manifestRepo, config.curseForgeApiKey, updateSender.gitHubInstallationToken, testMode
                         )
                     }
                     val existingManifests = existingManifestReviewer.reviewManifests()
@@ -183,13 +183,13 @@ fun main(args: Array<String>) = runBlocking {
                 logger.debug { "Starting the creation of new manifests" }
                 val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
                     parametersOf(
-                        manifestRepo, config.curseforgeApiKey, updateSender.gitHubInstallationToken, testMode
+                        manifestRepo, config.curseForgeApiKey, updateSender.gitHubInstallationToken, testMode
                     )
                 }
 
                 val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
                     parametersOf(
-                        manifestRepo, config.curseforgeApiKey, updateSender.gitHubInstallationToken, testMode
+                        manifestRepo, config.curseForgeApiKey, updateSender.gitHubInstallationToken, testMode
                     )
                 }
 
