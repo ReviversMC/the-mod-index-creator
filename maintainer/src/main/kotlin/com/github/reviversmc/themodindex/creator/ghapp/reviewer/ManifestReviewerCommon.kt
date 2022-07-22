@@ -21,7 +21,7 @@ import java.io.IOException
 internal suspend fun ApiDownloader.downloadExistingManifests(logger: KLogger) = coroutineScope {
     produce(capacity = COROUTINES_PER_TASK * 2) {
         val existingGenericIdentifiers = downloadIndexJson()?.identifiers?.map { it.substringBeforeLast(":") }
-            ?: throw IOException("Could not download manifest index")
+            ?: throw IOException("Could not download manifest index from $formattedBaseUrl")
         logger.debug { "Downloaded manifest index of repository $formattedBaseUrl" }
 
         val semaphore = Semaphore(COROUTINES_PER_TASK)

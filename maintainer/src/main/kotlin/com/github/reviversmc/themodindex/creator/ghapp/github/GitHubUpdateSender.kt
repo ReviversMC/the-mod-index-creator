@@ -63,19 +63,18 @@ class GitHubUpdateSender(
         val signedJwt = JWT.getEncoder().encode(jwt, jwtSigner)
         logger.debug { "Signed JWT created." }
 
-
         val gitHubAppApi = get<GitHub> { parametersOf(signedJwt) }
         val installationToken = gitHubAppApi.app.getInstallationByRepository(
             repoOwner, repoName
         ).createToken().create().token
-        logger.debug { "GitHub installation token created: $installationToken" }
+        logger.debug { "GitHub installation token created" }
 
         return installationToken
     }
 
     override fun sendManifestUpdate(manifestFlow: Flow<ManifestWithCreationStatus>) = flow {
         logger.debug { "Preparing to send manifest update..." }
-        var indexJson = apiDownloader.downloadIndexJson() ?: throw IOException("Could not download index.json")
+        var indexJson = apiDownloader.downloadIndexJson() ?: throw IOException("Could not download index.json from ${apiDownloader.formattedBaseUrl}")
 
         val additions = mutableListOf<FileAddition>()
         val deletions = mutableListOf<FileDeletion>()
