@@ -16,3 +16,6 @@ gradle-app.setting
 
 # Credentials stored here for tests. Add your own on a local machine.
 core/src/test/resources/credentials.properties
+
+# Contains the config file when the maintainer runs
+/the-mod-index-maintainer/config.json
