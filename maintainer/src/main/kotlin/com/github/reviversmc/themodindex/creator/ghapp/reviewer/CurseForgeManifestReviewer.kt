@@ -4,22 +4,15 @@ import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
-import com.github.reviversmc.themodindex.creator.ghapp.COROUTINES_PER_TASK
+import com.github.reviversmc.themodindex.creator.ghapp.FLOW_BUFFER
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
 import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.async
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.channels.produce
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import mu.KotlinLogging
 import java.io.IOException
-import java.util.concurrent.atomic.AtomicInteger
 
 class CurseForgeManifestReviewer(
     private val apiDownloader: ApiDownloader,
@@ -31,85 +24,64 @@ class CurseForgeManifestReviewer(
 
     private val logger = KotlinLogging.logger {}
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun obtainCurseForgeInfo() = coroutineScope {
+    private suspend fun obtainCurseForgeInfo() = flow {
         logger.debug { "Obtaining CurseForge info..." }
-        produce(capacity = COROUTINES_PER_TASK * 2) {
 
-            val existingCurseIdsDeferred = async {
-                val returnList = mutableListOf<Int>()
-                for (existingManifest in apiDownloader.downloadExistingManifests(logger)) {
-                    existingManifest.curseForgeId?.let { returnList.add(it) }
-                }
-                logger.debug { "Downloaded existing manifests" }
-                return@async returnList
+        val existingCurseIds = mutableListOf<Int>().apply {
+            apiDownloader.downloadExistingManifests(logger).buffer(FLOW_BUFFER).collect { existingManifest ->
+                existingManifest.curseForgeId?.let { add(it) }
             }
+            logger.debug { "Downloaded existing manifests" }
+        }.toList()
 
-            val firstSearch = curseForgeApiCall.search(curseForgeApiKey, 0).execute().body()
+
+        val firstSearch = curseForgeApiCall.search(curseForgeApiKey, 0).execute().body()
+            ?: throw IOException("No response from CurseForge")
+        logger.debug { "Made first search to CurseForge" }
+        val limitPerSearch = firstSearch.pagination.pageSize
+
+        val totalCount = if (testMode) 20 // Just test with a small number of results
+        else firstSearch.pagination.totalCount // Otherwise, use the total count from the first search
+
+        logger.debug { "Total of $totalCount CurseForge mods found" }
+
+        var offset = 0
+
+        while (offset < totalCount) {
+            val search = (if (testMode) curseForgeApiCall.search(curseForgeApiKey, offset, totalCount).execute().body()
+            else curseForgeApiCall.search(curseForgeApiKey, offset).execute().body())
                 ?: throw IOException("No response from CurseForge")
-            logger.debug { "Made first search to CurseForge" }
-            val limitPerSearch = firstSearch.pagination.pageSize
 
-            val totalCount = if (testMode) limitPerSearch // Just test with a small number of results
-            else firstSearch.pagination.totalCount // Otherwise, use the total count from the first search
+            offset += limitPerSearch
 
-            logger.debug { "Total of $totalCount CurseForge mods found" }
+            if (search.data.isEmpty()) break
 
-            val totalOffset = AtomicInteger(firstSearch.pagination.pageSize)
-
-            coroutineScope {
-                repeat(COROUTINES_PER_TASK) {
-                    launch {
-                        val offset = totalOffset.getAndAdd(limitPerSearch)
-                        while (offset < totalCount) {
-                            val search = curseForgeApiCall.search(curseForgeApiKey, offset).execute().body()
-                                ?: throw IOException("No response from CurseForge")
-
-                            if (search.data.isEmpty()) return@launch
-
-                            val existingCurseIds = existingCurseIdsDeferred.await()
-                            search.data.forEach {
-                                if (it.id !in existingCurseIds) {
-                                    send(it.id.toString())
-                                    logger.debug { "Found new CurseForge project ${it.id}" }
-                                }
-                            }
-                        }
-                    }
+            search.data.forEach {
+                if (it.id !in existingCurseIds) {
+                    emit(it.id.toString())
+                    logger.debug { "Found new CurseForge project ${it.id}" }
                 }
             }
-            close()
-            logger.debug { "Finished obtaining CurseForge info" }
         }
+        logger.debug { "Finished obtaining CurseForge info" }
     }
 
-    override suspend fun createManifests(
-        inputChannel: ReceiveChannel<String>,
-        outputChannel: SendChannel<ManifestPendingReview>,
-    ) {
-        coroutineScope {
-            repeat(COROUTINES_PER_TASK) {
-                launch {
-                    for (curseForgeId in inputChannel) {
-                        val createdManifests = creator.createManifestCurseForge(curseForgeId.toInt())
-                        createdManifests.manifests.forEach {
-                            outputChannel.send(
-                                ManifestPendingReview(createdManifests.thirdPartyApiUsage, it, it)
-                            )
-                        }
-                    }
-                }
+    override suspend fun createManifests(inputFlow: Flow<String>) = flow {
+        logger.debug { "Creating CurseForge manifests..." }
+        inputFlow.collect { curseForgeId ->
+            logger.debug { "Creating manifest for CurseForge project $curseForgeId" }
+            val createdManifests = creator.createManifestCurseForge(curseForgeId.toInt())
+            logger.debug { "Created manifest for CurseForge project $curseForgeId" }
+            createdManifests.manifests.forEach {
+                emit(ManifestPendingReview(createdManifests.thirdPartyApiUsage, it, it))
             }
         }
-        outputChannel.close()
     }
 
     override fun reviewManifests() = flow {
-        val curseForgeIds = obtainCurseForgeInfo()
-        val createdManifestChannel = Channel<ManifestPendingReview>(COROUTINES_PER_TASK * 2)
-        createManifests(curseForgeIds, createdManifestChannel)
+        val createdManifests = createManifests(obtainCurseForgeInfo())
 
-        for ((thirdPartyApiStatus, latestManifest, originalManifest) in createdManifestChannel) {
+        createdManifests.collect { (thirdPartyApiStatus, latestManifest, originalManifest) ->
             if (ThirdPartyApiUsage.CURSEFORGE_USED !in thirdPartyApiStatus) {
                 emit(ManifestWithCreationStatus(ReviewStatus.THIRD_PARTY_API_FAILURE, latestManifest, originalManifest))
                 logger.debug { "Third party api failure for ${originalManifest.genericIdentifier}" }

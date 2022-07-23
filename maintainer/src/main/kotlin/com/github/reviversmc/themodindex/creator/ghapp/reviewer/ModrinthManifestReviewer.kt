@@ -4,112 +4,98 @@ import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
-import com.github.reviversmc.themodindex.creator.ghapp.COROUTINES_PER_TASK
+import com.github.reviversmc.themodindex.creator.ghapp.FLOW_BUFFER
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
 import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.channels.produce
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
 import java.io.IOException
-import java.util.concurrent.atomic.AtomicInteger
 
 class ModrinthManifestReviewer(
     private val apiDownloader: ApiDownloader,
     private val creator: Creator,
     private val modrinthApiCall: ModrinthApiCall,
-    private val testMode: Boolean
+    private val testMode: Boolean,
 ) : NewManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun obtainModrinthInfo() = coroutineScope {
+    private suspend fun obtainModrinthInfo() = flow {
         logger.debug { "Obtaining Modrinth info..." }
-        produce(capacity = COROUTINES_PER_TASK * 2) {
 
-            val existingModrinthIdsDeferred = async {
-                val returnList = mutableListOf<String>()
-                for (existingManifest in apiDownloader.downloadExistingManifests(logger)) {
-                    existingManifest.modrinthId?.let { returnList.add(it) }
-                }
-                return@async returnList
+        val existingModrinthIds = mutableListOf<String>().apply {
+            apiDownloader.downloadExistingManifests(logger).buffer(FLOW_BUFFER).collect { existingManifest ->
+                existingManifest.modrinthId?.let { add(it) }
             }
+            logger.debug { "Downloaded existing manifests" }
+        }.toList()
 
-            var limitPerSearch = Int.MAX_VALUE
-            val firstSearch = modrinthApiCall.search(limit = limitPerSearch).execute().body()
-                ?: throw IOException("No response from Modrinth")
-            logger.debug { "Made first search to Modrinth" }
-            limitPerSearch = firstSearch.limit
+        var limitPerSearch = Int.MAX_VALUE
+        val firstSearch = modrinthApiCall.search(limit = limitPerSearch).execute().body()
+            ?: throw IOException("No response from Modrinth")
+        logger.debug { "Made first search to Modrinth" }
+        limitPerSearch = firstSearch.limit
 
-            val totalCount = if (testMode) limitPerSearch // Just test with a small number of results
-            else firstSearch.totalHits // Otherwise, use the total count from the first search
+        val totalCount = if (testMode) 20 // Just test with a small number of results
+        else firstSearch.totalHits // Otherwise, use the total count from the first search
 
-            logger.debug { "Total of $totalCount Modrinth projects found" }
+        logger.debug { "Total of $totalCount Modrinth projects found" }
 
-            val totalOffset = AtomicInteger(firstSearch.limit)
+        var offset = 0
 
-            coroutineScope {
-                repeat(COROUTINES_PER_TASK) {
-                    launch {
-                        val offset = totalOffset.getAndAdd(limitPerSearch)
-                        while (offset < totalCount) {
-                            val search =
-                                modrinthApiCall.search(limit = limitPerSearch, offset = offset).execute().body()
-                                    ?: throw IOException("No response from Modrinth")
+        while (offset < totalCount) {
+            val search =
+                (if (testMode) modrinthApiCall.search(
+                    /*
+                    In test mode, don't go by default search.
+                    Mods like FAPI have a LOT of versions, and that takes a while to generate manifests for
+                     */
+                    searchMethod = ModrinthApiCall.SearchMethod.NEWEST.modrinthString,
+                    limit = totalCount
+                ).execute().body()
+                else modrinthApiCall.search(limit = limitPerSearch, offset = offset).execute().body())
+                    ?: throw IOException("No response from Modrinth")
 
-                            if (search.hits.isEmpty()) return@launch
+            offset += limitPerSearch
 
-                            val existingModrinthIds = existingModrinthIdsDeferred.await()
-                            search.hits.forEach {
-                                if (it.id !in existingModrinthIds) {
-                                    send(it.id)
-                                    logger.debug { "Found new Modrinth project ${it.id}" }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            close()
-            logger.debug { "Finished obtaining Modrinth info" }
-        }
-    }
+            if (search.hits.isEmpty()) break
 
-    override suspend fun createManifests(
-        inputChannel: ReceiveChannel<String>,
-        outputChannel: SendChannel<ManifestPendingReview>,
-    ) {
-        coroutineScope {
-            repeat(COROUTINES_PER_TASK) {
-                launch {
-                    for (modrinthId in inputChannel) {
-                        val createdManifests = creator.createManifestModrinth(modrinthId)
-                        createdManifests.manifests.forEach {
-                            outputChannel.send(
-                                ManifestPendingReview(createdManifests.thirdPartyApiUsage, it, it)
-                            )
-                        }
-                    }
+            search.hits.forEach {
+                if (it.id !in existingModrinthIds) {
+                    emit(it.id)
+                    logger.debug { "Found new Modrinth project ${it.id}" }
                 }
             }
         }
-        outputChannel.close()
+        logger.debug { "Finished obtaining Modrinth info" }
     }
 
+
+    override suspend fun createManifests(inputFlow: Flow<String>) = flow {
+        logger.debug { "Creating Modrinth manifests..." }
+        inputFlow.collect { modrinthId ->
+            logger.debug { "Creating manifest for Modrinth project $modrinthId" }
+            val createdManifests = creator.createManifestModrinth(modrinthId)
+            logger.debug { "Created manifest for Modrinth project $modrinthId" }
+            createdManifests.manifests.forEach {
+                emit(ManifestPendingReview(createdManifests.thirdPartyApiUsage, it, it))
+            }
+        }
+    }
 
     override fun reviewManifests() = flow {
-        val modrinthIds = obtainModrinthInfo()
-        val createdManifestChannel = Channel<ManifestPendingReview>(COROUTINES_PER_TASK * 2)
-        createManifests(modrinthIds, createdManifestChannel)
+        val createdManifests = createManifests(obtainModrinthInfo().buffer(FLOW_BUFFER))
 
-        for ((thirdPartyApiStatus, latestManifest, originalManifest) in createdManifestChannel) {
+        createdManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiStatus, latestManifest, originalManifest) ->
             if (ThirdPartyApiUsage.MODRINTH_USED !in thirdPartyApiStatus) {
-                emit(ManifestWithCreationStatus(ReviewStatus.THIRD_PARTY_API_FAILURE, latestManifest, originalManifest))
+                emit(
+                    ManifestWithCreationStatus(
+                        ReviewStatus.THIRD_PARTY_API_FAILURE, latestManifest, originalManifest
+                    )
+                )
                 logger.debug { "Third party api failure for ${originalManifest.genericIdentifier}" }
             } else {
                 emit(ManifestWithCreationStatus(ReviewStatus.APPROVED_UPDATE, latestManifest, originalManifest))

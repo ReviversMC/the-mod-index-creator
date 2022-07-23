@@ -5,18 +5,15 @@ import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
-import com.github.reviversmc.themodindex.creator.ghapp.COROUTINES_PER_TASK
+import com.github.reviversmc.themodindex.creator.ghapp.FLOW_BUFFER
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
 import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
 import java.io.IOException
-import java.util.concurrent.atomic.AtomicInteger
 
 class IndexExistingManifestReviewer(
     private val apiDownloader: ApiDownloader, private val creator: Creator, private val testMode: Boolean,
@@ -33,76 +30,60 @@ class IndexExistingManifestReviewer(
         return value
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    override suspend fun createManifests(
-        inputChannel: ReceiveChannel<ManifestJson>,
-        outputChannel: SendChannel<ManifestPendingReview>,
-    ) {
-        val updatedManifestsContext = newSingleThreadContext("updatedExistingManifests")
-        val counter = AtomicInteger(0)
+    override suspend fun createManifests(originalManifests: Flow<ManifestJson>) = flow {
+        var testModeCounter = 0
 
-        withContext(updatedManifestsContext) {
-            repeat(COROUTINES_PER_TASK) {
-                launch {
-                    if (testMode) {
-                        if (counter.getAndIncrement() >= 20) return@launch // Test mode, only process 20 manifests
-                    }
-                    for (originalManifest in inputChannel) {
-                        logger.debug { "Creating manifest for ${originalManifest.genericIdentifier}" }
-
-                        val createdManifests =
-                            bufferedManifests.getAndRemove(originalManifest.genericIdentifier) // Try to get a cached value
-
-                                ?: originalManifest.modrinthId?.let {// Else try to create a new one using modrinth id
-                                    creator.createManifestModrinth(
-                                        it, originalManifest.curseForgeId
-                                    )
-                                }
-                                ?: originalManifest.curseForgeId?.let {// Else try to create a new one using curseforge id
-                                    creator.createManifestCurseForge(
-                                        it, @Suppress("KotlinConstantConditions") originalManifest.modrinthId
-                                    )
-                                }
-                                ?: throw IOException("No modrinth or curseforge id found for manifest ${originalManifest.genericIdentifier}")
-
-                        // Get or default the mod loader.
-                        val latestManifest =
-                            // Try to find an exact match for the generic identifier
-                            createdManifests.manifests.firstOrNull { it.genericIdentifier == originalManifest.genericIdentifier }
-                            // Else, we see if we can at least have a generic identifier with the same loader (indicates that the name of the mod changed)
-                                ?: createdManifests.manifests.firstOrNull {
-                                    it.genericIdentifier.substringBefore(":") == originalManifest.genericIdentifier.substringBefore(
-                                        ":"
-                                    )
-                                }
-
-                        createdManifests.manifests.forEach {
-                            if (it != latestManifest) bufferedManifests[it.genericIdentifier] =
-                                createdManifests.copy(manifests = listOf(it)) // Just cache the one manifest that matches the generic identifier.
-                        }
-
-                        outputChannel.send(
-                            ManifestPendingReview(
-                                createdManifests.thirdPartyApiUsage, latestManifest, originalManifest
-                            )
-                        )
-                        logger.debug { "Created manifest for ${originalManifest.genericIdentifier}" }
-                    }
-                }
+        originalManifests.collect { originalManifest ->
+            if (testMode) {
+                if (testModeCounter++ >= 20) return@collect // Test mode, only process 20 manifests
             }
-        }
 
-        outputChannel.close()
+            logger.debug { "Creating manifest for ${originalManifest.genericIdentifier}" }
+
+            val createdManifests =
+                bufferedManifests.getAndRemove(originalManifest.genericIdentifier) // Try to get a cached value
+
+                    ?: originalManifest.modrinthId?.let {// Else try to create a new one using modrinth id
+                        creator.createManifestModrinth(
+                            it, originalManifest.curseForgeId
+                        )
+                    } ?: originalManifest.curseForgeId?.let {// Else try to create a new one using curseforge id
+                        creator.createManifestCurseForge(
+                            it, @Suppress("KotlinConstantConditions") originalManifest.modrinthId
+                        )
+                    }
+                    ?: throw IOException("No modrinth or curseforge id found for manifest ${originalManifest.genericIdentifier}")
+
+            // Get or default the mod loader.
+            val latestManifest =
+                // Try to find an exact match for the generic identifier
+                createdManifests.manifests.firstOrNull { it.genericIdentifier == originalManifest.genericIdentifier }
+                // Else, we see if we can at least have a generic identifier with the same loader (indicates that the name of the mod changed)
+                    ?: createdManifests.manifests.firstOrNull {
+                        it.genericIdentifier.substringBefore(":") == originalManifest.genericIdentifier.substringBefore(
+                            ":"
+                        )
+                    }
+
+            createdManifests.manifests.forEach {
+                if (it != latestManifest) bufferedManifests[it.genericIdentifier] =
+                    createdManifests.copy(manifests = listOf(it)) // Just cache the one manifest that matches the generic identifier.
+            }
+
+            emit(
+                ManifestPendingReview(createdManifests.thirdPartyApiUsage, latestManifest, originalManifest)
+            )
+            logger.debug { "Created manifest for ${originalManifest.genericIdentifier}" }
+        }
     }
 
 
     override fun reviewManifests() = flow {
 
-        val originalManifestChannel = apiDownloader.downloadExistingManifests(logger)
-        val updatedManifestChannel = Channel<ManifestPendingReview>(COROUTINES_PER_TASK * 2)
-        createManifests(originalManifestChannel, updatedManifestChannel)
+        val originalManifests = apiDownloader.downloadExistingManifests(logger)
+        val updatedManifests = createManifests(originalManifests.buffer(FLOW_BUFFER))
 
-        for ((thirdPartyApiUsage, latestManifest, originalManifest) in updatedManifestChannel) {
+        updatedManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiUsage, latestManifest, originalManifest) ->
 
             if (latestManifest == null) {
                 val status =
