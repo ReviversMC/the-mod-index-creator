@@ -1,10 +1,6 @@
 # the-mod-index-creator
-An easy-to-use tool for users to add entries to the-mod-index
 
-### Testing
-In order to properly test the-mod-index-creator, you need to have the following fields in /core/test/resources/credentials.properties:
-
-```properties
-api_key = <your-api-key>
-github_oAuth = <your-github-oAuth-token>
-```
+What use is [the-mod-index](https://github.com/reviversmc/the-mod-index) if it's managed manually? That's so painful :(  
+TMIC contains the has 2 distinct but important roles to play:
+- Automated manifest generation and updating from big mod hosts
+- Manual input of mods into the index (SoonTM)
