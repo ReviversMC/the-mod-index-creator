@@ -14,6 +14,7 @@ import okhttp3.Request
 import org.kohsuke.github.GitHub
 import java.io.IOException
 import java.math.BigInteger
+import java.net.SocketTimeoutException
 import java.security.MessageDigest
 
 /**
@@ -78,61 +79,67 @@ class ModIndexCreator(
             val loaderFiles = this.getOrDefault(modLoader.name.lowercase(), emptyList()).toMutableList()
             val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
 
-            for (file in curseForgeApiCall.files(curseApiKey, curseForgeId, modLoader.curseNumber).execute()
-                .body()?.data ?: continue) {
+            try {
+                val cfFiles = curseForgeApiCall.files(curseApiKey, curseForgeId, modLoader.curseNumber).execute()
 
-                val fileResponse =
-                    okHttpClient.newCall(Request.Builder().url(file.downloadUrl ?: continue).build()).execute()
-                val fileHash = createSHA512Hash(fileResponse.body()?.bytes() ?: continue)
-                fileResponse.close()
+                for (file in cfFiles.body()?.data ?: continue) {
 
-                fun obtainRelation(relationType: RelationType): List<String> = file.dependencies.filter {
-                    relationType.curseNumber == it.relationType
-                }.mapNotNull { curseFileDependency ->
-                    curseForgeApiCall.mod(curseApiKey, curseFileDependency.modId).execute()
-                        .body()?.data?.name?.lowercase()?.replace(' ', '-')?.let {
+                    val fileResponse =
+                        okHttpClient.newCall(Request.Builder().url(file.downloadUrl ?: continue).build()).execute()
+                    val fileHash = createSHA512Hash(fileResponse.body()?.bytes() ?: continue)
+                    fileResponse.close()
 
-                            if (curseForgeApiCall.files(
-                                    curseApiKey, curseFileDependency.modId, modLoader.curseNumber
-                                ).execute().body()?.data?.isNotEmpty() == true
-                            ) {
-                                "${modLoader.name.lowercase()}:$it"
+                    fun obtainRelation(relationType: RelationType): List<String> = file.dependencies.filter {
+                        relationType.curseNumber == it.relationType
+                    }.mapNotNull { curseFileDependency ->
+                        curseForgeApiCall.mod(curseApiKey, curseFileDependency.modId).execute()
+                            .body()?.data?.name?.lowercase()?.replace(' ', '-')?.let {
 
-                            } else if (modLoader == CurseForgeApiCall.ModLoaderType.QUILT && curseForgeApiCall.files(
-                                    curseApiKey,
-                                    curseFileDependency.modId,
-                                    CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber
-                                ).execute().body()?.data?.isNotEmpty() == true
-                            ) {
-                                // Special concession for Quilt, where we will also check for Fabric files
-                                "${CurseForgeApiCall.ModLoaderType.FABRIC.name.lowercase()}:$it"
+                                if (curseForgeApiCall.files(
+                                        curseApiKey, curseFileDependency.modId, modLoader.curseNumber
+                                    ).execute().body()?.data?.isNotEmpty() == true
+                                ) {
+                                    "${modLoader.name.lowercase()}:$it"
 
-                            } else null// If we can't find an appropriate file, don't add the dependency
+                                } else if (modLoader == CurseForgeApiCall.ModLoaderType.QUILT && curseForgeApiCall.files(
+                                        curseApiKey,
+                                        curseFileDependency.modId,
+                                        CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber
+                                    ).execute().body()?.data?.isNotEmpty() == true
+                                ) {
+                                    // Special concession for Quilt, where we will also check for Fabric files
+                                    "${CurseForgeApiCall.ModLoaderType.FABRIC.name.lowercase()}:$it"
 
-                        }
-                }
+                                } else null// If we can't find an appropriate file, don't add the dependency
 
-
-                if (loaderFileHashes.contains(fileHash)) {
-                    loaderFileHashes.forEachIndexed { index, existingHash ->
-                        if (existingHash.equals(fileHash, true)) loaderFiles[index] =
-                            loaderFiles[index].copy(curseDownloadAvailable = true)
-                    }
-                } else loaderFiles.add(
-                    VersionFile(
-                        file.displayName, file.gameVersions.sortedDescending().mapNotNull {
-                            try {
-                                CurseForgeApiCall.ModLoaderType.valueOf(it.uppercase())
-                                null// Do not add if detected to be loader
-                            } catch (_: IllegalArgumentException) {
-                                it
                             }
-                        }, fileHash, emptyList(), true, RelationsToOtherMods(
-                            obtainRelation(RelationType.REQUIRED_DEPENDENCY), obtainRelation(RelationType.INCOMPATIBLE)
+                    }
+
+
+                    if (loaderFileHashes.contains(fileHash)) {
+                        loaderFileHashes.forEachIndexed { index, existingHash ->
+                            if (existingHash.equals(fileHash, true)) loaderFiles[index] =
+                                loaderFiles[index].copy(curseDownloadAvailable = true)
+                        }
+                    } else loaderFiles.add(
+                        VersionFile(
+                            file.displayName, file.gameVersions.sortedDescending().mapNotNull {
+                                try {
+                                    CurseForgeApiCall.ModLoaderType.valueOf(it.uppercase())
+                                    null// Do not add if detected to be loader
+                                } catch (_: IllegalArgumentException) {
+                                    it
+                                }
+                            }, fileHash, emptyList(), true, RelationsToOtherMods(
+                                obtainRelation(RelationType.REQUIRED_DEPENDENCY),
+                                obtainRelation(RelationType.INCOMPATIBLE)
+                            )
                         )
                     )
-                )
 
+                }
+            } catch (ex: SocketTimeoutException) {
+                // Do nothing, we don't have the files
             }
             this[modLoader.name.lowercase()] = loaderFiles.toList().sortedByDescending { it.mcVersions.first() }
         }
@@ -155,26 +162,31 @@ class ModIndexCreator(
         gitHubRepo: String, existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-        githubApiCall.getRepository(gitHubRepo).listReleases().forEach { release ->
-            for (asset in release.listAssets()) {
-                val response = okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
-                val fileHash = createSHA512Hash(response.body()?.bytes() ?: continue)
-                response.close()
+            githubApiCall.getRepository(gitHubRepo).listReleases().forEach { release ->
+                try {
+                    for (asset in release.listAssets()) {
+                        val response =
+                            okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
+                        val fileHash = createSHA512Hash(response.body()?.bytes() ?: continue)
+                        response.close()
 
-                for ((loader, manifestFiles) in this) {
-                    if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
-                    manifestFiles.forEachIndexed { index, manifestFile ->
-                        if (manifestFile.sha512Hash.equals(fileHash, true)) {
-                            this[loader] = manifestFiles.toMutableList().also { files ->
-                                files[index] =
-                                    manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
-                            }.toList().sortedByDescending { it.mcVersions.first() }
-                            return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
+                        for ((loader, manifestFiles) in this) {
+                            if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
+                            manifestFiles.forEachIndexed { index, manifestFile ->
+                                if (manifestFile.sha512Hash.equals(fileHash, true)) {
+                                    this[loader] = manifestFiles.toMutableList().also { files ->
+                                        files[index] =
+                                            manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
+                                    }.toList().sortedByDescending { it.mcVersions.first() }
+                                    return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
+                                }
+                            }
                         }
                     }
+                } catch (ex: SocketTimeoutException) {
+                    // Do nothing, we don't have the files
                 }
             }
-        }
     }.toMap()
 
 
@@ -211,8 +223,8 @@ class ModIndexCreator(
                             versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId == null && it.versionId != null }
 
                         return projectIdDependencies.mapNotNull { projectId ->
-                            modrinthApiCall.project(projectId).execute().body()?.title?.lowercase()
-                                ?.replace(' ', '-')?.let {
+                            modrinthApiCall.project(projectId).execute().body()?.title?.lowercase()?.replace(' ', '-')
+                                ?.let {
                                     if (modrinthApiCall.versions(projectId, "[\"$loader\"]").execute().body()
                                             ?.isNotEmpty() == true
                                     ) {
@@ -358,10 +370,20 @@ class ModIndexCreator(
             } ?: modrinthFiles
         }
 
-        val combinedFiles = gitHubUserRepo?.let { downloadGitHubFiles(it, curseAndModrinthFiles) }
-            ?.also { usedThirdPartyApis.add(ThirdPartyApiUsage.GITHUB_USED) } ?: curseAndModrinthFiles
-
-
+        val combinedFiles = gitHubUserRepo?.let {
+            try {
+                downloadGitHubFiles(it, curseAndModrinthFiles)
+            } catch (ex: IllegalArgumentException) {
+                // This is most likely a GitHub user repo fail
+                println(
+                    """Failed to download files from GitHub:
+                |GitHub User Repo: $gitHubUserRepo
+                |
+                |${ex.stackTraceToString()} """.trimMargin()
+                )
+                null
+            }
+        }?.also { usedThirdPartyApis.add(ThirdPartyApiUsage.GITHUB_USED) } ?: curseAndModrinthFiles
 
         if (ThirdPartyApiUsage.isAllWorking(usedThirdPartyApis)) usedThirdPartyApis.apply {
             clear()
@@ -392,9 +414,9 @@ class ModIndexCreator(
                 }
             }
 
-            curseForgeMod?.data?.links?.let {
-                if (it.websiteUrl != "") add(ManifestLinks.OtherLink("website", it.websiteUrl))
-                if (it.wikiUrl != "") add(ManifestLinks.OtherLink("wiki", it.wikiUrl))
+            curseForgeMod?.data?.links?.let { modLinks ->
+                if (modLinks.websiteUrl != "") add(ManifestLinks.OtherLink("website", modLinks.websiteUrl))
+                modLinks.wikiUrl?.let { if (it != "") add(ManifestLinks.OtherLink("wiki", it)) }
             }
         }.distinct()
 
@@ -406,7 +428,7 @@ class ModIndexCreator(
                         "${modLoader}:${modData.name.lowercase().replace(' ', '-')}",
                         modData.name,
                         modData.authors.first().name,
-                        gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key }
+                        gitHubUserRepo?.let { githubApiCall.getRepository(it).license?.key }
                             ?: modrinthProject?.license?.id,
                         modData.id,
                         modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
@@ -436,7 +458,7 @@ class ModIndexCreator(
                                 ?: curseData?.authors?.first()?.name
                                 ?: throw IOException("No owner found for modrinth project: $modrinthId"),
                             modrinthProject.license?.id
-                                ?: gitHubUserRepo?.let { githubApiCall.getRepository(it).license.key },
+                                ?: gitHubUserRepo?.let { githubApiCall.getRepository(it).license?.key },
                             curseData?.id,
                             modrinthProject.id,
                             ManifestLinks(
