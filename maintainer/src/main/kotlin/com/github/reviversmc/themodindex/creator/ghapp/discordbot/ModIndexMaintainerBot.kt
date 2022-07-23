@@ -110,6 +110,10 @@ class ModIndexMaintainerBot(
                 deferred.respond { content = it }.apply {
                     delay(1000L * 3)
                     delete()
+
+                    startupMessage?.edit {
+                        content = "Exit scheduled."
+                    }
                 }
                 logger.debug { it }
             }
