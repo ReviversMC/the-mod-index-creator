@@ -162,31 +162,31 @@ class ModIndexCreator(
         gitHubRepo: String, existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-            githubApiCall.getRepository(gitHubRepo).listReleases().forEach { release ->
-                try {
-                    for (asset in release.listAssets()) {
-                        val response =
-                            okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
-                        val fileHash = createSHA512Hash(response.body()?.bytes() ?: continue)
-                        response.close()
+        githubApiCall.getRepository(gitHubRepo).listReleases().forEach { release ->
+            try {
+                for (asset in release.listAssets()) {
+                    val response =
+                        okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
+                    val fileHash = createSHA512Hash(response.body()?.bytes() ?: continue)
+                    response.close()
 
-                        for ((loader, manifestFiles) in this) {
-                            if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
-                            manifestFiles.forEachIndexed { index, manifestFile ->
-                                if (manifestFile.sha512Hash.equals(fileHash, true)) {
-                                    this[loader] = manifestFiles.toMutableList().also { files ->
-                                        files[index] =
-                                            manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
-                                    }.toList().sortedByDescending { it.mcVersions.first() }
-                                    return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
-                                }
+                    for ((loader, manifestFiles) in this) {
+                        if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
+                        manifestFiles.forEachIndexed { index, manifestFile ->
+                            if (manifestFile.sha512Hash.equals(fileHash, true)) {
+                                this[loader] = manifestFiles.toMutableList().also { files ->
+                                    files[index] =
+                                        manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
+                                }.toList().sortedByDescending { it.mcVersions.first() }
+                                return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
                             }
                         }
                     }
-                } catch (ex: SocketTimeoutException) {
-                    // Do nothing, we don't have the files
                 }
+            } catch (ex: SocketTimeoutException) {
+                // Do nothing, we don't have the files
             }
+        }
     }.toMap()
 
 
@@ -324,7 +324,13 @@ class ModIndexCreator(
         - If all are null, don't include the version. If no versions are non-null, return empty list
          */
 
-        val curseForgeMod = curseForgeId?.let { curseForgeApiCall.mod(curseApiKey, it).execute().body() }
+        val curseForgeMod = curseForgeId?.let {
+            try {
+                curseForgeApiCall.mod(curseApiKey, it).execute().body()
+            } catch (ex: SocketTimeoutException) {
+                null
+            }
+        }
         val modrinthProject = modrinthId?.let {
             modrinthApiCall.project(it).execute().run {
                 if (body() != null) body() else {
