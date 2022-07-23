@@ -36,6 +36,7 @@ import java.time.ZonedDateTime
 import kotlin.system.exitProcess
 
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
+const val FLOW_BUFFER = 5
 const val INDEX_MAJOR = 4
 
 private val logger = KotlinLogging.logger {}
@@ -123,9 +124,12 @@ fun main(args: Array<String>) = runBlocking {
     commandParser.parse(args)
     val config = getOrCreateConfig(koin.get(), configLocation)
 
+    val manifestRepo =
+        "https://raw.githubusercontent.com/${config.gitHubRepoOwner}/${config.gitHubRepoName}/${if (testMode) "maintainer-test" else "v$INDEX_MAJOR"}/mods/"
 
     val updateSender by koin.inject<UpdateSender> {
         parametersOf(
+            manifestRepo,
             config.gitHubRepoOwner,
             config.gitHubRepoName,
             if (testMode) "maintainer-test" else "update",
@@ -134,8 +138,6 @@ fun main(args: Array<String>) = runBlocking {
             sus
         )
     }
-
-    val manifestRepo = "https://raw.githubusercontent.com/${config.gitHubRepoOwner}/${config.gitHubRepoName}/"
 
 
     // All variables that need to be refreshed (i.e. that use a gh api key) should be in the while loop.
@@ -227,6 +229,7 @@ fun main(args: Array<String>) = runBlocking {
                             }
                         }
 
+                    // Does putting the two tasks in a coroutine even matter, considering that they are run from the same thread?
                     val curseManifests = launch { collectNewManifests(curseForgeManifestReviewer) }
                     val modrinthManifests = launch { collectNewManifests(modrinthManifestReviewer) }
                     curseManifests.join()
@@ -274,12 +277,12 @@ fun main(args: Array<String>) = runBlocking {
             logger.info { "Finished operation loop $operationLoopNum" }
 
             /*
-        Notably, we do NOT wait for manifests sent for manual review to be reviewed before we move on to the next operation loop.
-        The review process could take a long time if no one reviews it,
-        and we don't want to stop regular updates for the few manifests that are not reviewed.
+            Notably, we do NOT wait for manifests sent for manual review to be reviewed before we move on to the next operation loop.
+            The review process could take a long time if no one reviews it,
+            and we don't want to stop regular updates for the few manifests that are not reviewed.
 
-        Then, depending on settings, either quit or sleep for a while.
-        */
+            Then, depending on settings, either quit or sleep for a while.
+            */
 
             isCurrentlyUpdating = false
             if (shouldContinueUpdating) {
