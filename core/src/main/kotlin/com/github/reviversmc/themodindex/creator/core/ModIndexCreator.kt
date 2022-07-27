@@ -12,7 +12,6 @@ import kotlinx.coroutines.delay
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.kohsuke.github.GitHub
-import java.io.IOException
 import java.math.BigInteger
 import java.net.SocketTimeoutException
 import java.security.MessageDigest
@@ -455,7 +454,7 @@ class ModIndexCreator(
                     add(ManifestJson(indexVersion,
                         "${modLoader}:${modData.name.formatRightGenericIdentifier()}",
                         modData.name,
-                        modData.authors.first().name,
+                        modData.authors.firstOrNull()?.name ?: "UNKNOWN",
                         gitHubUserRepo?.let { githubApiCall.getRepository(it).license?.key }
                             ?: modrinthProject?.license?.id,
                         modData.id,
@@ -484,7 +483,7 @@ class ModIndexCreator(
                                 }
                             }?.first { member -> member.role == "Owner" }?.userResponse?.username
                                 ?: curseData?.authors?.first()?.name
-                                ?: throw IOException("No owner found for modrinth project: $modrinthId"),
+                                ?: "UNKNOWN",
                             modrinthProject.license?.id
                                 ?: gitHubUserRepo?.let { githubApiCall.getRepository(it).license?.key },
                             curseData?.id,
