@@ -102,23 +102,23 @@ fun main(args: Array<String>) = runBlocking {
 
     val configLocation by commandParser.option(
         ArgType.String, shortName = "c", description = "The location of the config file"
-    ).default("the-mod-index-maintainer/config.json").also { logger.debug { "Config location set to $it" } }
+    ).default("the-mod-index-maintainer/config.json").also { logger.debug { "Config location set to ${it.value}" } }
 
     val cooldownInHours by commandParser.option(
         ArgType.Int, shortName = "d", description = "How long to delay between updates"
-    ).default(12).also { logger.debug { "Cooldown set to $it hours" } }
+    ).default(12).also { logger.debug { "Cooldown set to ${it.value} hours" } }
 
     val sus by commandParser.option(
         ArgType.Boolean,
         shortName = "s",
         description = "Whether to be suspicious of all updates, and push to a separate branch for PR review"
-    ).default(false).also { logger.debug { "Sus mode: $it" } }
+    ).default(false).also { logger.debug { "Sus mode: ${it.value}" } }
 
     val testMode by commandParser.option(
         ArgType.Boolean,
         shortName = "t",
         description = "Whether to be in test mode, and push to the maintainer-test branch"
-    ).default(false).also { logger.debug("Test mode: $it") }
+    ).default(false).also { logger.debug("Test mode: ${it.value}") }
 
 
     commandParser.parse(args)
