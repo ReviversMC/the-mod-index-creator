@@ -215,9 +215,22 @@ fun main(args: Array<String>) = runBlocking {
                 val newManifests = mutableMapOf<String, ManifestWithCreationStatus>()
 
                 // Iter through modrinth first because it is smaller (probably?)
-                modrinthManifestReviewer.reviewManifests().buffer(FLOW_BUFFER)
-                    .collect { newManifests[it.originalManifest.genericIdentifier] = it }
-                curseForgeManifestReviewer.reviewManifests().buffer(FLOW_BUFFER).collect {
+                val modrinthManifests = async {
+                    return@async mutableListOf<ManifestWithCreationStatus>().apply {
+                        modrinthManifestReviewer.reviewManifests().buffer(FLOW_BUFFER)
+                            .collect { add(it) }
+                    }.toList()
+                }
+
+                val curseForgeManifests = async {
+                    return@async mutableListOf<ManifestWithCreationStatus>().apply {
+                        curseForgeManifestReviewer.reviewManifests().buffer(FLOW_BUFFER)
+                            .collect { add(it) }
+                    }.toList()
+                }
+
+                modrinthManifests.await().forEach { newManifests[it.originalManifest.genericIdentifier] = it }
+                curseForgeManifests.await().forEach {
                     if (it.originalManifest.genericIdentifier !in newManifests) {
                         newManifests[it.originalManifest.genericIdentifier] = it
                     } else {
