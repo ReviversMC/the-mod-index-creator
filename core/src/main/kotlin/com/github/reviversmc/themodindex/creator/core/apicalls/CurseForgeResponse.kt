@@ -12,6 +12,7 @@ data class CurseModResponse(val data: CurseModData)
  * The api response for a CF mod. This does NOT contain all the info from the api call.
  * @param id The id of the mod.
  * @param name The name of the mod.
+ * @param slug The slug of the mod.
  * @param links The links of the mod.
  * @param authors The authors of the mod.
  * @author ReviversMC
@@ -19,7 +20,7 @@ data class CurseModResponse(val data: CurseModData)
  */
 @kotlinx.serialization.Serializable
 data class CurseModData(
-    val id: Int, val name: String,
+    val id: Int, val name: String, val slug: String,
     // We can't get the license! :(
     val links: CurseModLinks, val authors: List<CurseModAuthor>,
 )

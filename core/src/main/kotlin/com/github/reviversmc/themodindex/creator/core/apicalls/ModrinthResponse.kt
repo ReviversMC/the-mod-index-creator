@@ -6,6 +6,7 @@ import kotlinx.serialization.SerialName
  * The api response for a Modrinth project. This does NOT contain all the info from the api call.
  * @param id The id of the project.
  * @param title The title of the project.
+ * @param slug The slug of the project.
  * @param license The license of the project.
  * @param issuesUrl The url of the issues for the project.
  * @param sourceUrl The url of the source code for the project.
@@ -20,6 +21,7 @@ import kotlinx.serialization.SerialName
 data class ModrinthProjectResponse(
     val id: String,
     val title: String,
+    val slug: String,
     val license: ModrinthLicense?,
     @SerialName("issues_url") val issuesUrl: String?,
     @SerialName("source_url") val sourceUrl: String?,

@@ -114,7 +114,7 @@ class ModIndexCreator(
                         relationType.curseNumber == it.relationType
                     }.mapNotNull { curseFileDependency ->
                         curseForgeApiCall.mod(curseApiKey, curseFileDependency.modId).execute()
-                            .body()?.data?.name?.formatRightGenericIdentifier()?.let {
+                            .body()?.data?.slug?.formatRightGenericIdentifier()?.let {
 
                                 if (curseForgeApiCall.files(
                                         curseApiKey, curseFileDependency.modId, modLoader.curseNumber
@@ -244,7 +244,7 @@ class ModIndexCreator(
                             versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId == null && it.versionId != null }
 
                         return projectIdDependencies.mapNotNull { projectId ->
-                            modrinthApiCall.project(projectId).execute().body()?.title?.formatRightGenericIdentifier()
+                            modrinthApiCall.project(projectId).execute().body()?.slug?.formatRightGenericIdentifier()
                                 ?.let {
                                     if (modrinthApiCall.versions(projectId, "[\"$loader\"]").execute().body()
                                             ?.isNotEmpty() == true
@@ -264,11 +264,11 @@ class ModIndexCreator(
                                 modrinthApiCall.version(versionId).execute().body()?.let { version ->
                                     if (loader in version.loaders) {
                                         modrinthApiCall.project(version.projectId).execute()
-                                            .body()?.title?.formatRightGenericIdentifier()?.let { "$loader:$it" }
+                                            .body()?.slug?.formatRightGenericIdentifier()?.let { "$loader:$it" }
 
                                     } else if (loader == "quilt" && "fabric" in version.loaders) {
                                         modrinthApiCall.project(version.projectId).execute()
-                                            .body()?.title?.formatRightGenericIdentifier()?.let { "fabric:$it" }
+                                            .body()?.slug?.formatRightGenericIdentifier()?.let { "fabric:$it" }
                                     } else null
                                 }
                             }
@@ -452,7 +452,7 @@ class ModIndexCreator(
             fun curseForgeToManifest() = curseForgeMod?.data?.let { modData ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
                     add(ManifestJson(indexVersion,
-                        "${modLoader}:${modData.name.formatRightGenericIdentifier()}",
+                        "${modLoader}:${modData.slug.formatRightGenericIdentifier()}",
                         modData.name,
                         modData.authors.firstOrNull()?.name ?: "UNKNOWN",
                         gitHubUserRepo?.let { githubApiCall.getRepository(it).license?.key }
@@ -474,7 +474,7 @@ class ModIndexCreator(
                 modrinthProject?.let { _ -> // No better alias for this
                     combinedFiles.forEach { (modLoader, manifestFiles) ->
                         add(ManifestJson(indexVersion,
-                            "$modLoader:${modrinthProject.title.formatRightGenericIdentifier()}",
+                            "$modLoader:${modrinthProject.slug.formatRightGenericIdentifier()}",
                             modrinthProject.title,
                             modrinthApiCall.projectMembers(modrinthId).execute().run {
                                 if (body() != null) body() else {
