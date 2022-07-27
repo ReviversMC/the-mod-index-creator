@@ -132,6 +132,7 @@ class GitHubUpdateSender(
             logger.debug { "No changes to index.json, no push to repository required." }
             return@flow
         }
+        indexJson = indexJson.copy(identifiers = indexJson.identifiers.sorted())
 
         if (!get<GitHub> { parametersOf(gitHubInstallationToken) }.isCredentialValid) refreshInstallationTokenAndApi()
 
