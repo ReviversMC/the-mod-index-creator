@@ -1,14 +1,14 @@
-package com.github.reviversmc.themodindex.creator.ghapp.reviewer
+package com.github.reviversmc.themodindex.creator.maintainer.reviewer
 
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
-import com.github.reviversmc.themodindex.creator.ghapp.FLOW_BUFFER
-import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestPendingReview
-import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
-import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
+import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
+import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
+import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
+import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
@@ -49,7 +49,7 @@ class IndexExistingManifestReviewer(
                         )
                     } ?: originalManifest.curseForgeId?.let {// Else try to create a new one using curseforge id
                         creator.createManifestCurseForge(
-                            it, @Suppress("KotlinConstantConditions") originalManifest.modrinthId
+                            it, originalManifest.modrinthId
                         )
                     }
                     ?: throw IOException("No modrinth or curseforge id found for manifest ${originalManifest.genericIdentifier}")

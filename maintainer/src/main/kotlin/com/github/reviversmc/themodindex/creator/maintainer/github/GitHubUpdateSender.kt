@@ -1,13 +1,13 @@
-package com.github.reviversmc.themodindex.creator.ghapp.github
+package com.github.reviversmc.themodindex.creator.maintainer.github
 
 import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
-import com.github.reviversmc.themodindex.creator.ghapp.apicalls.GHBranch
-import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileAddition
-import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileDeletion
-import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
-import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
+import com.github.reviversmc.themodindex.creator.maintainer.apicalls.GHBranch
+import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileAddition
+import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileDeletion
+import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
+import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
 import io.fusionauth.jwt.domain.JWT
 import io.fusionauth.jwt.rsa.RSASigner
 import kotlinx.coroutines.flow.Flow

@@ -1,6 +1,6 @@
-package com.github.reviversmc.themodindex.creator.ghapp.github
+package com.github.reviversmc.themodindex.creator.maintainer.github
 
-import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
+import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import kotlinx.coroutines.flow.Flow
 import java.io.IOException
 

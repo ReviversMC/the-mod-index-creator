@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.ghapp.data
+package com.github.reviversmc.themodindex.creator.maintainer.data
 
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage

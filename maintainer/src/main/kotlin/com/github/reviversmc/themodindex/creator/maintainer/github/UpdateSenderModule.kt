@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.ghapp.github
+package com.github.reviversmc.themodindex.creator.maintainer.github
 
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
 import org.koin.core.parameter.parametersOf

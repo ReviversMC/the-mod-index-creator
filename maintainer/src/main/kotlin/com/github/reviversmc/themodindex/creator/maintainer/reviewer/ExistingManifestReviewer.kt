@@ -1,8 +1,8 @@
-package com.github.reviversmc.themodindex.creator.ghapp.reviewer
+package com.github.reviversmc.themodindex.creator.maintainer.reviewer
 
 import com.github.reviversmc.themodindex.api.data.ManifestJson
-import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestPendingReview
-import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
+import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
+import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import kotlinx.coroutines.flow.Flow
 import java.io.IOException
 

@@ -1,10 +1,10 @@
-package com.github.reviversmc.themodindex.creator.ghapp.apicalls
+package com.github.reviversmc.themodindex.creator.maintainer.apicalls
 
 import com.apollographql.apollo3.ApolloClient
 import com.apollographql.apollo3.api.ApolloResponse
 import com.apollographql.apollo3.api.Optional
-import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileAddition
-import com.github.reviversmc.themodindex.creator.ghapp.apicalls.type.FileDeletion
+import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileAddition
+import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileDeletion
 import mu.KotlinLogging
 
 class GHGraphQLBranch(

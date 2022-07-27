@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.ghapp.reviewer
+package com.github.reviversmc.themodindex.creator.maintainer.reviewer
 
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import kotlinx.coroutines.flow.flow

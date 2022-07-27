@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.ghapp.discordbot
+package com.github.reviversmc.themodindex.creator.maintainer.discordbot
 
 import com.github.difflib.DiffUtils
 import com.github.difflib.UnifiedDiffUtils
@@ -6,11 +6,11 @@ import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.data.ManifestLinks
 import com.github.reviversmc.themodindex.api.data.RelationsToOtherMods
 import com.github.reviversmc.themodindex.api.data.VersionFile
-import com.github.reviversmc.themodindex.creator.ghapp.COROUTINES_PER_TASK
-import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
-import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
-import com.github.reviversmc.themodindex.creator.ghapp.isCurrentlyUpdating
-import com.github.reviversmc.themodindex.creator.ghapp.shouldContinueUpdating
+import com.github.reviversmc.themodindex.creator.maintainer.COROUTINES_PER_TASK
+import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
+import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
+import com.github.reviversmc.themodindex.creator.maintainer.isCurrentlyUpdating
+import com.github.reviversmc.themodindex.creator.maintainer.shouldContinueUpdating
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Permissions

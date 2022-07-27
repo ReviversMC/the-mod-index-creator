@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.ghapp.apicalls
+package com.github.reviversmc.themodindex.creator.maintainer.apicalls
 
 import com.apollographql.apollo3.ApolloClient
 import com.apollographql.apollo3.network.okHttpClient

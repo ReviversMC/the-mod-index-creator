@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.ghapp.discordbot
+package com.github.reviversmc.themodindex.creator.maintainer.discordbot
 
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
 import dev.kord.common.entity.Snowflake

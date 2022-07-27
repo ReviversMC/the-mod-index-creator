@@ -1,7 +1,7 @@
-package com.github.reviversmc.themodindex.creator.ghapp.discordbot
+package com.github.reviversmc.themodindex.creator.maintainer.discordbot
 
-import com.github.reviversmc.themodindex.creator.ghapp.data.ManifestWithCreationStatus
-import com.github.reviversmc.themodindex.creator.ghapp.data.ReviewStatus
+import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
+import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
 import kotlinx.coroutines.channels.Channel
 
 /**

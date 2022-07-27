@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.ghapp.data
+package com.github.reviversmc.themodindex.creator.maintainer.data
 
 /**
  * Contains all config values for the-mod-index-maintainer.

@@ -20,11 +20,11 @@ dependencies {
 tasks {
     jar {
         manifest {
-            attributes["Main-Class"] = "${rootProject.group}.ghapp.AppKt"
+            attributes["Main-Class"] = "${rootProject.group}.maintainer.MaintainerKt"
         }
     }
 }
 
 apollo {
-    packageName.set("${rootProject.group}.ghapp.apicalls")
+    packageName.set("${rootProject.group}.maintainer.apicalls")
 }

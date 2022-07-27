@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.ghapp
+package com.github.reviversmc.themodindex.creator.maintainer
 
 import kotlinx.cli.ArgParser
 import org.koin.dsl.module
