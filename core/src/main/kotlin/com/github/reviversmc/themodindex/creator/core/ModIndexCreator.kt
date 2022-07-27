@@ -162,7 +162,7 @@ class ModIndexCreator(
             } catch (ex: SocketTimeoutException) {
                 // Do nothing, we don't have the files
             }
-            this[modLoader.name.lowercase()] = loaderFiles.toList().sortedByDescending { it.mcVersions.first() }
+            this[modLoader.name.lowercase()] = loaderFiles.toList().sortedByDescending { it.mcVersions.firstOrNull() }
         }
 
         this.values.removeIf { it.isEmpty() }
@@ -198,7 +198,7 @@ class ModIndexCreator(
                                 this[loader] = manifestFiles.toMutableList().also { files ->
                                     files[index] =
                                         manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
-                                }.toList().sortedByDescending { it.mcVersions.first() }
+                                }.toList().sortedByDescending { it.mcVersions.firstOrNull() }
                                 return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
                             }
                         }
@@ -294,7 +294,7 @@ class ModIndexCreator(
                         )
                     )
                 }
-                this[loader.lowercase()] = loaderFiles.toList().sortedByDescending { it.mcVersions.first() }
+                this[loader.lowercase()] = loaderFiles.toList().sortedByDescending { it.mcVersions.firstOrNull() }
             }
         }
     }.toMap()
@@ -464,7 +464,7 @@ class ModIndexCreator(
                             modData.links.sourceUrl ?: modrinthProject?.sourceUrl,
                             otherLinks
                         ),
-                        manifestFiles.sortedByDescending { it.mcVersions.first() })
+                        manifestFiles.sortedByDescending { it.mcVersions.firstOrNull() })
                     )
                 }
                 return true
@@ -482,7 +482,7 @@ class ModIndexCreator(
                                     modrinthApiCall.projectMembers(modrinthId).execute().body()
                                 }
                             }?.first { member -> member.role == "Owner" }?.userResponse?.username
-                                ?: curseData?.authors?.first()?.name
+                                ?: curseData?.authors?.firstOrNull()?.name
                                 ?: "UNKNOWN",
                             modrinthProject.license?.id
                                 ?: gitHubUserRepo?.let { githubApiCall.getRepository(it).license?.key },
@@ -493,7 +493,7 @@ class ModIndexCreator(
                                 modrinthProject.sourceUrl ?: curseData?.links?.sourceUrl,
                                 otherLinks
                             ),
-                            manifestFiles.sortedByDescending { it.mcVersions.first() })
+                            manifestFiles.sortedByDescending { it.mcVersions.firstOrNull() })
                         )
                     }
                     return true
