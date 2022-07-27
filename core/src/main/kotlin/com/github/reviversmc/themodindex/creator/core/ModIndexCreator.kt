@@ -183,9 +183,9 @@ class ModIndexCreator(
         gitHubRepo: String, existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-        githubApiCall.getRepository(gitHubRepo).listReleases().forEach { release ->
+        githubApiCall.getRepository(gitHubRepo)?.listReleases()?.forEach { release ->
             try {
-                for (asset in release.listAssets()) {
+                for (asset in release?.listAssets() ?: emptyList()) {
                     val response =
                         okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
                     val fileHash = createSHA512Hash(response.body()?.bytes() ?: continue)
