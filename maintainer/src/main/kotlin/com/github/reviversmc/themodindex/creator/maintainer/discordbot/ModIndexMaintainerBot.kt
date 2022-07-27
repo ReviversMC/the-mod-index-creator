@@ -161,10 +161,12 @@ class ModIndexMaintainerBot(
         logger.debug { "Registered command \"force-exit\"" }
     }
 
+    private fun String.trimLengthForDiscord() = if (this.length < 2000) this else this.substring(0, 1997) + "..."
+
     override suspend fun exit(exitMessage: String, exitCode: Int) {
         resolvedConflicts.close()
         startupMessage?.edit {
-            content = if (exitMessage.length < 2000) exitMessage else exitMessage.substring(0, 1997) + "..."
+            content = exitMessage.trimLengthForDiscord()
             components = mutableListOf() // Clear the action row
         }
         logger.debug { "Edited startup message" }
@@ -291,32 +293,32 @@ class ModIndexMaintainerBot(
         """.trimIndent()
 
         val conflictMessage = maintainerConflictsThread.createMessage {
-            content = messageContent
+            content = messageContent.trimLengthForDiscord()
 
             actionRow {
                 interactionButton(
                     ButtonStyle.Primary,
-                    "accept-original:genericIdentifier"
+                    "accept-original:$genericIdentifier"
                 ) {
                     label = "Accept original"
                 }
 
                 interactionButton(
                     ButtonStyle.Primary,
-                    "accept-latest:genericIdentifier"
+                    "accept-latest:$genericIdentifier"
                 ) {
                     label = "Accept newer"
                 }
 
                 interactionButton(
-                    ButtonStyle.Primary, "merge:genericIdentifier"
+                    ButtonStyle.Primary, "merge:$genericIdentifier"
                 ) {
                     label = "Merge manifests"
                 }
 
                 interactionButton(
                     ButtonStyle.Secondary,
-                    "dismiss:genericIdentifier"
+                    "dismiss:$genericIdentifier"
                 ) {
                     label = "Dismiss manifests"
                 }
@@ -471,7 +473,7 @@ class ModIndexMaintainerBot(
 
         "Manifest $genericIdentifier has been resolved with method ${interaction.componentId.substringBefore(":")}".also {
             maintainerResolvedThread?.createMessage {
-                content = it
+                content = it.trimLengthForDiscord()
             }?.also { logger.debug { it } } ?: logger.warn { "Message to thread \"maintainer-resolved\" failed!" }
         }
 
