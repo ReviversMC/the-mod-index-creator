@@ -5,7 +5,6 @@ import com.github.reviversmc.themodindex.creator.maintainer.apicalls.GHBranch
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.githubGraphqlModule
 import com.github.reviversmc.themodindex.creator.maintainer.data.AppConfig
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
-import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
 import com.github.reviversmc.themodindex.creator.maintainer.discordbot.MaintainerBot
 import com.github.reviversmc.themodindex.creator.maintainer.discordbot.discordBotModule
 import com.github.reviversmc.themodindex.creator.maintainer.github.UpdateSender
@@ -20,8 +19,7 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.*
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -89,7 +87,6 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
     }
 }
 
-@OptIn(DelicateCoroutinesApi::class)
 fun main(args: Array<String>) = runBlocking {
 
     val koin = startKoin {
@@ -203,43 +200,16 @@ fun main(args: Array<String>) = runBlocking {
 
                 val newManifests = mutableMapOf<String, ManifestWithCreationStatus>()
 
-                val newManifestContext = newSingleThreadContext("new-manifest-context")
-                withContext(newManifestContext) {
-
-                    suspend fun collectNewManifests(newManifestReviewer: NewManifestReviewer) =
-                        newManifestReviewer.reviewManifests().collect {
-                            if (it.originalManifest.genericIdentifier !in newManifests) {
-                                newManifests[it.originalManifest.genericIdentifier] = it
-                            } else {
-
-                                // Attempt to do a merger of the two manifests.
-                                val generatedManifest = it
-                                val conflictingManifest = newManifests[it.originalManifest.genericIdentifier]!!
-
-                                if ((generatedManifest.latestManifest!!.curseForgeId != null && conflictingManifest.latestManifest!!.curseForgeId != null) || (generatedManifest.latestManifest.modrinthId != null && conflictingManifest.latestManifest!!.modrinthId != null) || (generatedManifest.latestManifest.license != conflictingManifest.latestManifest!!.license) || (generatedManifest.latestManifest.fancyName != generatedManifest.latestManifest.fancyName)) {
-                                    newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
-                                        ReviewStatus.CREATION_CONFLICT,
-                                        it.latestManifest,
-                                        newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
-                                    )
-                                } else {
-                                    // TODO in the future, replace this with automatic merging. At this time, we still need real world data to determine strictness.
-                                    newManifests[it.originalManifest.genericIdentifier] = ManifestWithCreationStatus(
-                                        ReviewStatus.CREATION_CONFLICT,
-                                        it.latestManifest,
-                                        newManifests[it.originalManifest.genericIdentifier]!!.originalManifest // Not null as we just confirmed that it's in the map
-                                    )
-                                }
-
-
-                            }
-                        }
-
-                    // Does putting the two tasks in a coroutine even matter, considering that they are run from the same thread?
-                    val curseManifests = launch { collectNewManifests(curseForgeManifestReviewer) }
-                    val modrinthManifests = launch { collectNewManifests(modrinthManifestReviewer) }
-                    curseManifests.join()
-                    modrinthManifests.join()
+                // Iter through modrinth first cause it is smaller (probably?)
+                modrinthManifestReviewer.reviewManifests().buffer(FLOW_BUFFER)
+                    .collect { newManifests[it.originalManifest.genericIdentifier] = it }
+                curseForgeManifestReviewer.reviewManifests().buffer(FLOW_BUFFER).collect {
+                    if (it.originalManifest.genericIdentifier !in newManifests) {
+                        newManifests[it.originalManifest.genericIdentifier] = it
+                    } else {
+                        maintainerBot.sendConflict(newManifests[it.originalManifest.genericIdentifier]!!)
+                        maintainerBot.sendConflict(it)
+                    }
                 }
 
                 updateExistingManifests.join() // Wait for the update of existing manifests to finish, as we don't want to send a conflict.
