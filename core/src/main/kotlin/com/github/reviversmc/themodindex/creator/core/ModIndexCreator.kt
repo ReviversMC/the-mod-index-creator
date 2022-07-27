@@ -70,9 +70,11 @@ class ModIndexCreator(
                 else if (regex.matches(char.toString())) append(char)
                 // else just ignore (i.e. append('') )
             }
+
+            while (this.startsWith("_")) this.delete(0, 1)
+            while (this.endsWith("_")) this.delete(this.length - 1, this.length)
         }
-        while (formattedString.startsWith("_")) formattedString.removePrefix("_")
-        while (formattedString.endsWith("_")) formattedString.removeSuffix("_")
+
         return formattedString
     }
 
