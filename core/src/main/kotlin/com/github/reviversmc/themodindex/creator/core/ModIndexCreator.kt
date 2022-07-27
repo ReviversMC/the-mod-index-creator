@@ -56,6 +56,21 @@ class ModIndexCreator(
         return out
     }
 
+    /**
+     * Formats a string to be used the right half of a generic identifier
+     */
+    private fun String.formatRightGenericIdentifier(): String {
+        val regex = Regex("^[a-z0-9\\-_]$")
+        val lowercaseCandidate = this.lowercase()
+        return buildString {
+            for (char in lowercaseCandidate) {
+                if (char == ' ') append('_')
+                else if (regex.matches(char.toString())) append(char)
+                // else just ignore (i.e. append('') )
+            }
+        }
+    }
+
     // TODO Possibly fix file generation ranking snapshots above minecraft versions for all download/creation methods
 
     /**
@@ -93,7 +108,7 @@ class ModIndexCreator(
                         relationType.curseNumber == it.relationType
                     }.mapNotNull { curseFileDependency ->
                         curseForgeApiCall.mod(curseApiKey, curseFileDependency.modId).execute()
-                            .body()?.data?.name?.lowercase()?.replace(' ', '-')?.let {
+                            .body()?.data?.name?.formatRightGenericIdentifier()?.let {
 
                                 if (curseForgeApiCall.files(
                                         curseApiKey, curseFileDependency.modId, modLoader.curseNumber
@@ -223,7 +238,7 @@ class ModIndexCreator(
                             versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId == null && it.versionId != null }
 
                         return projectIdDependencies.mapNotNull { projectId ->
-                            modrinthApiCall.project(projectId).execute().body()?.title?.lowercase()?.replace(' ', '-')
+                            modrinthApiCall.project(projectId).execute().body()?.title?.formatRightGenericIdentifier()
                                 ?.let {
                                     if (modrinthApiCall.versions(projectId, "[\"$loader\"]").execute().body()
                                             ?.isNotEmpty() == true
@@ -242,12 +257,12 @@ class ModIndexCreator(
                             modrinthDependency.versionId?.let { versionId ->
                                 modrinthApiCall.version(versionId).execute().body()?.let { version ->
                                     if (loader in version.loaders) {
-                                        modrinthApiCall.project(version.projectId).execute().body()?.title?.lowercase()
-                                            ?.replace(' ', '-')?.let { "$loader:$it" }
+                                        modrinthApiCall.project(version.projectId).execute()
+                                            .body()?.title?.formatRightGenericIdentifier()?.let { "$loader:$it" }
 
                                     } else if (loader == "quilt" && "fabric" in version.loaders) {
-                                        modrinthApiCall.project(version.projectId).execute().body()?.title?.lowercase()
-                                            ?.replace(' ', '-')?.let { "fabric:$it" }
+                                        modrinthApiCall.project(version.projectId).execute()
+                                            .body()?.title?.formatRightGenericIdentifier()?.let { "fabric:$it" }
                                     } else null
                                 }
                             }
@@ -431,7 +446,7 @@ class ModIndexCreator(
             fun curseForgeToManifest() = curseForgeMod?.data?.let { modData ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
                     add(ManifestJson(indexVersion,
-                        "${modLoader}:${modData.name.lowercase().replace(' ', '-')}",
+                        "${modLoader}:${modData.name.formatRightGenericIdentifier()}",
                         modData.name,
                         modData.authors.first().name,
                         gitHubUserRepo?.let { githubApiCall.getRepository(it).license?.key }
@@ -453,7 +468,7 @@ class ModIndexCreator(
                 modrinthProject?.let { _ -> // No better alias for this
                     combinedFiles.forEach { (modLoader, manifestFiles) ->
                         add(ManifestJson(indexVersion,
-                            "$modLoader:${modrinthProject.title.lowercase().replace(' ', '-')}",
+                            "$modLoader:${modrinthProject.title.formatRightGenericIdentifier()}",
                             modrinthProject.title,
                             modrinthApiCall.projectMembers(modrinthId).execute().run {
                                 if (body() != null) body() else {
