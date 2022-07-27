@@ -76,13 +76,15 @@ class ModrinthManifestReviewer(
 
     override suspend fun createManifests(inputFlow: Flow<String>) = flow {
         logger.debug { "Creating Modrinth manifests..." }
+        var counter = 0
         inputFlow.collect { modrinthId ->
-            logger.debug { "Creating manifest for Modrinth project $modrinthId" }
+            logger.debug { "($counter) Creating manifest for Modrinth project $modrinthId" }
             val createdManifests = creator.createManifestModrinth(modrinthId)
-            logger.debug { "Created manifest for Modrinth project $modrinthId" }
+            logger.debug { "($counter) Created manifest for Modrinth project $modrinthId" }
             createdManifests.manifests.forEach {
                 emit(ManifestPendingReview(createdManifests.thirdPartyApiUsage, it, it))
             }
+            ++counter
         }
     }
 

@@ -31,14 +31,14 @@ class IndexExistingManifestReviewer(
     }
 
     override suspend fun createManifests(originalManifests: Flow<ManifestJson>) = flow {
-        var testModeCounter = 0
+        var counter = 0
 
         originalManifests.collect { originalManifest ->
             if (testMode) {
-                if (testModeCounter++ >= 20) return@collect // Test mode, only process 20 manifests
+                if (counter >= 20) return@collect // Test mode, only process 20 manifests
             }
 
-            logger.debug { "Creating manifest for ${originalManifest.genericIdentifier}" }
+            logger.debug { "($counter) Creating manifest for ${originalManifest.genericIdentifier}" }
 
             val createdManifests =
                 bufferedManifests.getAndRemove(originalManifest.genericIdentifier) // Try to get a cached value
@@ -73,7 +73,8 @@ class IndexExistingManifestReviewer(
             emit(
                 ManifestPendingReview(createdManifests.thirdPartyApiUsage, latestManifest, originalManifest)
             )
-            logger.debug { "Created manifest for ${originalManifest.genericIdentifier}" }
+            logger.debug { "($counter) Created manifest for ${originalManifest.genericIdentifier}" }
+            ++counter
         }
     }
 

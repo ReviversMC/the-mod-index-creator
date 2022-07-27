@@ -68,13 +68,15 @@ class CurseForgeManifestReviewer(
 
     override suspend fun createManifests(inputFlow: Flow<String>) = flow {
         logger.debug { "Creating CurseForge manifests..." }
+        var counter = 0
         inputFlow.collect { curseForgeId ->
-            logger.debug { "Creating manifest for CurseForge project $curseForgeId" }
+            logger.debug { "($counter) Creating manifest for CurseForge project $curseForgeId" }
             val createdManifests = creator.createManifestCurseForge(curseForgeId.toInt())
-            logger.debug { "Created manifest for CurseForge project $curseForgeId" }
+            logger.debug { "($counter) Created manifest for CurseForge project $curseForgeId" }
             createdManifests.manifests.forEach {
                 emit(ManifestPendingReview(createdManifests.thirdPartyApiUsage, it, it))
             }
+            ++counter
         }
     }
 
