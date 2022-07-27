@@ -34,12 +34,22 @@ class ModIndexCreator(
     private val apiDownloader: ApiDownloader,
     private val curseApiKey: String,
     private val curseForgeApiCall: CurseForgeApiCall,
-    private val githubApiCall: GitHub,
+    private val refreshGitHubClient: () -> GitHub,
     private val modrinthApiCall: ModrinthApiCall,
     private val okHttpClient: OkHttpClient,
 ) : Creator {
 
     private val indexVersion = "4.2.0"
+
+    /**
+     * Gets a GitHub client. This is unproven if it is valid. Use [validGitHubClient] instead to ensure credentials are valid.
+     */
+    private var githubClient = refreshGitHubClient()
+
+    private fun validGitHubClient() = if (githubClient.isCredentialValid) githubClient else {
+        githubClient = refreshGitHubClient()
+        githubClient
+    }
 
     /**
      * Creates a sha512 hash for the given [input] bytes
@@ -183,7 +193,7 @@ class ModIndexCreator(
         gitHubRepo: String, existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-        githubApiCall.getRepository(gitHubRepo)?.listReleases()?.forEach { release ->
+        validGitHubClient().getRepository(gitHubRepo)?.listReleases()?.forEach { release ->
             try {
                 for (asset in release?.listAssets() ?: emptyList()) {
                     val response =
@@ -455,7 +465,7 @@ class ModIndexCreator(
                         "${modLoader}:${modData.slug.formatRightGenericIdentifier()}",
                         modData.name,
                         modData.authors.firstOrNull()?.name ?: "UNKNOWN",
-                        gitHubUserRepo?.let { githubApiCall.getRepository(it).license?.key }
+                        gitHubUserRepo?.let { validGitHubClient().getRepository(it).license?.key }
                             ?: modrinthProject?.license?.id,
                         modData.id,
                         modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
@@ -482,10 +492,9 @@ class ModIndexCreator(
                                     modrinthApiCall.projectMembers(modrinthId).execute().body()
                                 }
                             }?.first { member -> member.role == "Owner" }?.userResponse?.username
-                                ?: curseData?.authors?.firstOrNull()?.name
-                                ?: "UNKNOWN",
+                                ?: curseData?.authors?.firstOrNull()?.name ?: "UNKNOWN",
                             modrinthProject.license?.id
-                                ?: gitHubUserRepo?.let { githubApiCall.getRepository(it).license?.key },
+                                ?: gitHubUserRepo?.let { validGitHubClient().getRepository(it).license?.key },
                             curseData?.id,
                             modrinthProject.id,
                             ManifestLinks(

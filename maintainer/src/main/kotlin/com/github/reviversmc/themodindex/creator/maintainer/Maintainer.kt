@@ -24,6 +24,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
+import org.kohsuke.github.GitHub
 import org.koin.core.context.startKoin
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
@@ -142,6 +143,9 @@ fun main(args: Array<String>) = runBlocking {
         )
     }
 
+    val createGitHubClient = {
+        koin.get<GitHub> { parametersOf(updateSender.gitHubInstallationToken) }
+    }
 
     // All variables that need to be refreshed (i.e. that use a gh api key) should be in the while loop.
     var operationLoopNum = 0
@@ -164,6 +168,7 @@ fun main(args: Array<String>) = runBlocking {
             )
         )
     }
+
     try {
         while (shouldContinueUpdating) {
             ++operationLoopNum
@@ -175,7 +180,10 @@ fun main(args: Array<String>) = runBlocking {
                     logger.debug { "Starting the update of existing manifests" }
                     val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
                         parametersOf(
-                            manifestRepo, config.curseForgeApiKey, updateSender.gitHubInstallationToken, testMode
+                            manifestRepo,
+                            config.curseForgeApiKey,
+                            createGitHubClient,
+                            testMode
                         )
                     }
                     val existingManifests = existingManifestReviewer.reviewManifests()
@@ -188,19 +196,25 @@ fun main(args: Array<String>) = runBlocking {
                 logger.debug { "Starting the creation of new manifests" }
                 val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
                     parametersOf(
-                        manifestRepo, config.curseForgeApiKey, updateSender.gitHubInstallationToken, testMode
+                        manifestRepo,
+                        config.curseForgeApiKey,
+                        createGitHubClient,
+                        testMode
                     )
                 }
 
                 val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
                     parametersOf(
-                        manifestRepo, config.curseForgeApiKey, updateSender.gitHubInstallationToken, testMode
+                        manifestRepo,
+                        config.curseForgeApiKey,
+                        createGitHubClient,
+                        testMode
                     )
                 }
 
                 val newManifests = mutableMapOf<String, ManifestWithCreationStatus>()
 
-                // Iter through modrinth first cause it is smaller (probably?)
+                // Iter through modrinth first because it is smaller (probably?)
                 modrinthManifestReviewer.reviewManifests().buffer(FLOW_BUFFER)
                     .collect { newManifests[it.originalManifest.genericIdentifier] = it }
                 curseForgeManifestReviewer.reviewManifests().buffer(FLOW_BUFFER).collect {

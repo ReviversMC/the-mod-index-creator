@@ -30,6 +30,11 @@ val dependencyModule = module {
     factory { (oAuthToken: String) ->
         GitHubBuilder().withJwtToken(oAuthToken).withConnector(get() as GitHubConnector).build()
     }
+
+    factory(named("default")) {
+        GitHubBuilder().withConnector(get() as GitHubConnector).build()
+    }
+
     factory { OkHttpGitHubConnector(get()) } bind GitHubConnector::class
     singleOf(::OkHttpClient)
 }
