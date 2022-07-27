@@ -57,18 +57,23 @@ class ModIndexCreator(
     }
 
     /**
-     * Formats a string to be used the right half of a generic identifier
+     * Formats a string to be used as the right half of a generic identifier
+     * @author ReviversMC
+     * @since 1.0.0
      */
     private fun String.formatRightGenericIdentifier(): String {
         val regex = Regex("^[a-z0-9\\-_]$")
         val lowercaseCandidate = this.lowercase()
-        return buildString {
+        val formattedString = buildString {
             for (char in lowercaseCandidate) {
                 if (char == ' ') append('_')
                 else if (regex.matches(char.toString())) append(char)
                 // else just ignore (i.e. append('') )
             }
         }
+        while (formattedString.startsWith("_")) formattedString.removePrefix("_")
+        while (formattedString.endsWith("_")) formattedString.removeSuffix("_")
+        return formattedString
     }
 
     // TODO Possibly fix file generation ranking snapshots above minecraft versions for all download/creation methods
