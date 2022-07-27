@@ -32,36 +32,36 @@ class CreationTest : KoinTest {
 
     private val curseForgeConsumerModId = 463481
     private val modrinthConsumerProjectId = "2NpFE0R3"
-    private val curseForgeConsumerModResponse = readResource("/apiResponse/tmi-consumer/curseForge/curseMod.json")
+    private val curseForgeConsumerModResponse = readResource("/apiResponse/tmi_consumer/curseForge/curseMod.json")
     private val modrinthConsumerProjectResponse =
-        readResource("/apiResponse/tmi-consumer/modrinth/modrinthProject.json")
-    private val modrinthConsumerTeamResponse = readResource("/apiResponse/tmi-consumer/modrinth/modrinthTeam.json")
+        readResource("/apiResponse/tmi_consumer/modrinth/modrinthProject.json")
+    private val modrinthConsumerTeamResponse = readResource("/apiResponse/tmi_consumer/modrinth/modrinthTeam.json")
     private val modrinthConsumerVersionResponse =
-        readResource("/apiResponse/tmi-consumer/modrinth/modrinthVersions.json")
+        readResource("/apiResponse/tmi_consumer/modrinth/modrinthVersions.json")
 
     private val curseForgeBridgeModId = 1234
     private val modrinthBridgeProjectId = "1A3BC"
-    private val curseForgeBridgeModResponse = readResource("/apiResponse/tmi-bridge/curseForge/curseMod.json")
-    private val modrinthBridgeProjectResponse = readResource("/apiResponse/tmi-bridge/modrinth/modrinthProject.json")
-    private val modrinthBridgeVersionResponse = readResource("/apiResponse/tmi-bridge/modrinth/modrinthVersions.json")
+    private val curseForgeBridgeModResponse = readResource("/apiResponse/tmi_bridge/curseForge/curseMod.json")
+    private val modrinthBridgeProjectResponse = readResource("/apiResponse/tmi_bridge/modrinth/modrinthProject.json")
+    private val modrinthBridgeVersionResponse = readResource("/apiResponse/tmi_bridge/modrinth/modrinthVersions.json")
 
     private val curseForgeEaterModId = 5678
     private val modrinthEaterProjectId = "2A3BC"
-    private val curseForgeEaterModResponse = readResource("/apiResponse/tmi-eater/curseForge/curseMod.json")
-    private val modrinthEaterProjectResponse = readResource("/apiResponse/tmi-eater/modrinth/modrinthProject.json")
-    private val modrinthEaterVersionResponse = readResource("/apiResponse/tmi-eater/modrinth/modrinthVersions.json")
+    private val curseForgeEaterModResponse = readResource("/apiResponse/tmi_eater/curseForge/curseMod.json")
+    private val modrinthEaterProjectResponse = readResource("/apiResponse/tmi_eater/modrinth/modrinthProject.json")
+    private val modrinthEaterVersionResponse = readResource("/apiResponse/tmi_eater/modrinth/modrinthVersions.json")
     private val modrinthEaterSpecificVersionResponse =
-        readResource("/apiResponse/tmi-eater/modrinth/modrinthVersion.json")
+        readResource("/apiResponse/tmi_eater/modrinth/modrinthVersion.json")
 
     private var isCurseForgeDistribution = true
     private var isTestingForGitHub = false
 
     @Suppress("KotlinConstantConditions") // We want to use the curse number constants
     private fun curseConsumerFilesResponse(curseNumber: Int = 0) = when (curseNumber) {
-        CurseForgeApiCall.ModLoaderType.ANY.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseAllFiles.json")
-        CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseFabricFiles.json")
-        CurseForgeApiCall.ModLoaderType.QUILT.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseQuiltFiles.json")
-        else -> readResource("/apiResponse/tmi-consumer/curseForge/curseEmptyFiles.json")
+        CurseForgeApiCall.ModLoaderType.ANY.curseNumber -> readResource("/apiResponse/tmi_consumer/curseForge/curseAllFiles.json")
+        CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber -> readResource("/apiResponse/tmi_consumer/curseForge/curseFabricFiles.json")
+        CurseForgeApiCall.ModLoaderType.QUILT.curseNumber -> readResource("/apiResponse/tmi_consumer/curseForge/curseQuiltFiles.json")
+        else -> readResource("/apiResponse/tmi_consumer/curseForge/curseEmptyFiles.json")
     }
 
 
@@ -102,7 +102,7 @@ class CreationTest : KoinTest {
                     "/v1/mods/$curseForgeBridgeModId/files" -> {
                         if (request.path!!.substringAfter('?') == "modLoaderType=5") {
                             MockResponse().setResponseCode(200)
-                                .setBody(readResource("/apiResponse/tmi-bridge/curseForge/curseQuiltFiles.json"))
+                                .setBody(readResource("/apiResponse/tmi_bridge/curseForge/curseQuiltFiles.json"))
                         } else MockResponse().setResponseCode(404)
                     }
 
@@ -111,7 +111,7 @@ class CreationTest : KoinTest {
                     "/v1/mods/$curseForgeEaterModId/files" -> {
                         if (request.path!!.substringAfter('?') == "modLoaderType=5") {
                             MockResponse().setResponseCode(200)
-                                .setBody(readResource("/apiResponse/tmi-eater/curseForge/curseQuiltFiles.json"))
+                                .setBody(readResource("/apiResponse/tmi_eater/curseForge/curseQuiltFiles.json"))
                         } else MockResponse().setResponseCode(404)
                     }
 
@@ -170,7 +170,7 @@ class CreationTest : KoinTest {
                 return if (request.path?.startsWith("/files/") == true) {
                     MockResponse().setResponseCode(200).setBody(
                         readResource(
-                            "/apiResponse/tmi-consumer/downloadableFiles/${
+                            "/apiResponse/tmi_consumer/downloadableFiles/${
                                 request.path!!.removePrefix("/files/").removeSuffix("/")
                             }"
                         )
@@ -214,7 +214,7 @@ class CreationTest : KoinTest {
     private fun assertManifestEquals(testType: String, manifest: ManifestJson) = assertEquals(
         get<Json>().decodeFromString(
             readResource(
-                "/expectedManifest/tmi-consumer/$testType/${
+                "/expectedManifest/tmi_consumer/$testType/${
                     manifest.genericIdentifier.substringBefore(
                         ":"
                     )

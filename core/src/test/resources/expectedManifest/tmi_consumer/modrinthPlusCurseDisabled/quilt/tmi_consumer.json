@@ -1,0 +1,63 @@
+{
+  "indexVersion": "4.2.0",
+  "genericIdentifier": "quilt:tmi_consumer",
+  "fancyName": "TMI Consumer",
+  "author": "Cloudate9",
+  "license": "lgpl-3",
+  "curseForgeId": 463481,
+  "modrinthId": "2NpFE0R3",
+  "links": {
+    "issue": "https://github.com/reviversmc/the-mod-index-creator/issues",
+    "sourceControl": null,
+    "others": [
+      {
+        "linkName": "discord",
+        "url": "https://discord.gg/6bTGYFppfz"
+      },
+      {
+        "linkName": "wiki",
+        "url": "https://github.com/reviversmc/the-mod-index-creator/wiki"
+      },
+      {
+        "linkName": "website",
+        "url": "https://github.com/reviversmc/the-mod-index-creator"
+      }
+    ]
+  },
+  "files": [
+    {
+      "fileName": "Version 1.1.0",
+      "mcVersions": [
+        "1.18.2"
+      ],
+      "sha512Hash": "35b4f26ea9dbd45bc98e58f3ee0c6e39fb8a7cb557fe0e42ebd53e5cf3e549c9cb39fb5b2992997dc179c6fa793d38336ef2cbe032d3b356c9cb4bb1beac8532",
+      "downloadUrls": [
+        "http://localhost:{port}/files/tmic-1.1.0.jar"
+      ],
+      "curseDownloadAvailable": false,
+      "relationsToOtherMods": {
+        "required": [
+          "quilt:tmi_bridge"
+        ],
+        "incompatible": [
+          "quilt:tmi_eater"
+        ]
+      }
+    },
+    {
+      "fileName": "Version 1.0.0",
+      "mcVersions": [
+        "1.18.2"
+      ],
+      "sha512Hash": "3a928aa2cc3bf291a4657d1b51e0e087dfb1dea060c89d20776b8943d24e712ea65778fe608ddaee0a191bc6680483ad12be1f357389a2380f660db246be5844",
+      "downloadUrls": [
+        "http://localhost:{port}/files/tmic-1.0.0.jar"
+      ],
+      "curseDownloadAvailable": false,
+      "relationsToOtherMods": {
+        "required": [],
+        "incompatible": []
+      }
+    }
+  ]
+}
