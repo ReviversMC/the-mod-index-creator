@@ -80,8 +80,8 @@ class ModIndexCreator(
                 // else just ignore (i.e. append('') )
             }
 
-            while (this.startsWith("_")) this.delete(0, 1)
-            while (this.endsWith("_")) this.delete(this.length - 1, this.length)
+            while (!Regex("^[a-z0-9]$").matches(this[0].toString())) this.delete(0, 1)
+            while (!Regex("^[a-z0-9]$").matches(this[this.length - 1].toString())) this.delete(this.length - 1, this.length)
         }
 
         return formattedString
