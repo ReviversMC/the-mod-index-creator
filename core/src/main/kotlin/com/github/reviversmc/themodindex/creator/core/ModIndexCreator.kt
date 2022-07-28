@@ -12,6 +12,7 @@ import kotlinx.coroutines.delay
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.kohsuke.github.GitHub
+import java.io.FileNotFoundException
 import java.math.BigInteger
 import java.net.SocketTimeoutException
 import java.security.MessageDigest
@@ -81,7 +82,10 @@ class ModIndexCreator(
             }
 
             while (!Regex("^[a-z0-9]$").matches(this[0].toString())) this.delete(0, 1)
-            while (!Regex("^[a-z0-9]$").matches(this[this.length - 1].toString())) this.delete(this.length - 1, this.length)
+            while (!Regex("^[a-z0-9]$").matches(this[this.length - 1].toString())) this.delete(
+                this.length - 1,
+                this.length
+            )
         }
 
         return formattedString
@@ -193,30 +197,34 @@ class ModIndexCreator(
         gitHubRepo: String, existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-        validGitHubClient().getRepository(gitHubRepo)?.listReleases()?.forEach { release ->
-            try {
-                for (asset in release?.listAssets() ?: emptyList()) {
-                    val response =
-                        okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
-                    val fileHash = createSHA512Hash(response.body()?.bytes() ?: continue)
-                    response.close()
+        try {
+            validGitHubClient().getRepository(gitHubRepo)?.listReleases()?.forEach { release ->
+                try {
+                    for (asset in release?.listAssets() ?: emptyList()) {
+                        val response =
+                            okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
+                        val fileHash = createSHA512Hash(response.body()?.bytes() ?: continue)
+                        response.close()
 
-                    for ((loader, manifestFiles) in this) {
-                        if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
-                        manifestFiles.forEachIndexed { index, manifestFile ->
-                            if (manifestFile.sha512Hash.equals(fileHash, true)) {
-                                this[loader] = manifestFiles.toMutableList().also { files ->
-                                    files[index] =
-                                        manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
-                                }.toList().sortedByDescending { it.mcVersions.firstOrNull() }
-                                return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
+                        for ((loader, manifestFiles) in this) {
+                            if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
+                            manifestFiles.forEachIndexed { index, manifestFile ->
+                                if (manifestFile.sha512Hash.equals(fileHash, true)) {
+                                    this[loader] = manifestFiles.toMutableList().also { files ->
+                                        files[index] =
+                                            manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
+                                    }.toList().sortedByDescending { it.mcVersions.firstOrNull() }
+                                    return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
+                                }
                             }
                         }
                     }
+                } catch (ex: SocketTimeoutException) {
+                    // Do nothing, we don't have the files
                 }
-            } catch (ex: SocketTimeoutException) {
-                // Do nothing, we don't have the files
             }
+        } catch (ex: FileNotFoundException) {
+            // This means that the repo doesn't exist
         }
     }.toMap()
 
@@ -465,7 +473,13 @@ class ModIndexCreator(
                         "${modLoader}:${modData.slug.formatRightGenericIdentifier()}",
                         modData.name,
                         modData.authors.firstOrNull()?.name ?: "UNKNOWN",
-                        gitHubUserRepo?.let { validGitHubClient().getRepository(it).license?.key }
+                        gitHubUserRepo?.let {
+                            try {
+                                validGitHubClient().getRepository(it).license?.key
+                            } catch (ex: FileNotFoundException) {
+                                null
+                            }
+                        }
                             ?: modrinthProject?.license?.id,
                         modData.id,
                         modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
@@ -494,7 +508,13 @@ class ModIndexCreator(
                             }?.first { member -> member.role == "Owner" }?.userResponse?.username
                                 ?: curseData?.authors?.firstOrNull()?.name ?: "UNKNOWN",
                             modrinthProject.license?.id
-                                ?: gitHubUserRepo?.let { validGitHubClient().getRepository(it).license?.key },
+                                ?: gitHubUserRepo?.let {
+                                    try {
+                                        validGitHubClient().getRepository(it).license?.key
+                                    } catch (ex: FileNotFoundException) {
+                                        null
+                                    }
+                                },
                             curseData?.id,
                             modrinthProject.id,
                             ManifestLinks(
