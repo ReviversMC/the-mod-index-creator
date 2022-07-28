@@ -74,7 +74,7 @@ class ModrinthManifestReviewer(
     }
 
 
-    override suspend fun createManifests(inputFlow: Flow<String>) = flow {
+    private suspend fun createManifests(inputFlow: Flow<String>) = flow {
         logger.debug { "Creating Modrinth manifests..." }
         var counter = 0
         inputFlow.collect { modrinthId ->

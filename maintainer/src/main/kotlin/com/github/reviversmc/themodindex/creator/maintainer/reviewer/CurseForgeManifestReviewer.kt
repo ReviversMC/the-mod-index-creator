@@ -3,6 +3,7 @@ package com.github.reviversmc.themodindex.creator.maintainer.reviewer
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
+import com.github.reviversmc.themodindex.creator.core.apicalls.CurseModData
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
@@ -58,7 +59,7 @@ class CurseForgeManifestReviewer(
 
             search.data.forEach {
                 if (it.id !in existingCurseIds) {
-                    emit(it.id.toString())
+                    emit(it) // emit the response, not the id
                     logger.debug { "Found new CurseForge project ${it.id}" }
                 }
             }
@@ -66,13 +67,13 @@ class CurseForgeManifestReviewer(
         logger.debug { "Finished obtaining CurseForge info" }
     }
 
-    override suspend fun createManifests(inputFlow: Flow<String>) = flow {
+    private suspend fun createManifests(inputFlow: Flow<CurseModData>) = flow {
         logger.debug { "Creating CurseForge manifests..." }
         var counter = 0
-        inputFlow.collect { curseForgeId ->
-            logger.debug { "($counter) Creating manifest for CurseForge project $curseForgeId" }
-            val createdManifests = creator.createManifestCurseForge(curseForgeId.toInt())
-            logger.debug { "($counter) Created manifest for CurseForge project $curseForgeId" }
+        inputFlow.collect { curseForgeMod ->
+            logger.debug { "($counter) Creating manifest for CurseForge project ${curseForgeMod.id}" }
+            val createdManifests = creator.createManifestCurseForge(curseForgeMod)
+            logger.debug { "($counter) Created manifest for CurseForge project ${curseForgeMod.id}" }
             createdManifests.manifests.forEach {
                 emit(ManifestPendingReview(createdManifests.thirdPartyApiUsage, it, it))
             }
