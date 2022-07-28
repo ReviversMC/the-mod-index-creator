@@ -130,20 +130,20 @@ class ModIndexCreator(
                     val fileHash = createSHA512Hash(fileResponse.body()?.bytes() ?: continue)
                     fileResponse.close()
 
-                    fun obtainRelation(relationType: RelationType): List<String> = file.dependencies.filter {
+                    fun obtainRelation(relationType: RelationType) = file.dependencies.filter {
                         relationType.curseNumber == it.relationType
-                    }.mapNotNull { curseFileDependency ->
-                        curseForgeMod.slug.formatRightGenericIdentifier().let {
+                    }.mapNotNull { curseDependency ->
+                        curseForgeApiCall.mod(curseApiKey, curseDependency.modId).execute().body()?.data?.slug?.formatRightGenericIdentifier()?.let {
 
                             if (curseForgeApiCall.files(
-                                    curseApiKey, curseFileDependency.modId, modLoader.curseNumber
+                                    curseApiKey, curseDependency.modId, modLoader.curseNumber
                                 ).execute().body()?.data?.isNotEmpty() == true
                             ) {
                                 "${modLoader.name.lowercase()}:$it"
 
                             } else if (modLoader == CurseForgeApiCall.ModLoaderType.QUILT && curseForgeApiCall.files(
                                     curseApiKey,
-                                    curseFileDependency.modId,
+                                    curseDependency.modId,
                                     CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber
                                 ).execute().body()?.data?.isNotEmpty() == true
                             ) {
@@ -261,15 +261,15 @@ class ModIndexCreator(
                         val versionIdDependencies =
                             versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId == null && it.versionId != null }
 
-                        return projectIdDependencies.mapNotNull { projectId ->
-                            modrinthProject.slug.formatRightGenericIdentifier().let {
-                                if (modrinthApiCall.versions(projectId, "[\"$loader\"]").execute().body()
+                        return projectIdDependencies.mapNotNull { dependencyId ->
+                            modrinthApiCall.project(dependencyId).execute().body()?.slug?.formatRightGenericIdentifier()?.let {
+                                if (modrinthApiCall.versions(dependencyId, "[\"$loader\"]").execute().body()
                                         ?.isNotEmpty() == true
                                 ) {
                                     "$loader:$it"
 
                                 } else if (loader == "quilt" && modrinthApiCall.versions(
-                                        projectId, "[\"fabric\"]"
+                                        dependencyId, "[\"fabric\"]"
                                     ).execute().body()?.isNotEmpty() == true
                                 ) {
                                     // Special concession for Quilt, where we will also check for Fabric files
