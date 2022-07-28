@@ -16,6 +16,7 @@ import java.io.FileNotFoundException
 import java.math.BigInteger
 import java.net.SocketTimeoutException
 import java.security.MessageDigest
+import kotlin.concurrent.timer
 
 /**
  * Helps to clarify what the underlying [String] stands for.
@@ -41,6 +42,13 @@ class ModIndexCreator(
 ) : Creator {
 
     private val indexVersion = "4.2.0"
+
+    init {
+        //Refresh every 50 minutes, not every hour, to account for delays
+        timer("CreatorGitHubRefresh", true, 0, 1000 * 60 * 50) {
+            githubClient = refreshGitHubClient()
+        }
+    }
 
     /**
      * Gets a GitHub client. This is unproven if it is valid. Use [validGitHubClient] instead to ensure credentials are valid.
