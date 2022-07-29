@@ -4,7 +4,6 @@ import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.Protocol
 import okhttp3.Response
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
@@ -39,11 +38,7 @@ val fakeApiCallModule = module {
     } bind ModrinthApiCall::class
 
     factory(named("githubGraphql")) { (githubToken: String) -> // We are unable to use single, because we need to inject the token, which may be different for each instance
-        OkHttpClient.Builder().addInterceptor(
-            GitHubAuthInterceptor(
-                githubToken
-            )
-        ).protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE, Protocol.HTTP_2, Protocol.HTTP_1_1)).build()
+        OkHttpClient.Builder().addInterceptor(GitHubAuthInterceptor(githubToken)).build()
     }
 
     factory { (githubToken: String) ->
