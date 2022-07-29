@@ -50,9 +50,14 @@ class CurseForgeManifestReviewer(
         var offset = 0
 
         while (offset < totalCount) {
-            val search = (if (testMode) curseForgeApiCall.search(curseForgeApiKey, offset, totalCount).execute().body()
-            else curseForgeApiCall.search(curseForgeApiKey, offset).execute().body())
-                ?: throw IOException("No response from CurseForge")
+            val search = try {
+                if (testMode) curseForgeApiCall.search(curseForgeApiKey, offset, totalCount).execute().body()
+                else curseForgeApiCall.search(curseForgeApiKey, offset).execute().body()
+            } catch (_: SocketTimeoutException) {
+
+                logger.warn { "Timeout while searching CurseForge" }
+                continue // Retry the search
+            } ?: throw IOException("No response from CurseForge")
 
             offset += limitPerSearch
 

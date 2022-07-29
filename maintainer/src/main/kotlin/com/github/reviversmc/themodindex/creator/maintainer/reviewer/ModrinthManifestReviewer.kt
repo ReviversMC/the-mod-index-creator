@@ -48,8 +48,8 @@ class ModrinthManifestReviewer(
         var offset = 0
 
         while (offset < totalCount) {
-            val search =
-                (if (testMode) modrinthApiCall.search(
+            val search = try {
+                if (testMode) modrinthApiCall.search(
                     /*
                     In test mode, don't go by default search.
                     Mods like FAPI have a LOT of versions, and that takes a while to generate manifests for
@@ -57,8 +57,11 @@ class ModrinthManifestReviewer(
                     searchMethod = ModrinthApiCall.SearchMethod.NEWEST.modrinthString,
                     limit = totalCount
                 ).execute().body()
-                else modrinthApiCall.search(limit = limitPerSearch, offset = offset).execute().body())
-                    ?: throw IOException("No response from Modrinth")
+                else modrinthApiCall.search(limit = limitPerSearch, offset = offset).execute().body()
+            } catch (_: SocketTimeoutException) {
+                logger.warn { "Modrinth search timed out" }
+                continue // Retry the search
+            } ?: throw IOException("No response from Modrinth")
 
             offset += limitPerSearch
 
