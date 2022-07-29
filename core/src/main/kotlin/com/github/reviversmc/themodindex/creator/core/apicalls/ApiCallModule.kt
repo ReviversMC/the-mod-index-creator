@@ -5,6 +5,7 @@ import com.apollographql.apollo3.network.okHttpClient
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import okhttp3.Response
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
@@ -40,7 +41,8 @@ val apiCallModule = module {
     includes(dependencyModule)
 
     factory(named("githubGraphql")) { (githubToken: String) -> // We are unable to use single, because we need to inject the token, which may be different for each instance
-        OkHttpClient.Builder().addInterceptor(GitHubAuthInterceptor(githubToken)).build()
+        OkHttpClient.Builder().addInterceptor(GitHubAuthInterceptor(githubToken))
+            .protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE, Protocol.HTTP_2, Protocol.HTTP_1_1)).build()
     }
 
     factory { (githubToken: String) ->
