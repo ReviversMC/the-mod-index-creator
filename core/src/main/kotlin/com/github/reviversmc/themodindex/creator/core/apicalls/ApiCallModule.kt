@@ -11,6 +11,7 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import retrofit2.Retrofit
+import java.util.concurrent.TimeUnit
 
 private class GitHubAuthInterceptor(private val gitHubToken: String) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -40,8 +41,12 @@ val apiCallModule = module {
     includes(dependencyModule)
 
     factory(named("githubGraphql")) { (githubToken: String) -> // We are unable to use single, because we need to inject the token, which may be different for each instance
-        OkHttpClient.Builder().addInterceptor(GitHubAuthInterceptor(githubToken)).build()
-    }
+        OkHttpClient.Builder()
+            .addInterceptor(GitHubAuthInterceptor(githubToken))
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()    }
 
     factory { (githubToken: String) ->
         ApolloClient.Builder().serverUrl("https://api.github.com/graphql")
