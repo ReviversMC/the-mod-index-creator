@@ -13,7 +13,7 @@ import retrofit2.Retrofit
 
 private class GitHubAuthInterceptor(private val gitHubToken: String) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request().newBuilder().addHeader("Authorization", "bearer $gitHubToken").build()
+        val request = chain.request().newBuilder().addHeader("Authorization", "Bearer $gitHubToken").build()
         return chain.proceed(request)
     }
 }
