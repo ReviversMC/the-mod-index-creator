@@ -378,12 +378,16 @@ class ModIndexCreator(
 
         fun obtainGitHubFromCurse() = curseForgeMod?.links?.sourceUrl?.let {
             val splitSource = it.split("/")
-            return@let if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
+            return@let if (splitSource.size < 5) null else {
+                if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
+            }
         }
 
         fun obtainGitHubFromModrinth() = modrinthProject?.sourceUrl?.let {// Make the source in the format of User/Repo
             val splitSource = it.split("/")
-            return@let if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
+            return@let if (splitSource.size < 5) null else {
+                if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
+            }
         }
 
         val gitHubUserRepo = if (preferCurseOverModrinth) obtainGitHubFromCurse() ?: obtainGitHubFromModrinth()
