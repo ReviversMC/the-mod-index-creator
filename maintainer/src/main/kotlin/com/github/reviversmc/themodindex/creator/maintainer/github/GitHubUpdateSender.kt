@@ -69,7 +69,7 @@ class GitHubUpdateSender(
             ?: throw IOException("Could not get installation token of $repoOwner/$repoName")
         logger.debug { "GitHub installation token created" }
 
-        return "Bearer $installationToken"
+        return installationToken
     }
 
     override fun sendManifestUpdate(manifestFlow: Flow<ManifestWithCreationStatus>) = flow {
