@@ -3,6 +3,7 @@ import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import io.mockk.mockkClass
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import okhttp3.mockwebserver.Dispatcher
@@ -228,10 +229,10 @@ class CreationTest : KoinTest {
     )
 
     @Test
-    fun `creator methods should be equivalent`() {
+    fun `creator methods should be equivalent`() = runBlocking {
         get<Creator> {
             parametersOf(
-                "", "$baseUrl:${curseForgeServer.port}/", "$baseUrl:${modrinthServer.port}/"
+                "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
             )
         }.let { creator ->
             assertTrue {
@@ -249,12 +250,12 @@ class CreationTest : KoinTest {
     }
 
     @Test
-    fun `generate manifests without GitHub, Curse disabled`() {
+    fun `generate manifests without GitHub, Curse disabled`() = runBlocking {
 
 
         val creator = get<Creator> {
             parametersOf(
-                "", "$baseUrl:${curseForgeServer.port}/", "$baseUrl:${modrinthServer.port}/"
+                "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
             )
         }
 
@@ -297,12 +298,12 @@ class CreationTest : KoinTest {
     }
 
     @Test
-    fun `generate manifests without GitHub, Curse enabled`() {
+    fun `generate manifests without GitHub, Curse enabled`() = runBlocking {
 
 
         val creator = get<Creator> {
             parametersOf(
-                "", "$baseUrl:${curseForgeServer.port}/", "$baseUrl:${modrinthServer.port}/"
+                "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"
             )
         }
 

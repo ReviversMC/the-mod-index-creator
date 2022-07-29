@@ -12,12 +12,11 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 import retrofit2.Retrofit
 
-private class GitHubAuthInterceptor(val gitHubToken: String) : Interceptor {
+private class GitHubAuthInterceptor(private val gitHubToken: String) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request().newBuilder().addHeader("Authorization", "bearer $gitHubToken").build()
         return chain.proceed(request)
     }
-
 }
 
 val apiCallModule = module {
@@ -44,8 +43,9 @@ val apiCallModule = module {
         OkHttpClient.Builder().addInterceptor(GitHubAuthInterceptor(githubToken)).build()
     }
 
-    factory {(githubToken: String) ->
-        ApolloClient.Builder().serverUrl("https://api.github.com/graphql").okHttpClient(get(named("githubGraphql")) { parametersOf(githubToken) })
+    factory { (githubToken: String) ->
+        ApolloClient.Builder().serverUrl("https://api.github.com/graphql")
+            .okHttpClient(get(named("githubGraphql")) { parametersOf(githubToken) })
             .build()
     }
 }
