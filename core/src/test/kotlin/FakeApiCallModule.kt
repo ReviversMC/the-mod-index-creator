@@ -43,7 +43,7 @@ val fakeApiCallModule = module {
             GitHubAuthInterceptor(
                 githubToken
             )
-        ).protocols(listOf(Protocol.H2_PRIOR_KNOWLEDGE, Protocol.HTTP_2, Protocol.HTTP_1_1)).build()
+        ).protocols(listOf( Protocol.HTTP_2, Protocol.HTTP_1_1)).build()
     }
 
     factory { (githubToken: String) ->
