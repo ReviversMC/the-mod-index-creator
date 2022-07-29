@@ -1,5 +1,6 @@
 package com.github.reviversmc.themodindex.creator.core
 
+import com.apollographql.apollo3.ApolloClient
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.data.ManifestLinks
 import com.github.reviversmc.themodindex.api.data.RelationsToOtherMods
@@ -10,8 +11,6 @@ import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.kohsuke.github.GitHub
-import java.io.FileNotFoundException
 import java.math.BigInteger
 import java.net.SocketTimeoutException
 import java.security.MessageDigest
@@ -35,7 +34,7 @@ class ModIndexCreator(
     private val apiDownloader: ApiDownloader,
     private val curseApiKey: String,
     private val curseForgeApiCall: CurseForgeApiCall,
-    private val refreshGitHubClient: () -> GitHub,
+    private val refreshGitHubClient: () -> ApolloClient,
     private val modrinthApiCall: ModrinthApiCall,
     private val okHttpClient: OkHttpClient,
 ) : Creator {
@@ -50,14 +49,11 @@ class ModIndexCreator(
     }
 
     /**
-     * Gets a GitHub client. This is unproven if it is valid. Use [validGitHubClient] instead to ensure credentials are valid.
+     * Gets the [ApolloClient] used to connect to GitHub
+     * @author ReviversMC
+     * @since 1.0.0
      */
     private var githubClient = refreshGitHubClient()
-
-    private fun validGitHubClient() = if (githubClient.isCredentialValid) githubClient else {
-        githubClient = refreshGitHubClient()
-        githubClient
-    }
 
     /**
      * Creates a sha512 hash for the given [input] bytes
@@ -127,32 +123,33 @@ class ModIndexCreator(
 
                     val fileResponse =
                         okHttpClient.newCall(Request.Builder().url(file.downloadUrl ?: continue).build()).execute()
-                    val fileHash = createSHA512Hash(fileResponse.body()?.bytes() ?: continue)
+                    val fileHash = createSHA512Hash(fileResponse.body?.bytes() ?: continue)
                     fileResponse.close()
 
                     fun obtainRelation(relationType: RelationType) = file.dependencies.filter {
                         relationType.curseNumber == it.relationType
                     }.mapNotNull { curseDependency ->
-                        curseForgeApiCall.mod(curseApiKey, curseDependency.modId).execute().body()?.data?.slug?.formatRightGenericIdentifier()?.let {
+                        curseForgeApiCall.mod(curseApiKey, curseDependency.modId).execute()
+                            .body()?.data?.slug?.formatRightGenericIdentifier()?.let {
 
-                            if (curseForgeApiCall.files(
-                                    curseApiKey, curseDependency.modId, modLoader.curseNumber
-                                ).execute().body()?.data?.isNotEmpty() == true
-                            ) {
-                                "${modLoader.name.lowercase()}:$it"
+                                if (curseForgeApiCall.files(
+                                        curseApiKey, curseDependency.modId, modLoader.curseNumber
+                                    ).execute().body()?.data?.isNotEmpty() == true
+                                ) {
+                                    "${modLoader.name.lowercase()}:$it"
 
-                            } else if (modLoader == CurseForgeApiCall.ModLoaderType.QUILT && curseForgeApiCall.files(
-                                    curseApiKey,
-                                    curseDependency.modId,
-                                    CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber
-                                ).execute().body()?.data?.isNotEmpty() == true
-                            ) {
-                                // Special concession for Quilt, where we will also check for Fabric files
-                                "${CurseForgeApiCall.ModLoaderType.FABRIC.name.lowercase()}:$it"
+                                } else if (modLoader == CurseForgeApiCall.ModLoaderType.QUILT && curseForgeApiCall.files(
+                                        curseApiKey,
+                                        curseDependency.modId,
+                                        CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber
+                                    ).execute().body()?.data?.isNotEmpty() == true
+                                ) {
+                                    // Special concession for Quilt, where we will also check for Fabric files
+                                    "${CurseForgeApiCall.ModLoaderType.FABRIC.name.lowercase()}:$it"
 
-                            } else null// If we can't find an appropriate file, don't add the dependency
+                                } else null// If we can't find an appropriate file, don't add the dependency
 
-                        }
+                            }
                     }
 
 
@@ -198,38 +195,32 @@ class ModIndexCreator(
      * @author ReviversMC
      * @since 1.0.0
      */
-    private fun downloadGitHubFiles(
+    private suspend fun downloadGitHubFiles(
         gitHubRepo: String, existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-        try {
-            validGitHubClient().getRepository(gitHubRepo)?.listReleases()?.forEach { release ->
-                try {
-                    for (asset in release?.listAssets() ?: emptyList()) {
-                        val response =
-                            okHttpClient.newCall(Request.Builder().url(asset.browserDownloadUrl).build()).execute()
-                        val fileHash = createSHA512Hash(response.body()?.bytes() ?: continue)
-                        response.close()
+        for (asset in GHGraphQLReleases.obtainAllAssets(
+            githubClient,
+            gitHubRepo.substringBefore("/"),
+            gitHubRepo.substringAfter("/")
+        )) {
+            val response =
+                okHttpClient.newCall(Request.Builder().url(asset).build()).execute()
+            val fileHash = createSHA512Hash(response.body?.bytes() ?: continue)
+            response.close()
 
-                        for ((loader, manifestFiles) in this) {
-                            if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
-                            manifestFiles.forEachIndexed { index, manifestFile ->
-                                if (manifestFile.sha512Hash.equals(fileHash, true)) {
-                                    this[loader] = manifestFiles.toMutableList().also { files ->
-                                        files[index] =
-                                            manifestFile.copy(downloadUrls = files[index].downloadUrls + asset.browserDownloadUrl)
-                                    }.toList().sortedByDescending { it.mcVersions.firstOrNull() }
-                                    return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
-                                }
-                            }
-                        }
+            for ((loader, manifestFiles) in this) {
+                if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
+                manifestFiles.forEachIndexed { index, manifestFile ->
+                    if (manifestFile.sha512Hash.equals(fileHash, true)) {
+                        this[loader] = manifestFiles.toMutableList().also { files ->
+                            files[index] =
+                                manifestFile.copy(downloadUrls = files[index].downloadUrls + asset)
+                        }.toList().sortedByDescending { it.mcVersions.firstOrNull() }
+                        return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
                     }
-                } catch (ex: SocketTimeoutException) {
-                    // Do nothing, we don't have the files
                 }
             }
-        } catch (ex: FileNotFoundException) {
-            // This means that the repo doesn't exist
         }
     }.toMap()
 
@@ -262,20 +253,21 @@ class ModIndexCreator(
                             versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId == null && it.versionId != null }
 
                         return projectIdDependencies.mapNotNull { dependencyId ->
-                            modrinthApiCall.project(dependencyId).execute().body()?.slug?.formatRightGenericIdentifier()?.let {
-                                if (modrinthApiCall.versions(dependencyId, "[\"$loader\"]").execute().body()
-                                        ?.isNotEmpty() == true
-                                ) {
-                                    "$loader:$it"
+                            modrinthApiCall.project(dependencyId).execute().body()?.slug?.formatRightGenericIdentifier()
+                                ?.let {
+                                    if (modrinthApiCall.versions(dependencyId, "[\"$loader\"]").execute().body()
+                                            ?.isNotEmpty() == true
+                                    ) {
+                                        "$loader:$it"
 
-                                } else if (loader == "quilt" && modrinthApiCall.versions(
-                                        dependencyId, "[\"fabric\"]"
-                                    ).execute().body()?.isNotEmpty() == true
-                                ) {
-                                    // Special concession for Quilt, where we will also check for Fabric files
-                                    "fabric:$it"
-                                } else null// If we can't find an appropriate file, don't add the dependency
-                            }
+                                    } else if (loader == "quilt" && modrinthApiCall.versions(
+                                            dependencyId, "[\"fabric\"]"
+                                        ).execute().body()?.isNotEmpty() == true
+                                    ) {
+                                        // Special concession for Quilt, where we will also check for Fabric files
+                                        "fabric:$it"
+                                    } else null// If we can't find an appropriate file, don't add the dependency
+                                }
                         } + versionIdDependencies.mapNotNull { modrinthDependency ->
                             modrinthDependency.versionId?.let { versionId ->
                                 modrinthApiCall.version(versionId).execute().body()?.let { version ->
@@ -316,7 +308,7 @@ class ModIndexCreator(
         }
     }.toMap()
 
-    override fun createManifestCurseForge(
+    override suspend fun createManifestCurseForge(
         curseForgeId: Int,
         modrinthId: String?,
         preferCurseForgeData: Boolean,
@@ -324,13 +316,13 @@ class ModIndexCreator(
         modrinthId, curseForgeApiCall.mod(curseApiKey, curseForgeId).execute().body()?.data, preferCurseForgeData
     )
 
-    override fun createManifestCurseForge(
+    override suspend fun createManifestCurseForge(
         curseForgeMod: CurseModData,
         modrinthId: String?,
         preferCurseForgeData: Boolean,
     ) = createManifest(modrinthId, curseForgeMod, preferCurseForgeData)
 
-    override fun createManifestModrinth(
+    override suspend fun createManifestModrinth(
         modrinthId: String,
         curseForgeId: Int?,
         preferModrinthData: Boolean,
@@ -342,7 +334,7 @@ class ModIndexCreator(
     } else createManifest(modrinthId, null, !preferModrinthData)
 
 
-    override fun createManifestModrinth(
+    override suspend fun createManifestModrinth(
         modrinthId: String,
         curseForgeMod: CurseModData?,
         preferModrinthData: Boolean,
@@ -351,7 +343,7 @@ class ModIndexCreator(
     )
 
 
-    private fun createManifest(
+    private suspend fun createManifest(
         modrinthId: String?,
         curseForgeMod: CurseModData?,
         preferCurseOverModrinth: Boolean,
@@ -392,7 +384,6 @@ class ModIndexCreator(
         fun obtainGitHubFromModrinth() = modrinthProject?.sourceUrl?.let {// Make the source in the format of User/Repo
             val splitSource = it.split("/")
             return@let if (splitSource[2].equals("github.com", true)) "${splitSource[3]}/${splitSource[4]}" else null
-
         }
 
         val gitHubUserRepo = if (preferCurseOverModrinth) obtainGitHubFromCurse() ?: obtainGitHubFromModrinth()
@@ -472,18 +463,18 @@ class ModIndexCreator(
 
         val returnManifests = mutableListOf<ManifestJson>().apply {
 
-            fun curseForgeToManifest() = curseForgeMod?.let { modData ->
+            suspend fun curseForgeToManifest() = curseForgeMod?.let { modData ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
                     add(ManifestJson(indexVersion,
                         "${modLoader}:${modData.slug.formatRightGenericIdentifier()}",
                         modData.name,
                         modData.authors.firstOrNull()?.name ?: "UNKNOWN",
                         gitHubUserRepo?.let {
-                            try {
-                                validGitHubClient().getRepository(it).license?.key
-                            } catch (ex: FileNotFoundException) {
-                                null
-                            }
+                            GHGraphQLicense.licenseSPDXId(
+                                githubClient,
+                                it.substringBefore("/"),
+                                it.substringAfter("/")
+                            )
                         } ?: modrinthProject?.license?.id,
                         modData.id,
                         modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
@@ -498,7 +489,7 @@ class ModIndexCreator(
                 return true
             } ?: false
 
-            fun modrinthToManifest() =
+            suspend fun modrinthToManifest() =
                 modrinthProject?.let { modrinthData ->
                     combinedFiles.forEach { (modLoader, manifestFiles) ->
                         add(
@@ -509,11 +500,11 @@ class ModIndexCreator(
                                     ?.firstOrNull { member -> member.role == "Owner" }?.userResponse?.username
                                     ?: curseForgeMod?.authors?.firstOrNull()?.name ?: "UNKNOWN",
                                 modrinthData.license?.id ?: gitHubUserRepo?.let {
-                                    try {
-                                        validGitHubClient().getRepository(it).license?.key
-                                    } catch (ex: FileNotFoundException) {
-                                        null
-                                    }
+                                    GHGraphQLicense.licenseSPDXId(
+                                        githubClient,
+                                        it.substringBefore("/"),
+                                        it.substringAfter("/")
+                                    )
                                 },
                                 curseForgeMod?.id,
                                 modrinthData.id,

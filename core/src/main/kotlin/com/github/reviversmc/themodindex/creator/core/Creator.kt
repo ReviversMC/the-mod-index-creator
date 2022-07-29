@@ -18,7 +18,7 @@ interface Creator {
      * @author ReviversMC
      * @since 1.0.0
      */
-    fun createManifestCurseForge(
+    suspend fun createManifestCurseForge(
         curseForgeId: Int,
         modrinthId: String? = null,
         preferCurseForgeData: Boolean = true,
@@ -32,7 +32,7 @@ interface Creator {
      * @author ReviversMC
      * @since 1.0.0
      */
-    fun createManifestCurseForge(
+    suspend fun createManifestCurseForge(
         curseForgeMod: CurseModData,
         modrinthId: String? = null,
         preferCurseForgeData: Boolean = true,
@@ -47,7 +47,7 @@ interface Creator {
      * @since 1.0.0
      */
     //Does not have a default value for [curseForgeId] so that there isn't an ambiguous match when calling this method
-    fun createManifestModrinth(
+    suspend fun createManifestModrinth(
         modrinthId: String,
         curseForgeId: Int?,
         preferModrinthData: Boolean = true,
@@ -61,7 +61,7 @@ interface Creator {
      * @author ReviversMC
      * @since 1.0.0
      */
-    fun createManifestModrinth(
+    suspend fun createManifestModrinth(
         modrinthId: String,
         curseForgeMod: CurseModData? = null,
         preferModrinthData: Boolean = true,

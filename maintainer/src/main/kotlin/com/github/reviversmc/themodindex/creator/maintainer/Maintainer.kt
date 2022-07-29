@@ -1,8 +1,9 @@
 package com.github.reviversmc.themodindex.creator.maintainer
 
+import com.apollographql.apollo3.ApolloClient
 import com.github.reviversmc.themodindex.creator.core.creatorModule
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.GHBranch
-import com.github.reviversmc.themodindex.creator.maintainer.apicalls.githubGraphqlModule
+import com.github.reviversmc.themodindex.creator.maintainer.apicalls.githubMaintainerModule
 import com.github.reviversmc.themodindex.creator.maintainer.data.AppConfig
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import com.github.reviversmc.themodindex.creator.maintainer.discordbot.MaintainerBot
@@ -24,7 +25,6 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
-import org.kohsuke.github.GitHub
 import org.koin.core.context.startKoin
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
@@ -92,7 +92,7 @@ fun main(args: Array<String>) = runBlocking {
 
     val koin = startKoin {
         modules(
-            appModule, creatorModule, discordBotModule, githubGraphqlModule, manifestReviewModule, updateSenderModule
+            appModule, creatorModule, discordBotModule, githubMaintainerModule, manifestReviewModule, updateSenderModule
         )
     }.koin
 
@@ -138,13 +138,12 @@ fun main(args: Array<String>) = runBlocking {
             config.gitHubRepoName,
             if (testMode) "maintainer-test" else "update",
             config.gitHubAppId,
-            config.gitHubPrivateKeyPath,
-            sus
+            config.gitHubPrivateKeyPath
         )
     }
 
     val createGitHubClient = {
-        koin.get<GitHub> { parametersOf(updateSender.gitHubInstallationToken) }
+        koin.get<ApolloClient> { parametersOf(updateSender.gitHubInstallationToken) }
     }
 
     // All variables that need to be refreshed (i.e. that use a gh api key) should be in the while loop.

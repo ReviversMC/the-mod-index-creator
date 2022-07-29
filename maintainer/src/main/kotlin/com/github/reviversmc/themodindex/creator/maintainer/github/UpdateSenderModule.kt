@@ -21,6 +21,7 @@ val updateSenderModule = module {
             it[2],
             it[3],
             it[4],
+            get(),
             it[5]
         )
     } bind UpdateSender::class

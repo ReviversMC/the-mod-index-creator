@@ -4,6 +4,7 @@ import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.GHBranch
+import com.github.reviversmc.themodindex.creator.maintainer.apicalls.GHRestApp
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileAddition
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileDeletion
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
@@ -15,9 +16,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
-import org.kohsuke.github.GitHub
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.get
 import org.koin.core.component.inject
 import org.koin.core.parameter.parametersOf
 import java.io.File
@@ -33,6 +32,7 @@ class GitHubUpdateSender(
     private val repoName: String,
     private val targetedBranch: String,
     private val gitHubAppId: String,
+    private val gitHubRestApp: GHRestApp,
     private val gitHubPrivateKeyPath: String,
 ) : KoinComponent, UpdateSender {
 
@@ -60,21 +60,22 @@ class GitHubUpdateSender(
         val jwtSigner = RSASigner.newSHA256Signer(File(gitHubPrivateKeyPath).readText())
         val jwt = JWT().setIssuedAt(ZonedDateTime.now(ZoneOffset.UTC).minusMinutes(1))
             .setExpiration(ZonedDateTime.now(ZoneOffset.UTC).plusMinutes(10)).setIssuer(gitHubAppId)
-        val signedJwt = JWT.getEncoder().encode(jwt, jwtSigner)
+        val signedJwt = "Bearer ${JWT.getEncoder().encode(jwt, jwtSigner)}"
         logger.debug { "Signed JWT created." }
 
-        val gitHubAppApi = get<GitHub> { parametersOf(signedJwt) }
-        val installationToken = gitHubAppApi.app.getInstallationByRepository(
-            repoOwner, repoName
-        ).createToken().create().token
+        val gitHubInstallationId = gitHubRestApp.installation(signedJwt, repoOwner, repoName).execute().body()?.id
+            ?: throw IOException("Could not get installation of $repoOwner/$repoName.")
+        val installationToken = gitHubRestApp.createAccessToken(signedJwt, gitHubInstallationId).execute().body()?.token
+            ?: throw IOException("Could not get installation token of $repoOwner/$repoName")
         logger.debug { "GitHub installation token created" }
 
-        return installationToken
+        return "Bearer $installationToken"
     }
 
     override fun sendManifestUpdate(manifestFlow: Flow<ManifestWithCreationStatus>) = flow {
         logger.debug { "Preparing to send manifest update..." }
-        var indexJson = apiDownloader.downloadIndexJson() ?: throw IOException("Could not download index.json from ${apiDownloader.formattedBaseUrl}")
+        var indexJson = apiDownloader.downloadIndexJson()
+            ?: throw IOException("Could not download index.json from ${apiDownloader.formattedBaseUrl}")
 
         val additions = mutableListOf<FileAddition>()
         val deletions = mutableListOf<FileDeletion>()
@@ -134,7 +135,7 @@ class GitHubUpdateSender(
         }
         indexJson = indexJson.copy(identifiers = indexJson.identifiers.sorted())
 
-        if (!get<GitHub> { parametersOf(gitHubInstallationToken) }.isCredentialValid) refreshInstallationTokenAndApi()
+        refreshInstallationTokenAndApi()
 
         additions.add(FileAddition("mods/index.json", json.encodeToString(indexJson).toBase64WithNewline()))
 

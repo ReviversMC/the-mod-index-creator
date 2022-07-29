@@ -1,0 +1,16 @@
+query ReleaseAssets($owner: String!, $repo: String!, $releasesBefore: String) {
+    repository(owner: $owner, name: $repo) {
+        releases(last: 100, before: $releasesBefore) {
+            pageInfo {
+                startCursor
+            }
+            nodes {
+                releaseAssets(last: 100) {
+                    nodes {
+                        downloadUrl
+                    }
+                }
+            }
+        }
+    }
+}
