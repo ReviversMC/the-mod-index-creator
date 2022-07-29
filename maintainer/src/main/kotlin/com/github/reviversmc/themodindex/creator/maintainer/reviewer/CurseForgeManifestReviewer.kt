@@ -9,6 +9,7 @@ import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
+import io.ktor.network.sockets.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
@@ -72,7 +73,14 @@ class CurseForgeManifestReviewer(
         var counter = 0
         inputFlow.collect { curseForgeMod ->
             logger.debug { "($counter) Creating manifest for CurseForge project ${curseForgeMod.id}" }
-            val createdManifests = creator.createManifestCurseForge(curseForgeMod)
+
+            val createdManifests = try {
+                creator.createManifestCurseForge(curseForgeMod)
+            } catch (_: SocketTimeoutException) {
+                logger.warn { "($counter) Socket timeout while creating manifest for CurseForge project ${curseForgeMod.id}" }
+                return@collect
+            }
+
             logger.debug { "($counter) Created manifest for CurseForge project ${curseForgeMod.id}" }
             createdManifests.manifests.forEach {
                 emit(ManifestPendingReview(createdManifests.thirdPartyApiUsage, it, it))

@@ -8,6 +8,7 @@ import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
+import io.ktor.network.sockets.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
@@ -79,7 +80,14 @@ class ModrinthManifestReviewer(
         var counter = 0
         inputFlow.collect { modrinthId ->
             logger.debug { "($counter) Creating manifest for Modrinth project $modrinthId" }
-            val createdManifests = creator.createManifestModrinth(modrinthId)
+
+            val createdManifests = try {
+                creator.createManifestModrinth(modrinthId)
+            } catch (_: SocketTimeoutException) {
+                logger.warn { "($counter) Socket timeout while creating manifest for Modrinth project $modrinthId" }
+                return@collect
+            }
+
             logger.debug { "($counter) Created manifest for Modrinth project $modrinthId" }
             createdManifests.manifests.forEach {
                 emit(ManifestPendingReview(createdManifests.thirdPartyApiUsage, it, it))
