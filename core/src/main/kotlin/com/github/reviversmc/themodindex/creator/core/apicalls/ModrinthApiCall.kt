@@ -22,8 +22,8 @@ interface ModrinthApiCall {
      * @author ReviversMC
      * @since 1.0.0
      */
-    @GET("/v2/project/{projectId}")
     @Headers(userAgent)
+    @GET("/v2/project/{projectId}")
     fun project(@Path("projectId") projectId: String): Call<ModrinthProjectResponse>
 
     /**
@@ -31,8 +31,8 @@ interface ModrinthApiCall {
      * @author ReviversMC
      * @since 1.0.0
      */
-    @GET("/v2/project/{projectId}/members")
     @Headers(userAgent)
+    @GET("/v2/project/{projectId}/members")
     fun projectMembers(@Path("projectId") projectId: String): Call<List<ModrinthTeamResponse>>
 
     /**
@@ -49,8 +49,8 @@ interface ModrinthApiCall {
      * @author ReviversMC
      * @since 1.0.0
      */
-    @GET("/v2/search")
     @Headers(userAgent)
+    @GET("/v2/search")
     fun search(
         @Query("query") query: String? = null,
         @Query("index") searchMethod: String? = SearchMethod.DEFAULT.modrinthString,
@@ -76,8 +76,8 @@ interface ModrinthApiCall {
      * @author ReviversMC
      * @since 1.0.0
      */
-    @GET("/v2/project/{projectId}/version")
     @Headers(userAgent)
+    @GET("/v2/project/{projectId}/version")
     fun versions(@Path("projectId") projectId: String, @Query("loaders") modLoaders: String? = null): Call<List<ModrinthVersionResponse>>
 
     /**
@@ -85,7 +85,7 @@ interface ModrinthApiCall {
      * @author ReviversMC
      * @since 1.0.0
      */
-    @GET("/v2/version/{id}")
     @Headers(userAgent)
+    @GET("/v2/version/{id}")
     fun version(@Path("id") versionId: String): Call<ModrinthVersionResponse>
 }
