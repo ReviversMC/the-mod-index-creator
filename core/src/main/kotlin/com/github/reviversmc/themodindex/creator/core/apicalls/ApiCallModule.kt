@@ -46,7 +46,8 @@ val apiCallModule = module {
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .build()    }
+            .build()
+    }
 
     factory { (githubToken: String) ->
         ApolloClient.Builder().serverUrl("https://api.github.com/graphql")
