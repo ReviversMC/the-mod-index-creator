@@ -1,5 +1,6 @@
 package com.github.reviversmc.themodindex.creator.maintainer.reviewer
 
+import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
@@ -19,6 +20,7 @@ import java.io.IOException
 class ModrinthManifestReviewer(
     private val apiDownloader: ApiDownloader,
     private val creator: Creator,
+    private val existingManifests: List<ManifestJson>,
     private val modrinthApiCall: ModrinthApiCall,
     private val runMode: RunMode,
 ) : NewManifestReviewer {
@@ -29,7 +31,7 @@ class ModrinthManifestReviewer(
         logger.debug { "Obtaining Modrinth info..." }
 
         val existingModrinthIds = mutableListOf<String>().apply {
-            apiDownloader.downloadExistingManifests(logger).buffer(FLOW_BUFFER).collect { existingManifest ->
+            existingManifests.forEach { existingManifest ->
                 existingManifest.modrinthId?.let { add(it) }
             }
             logger.debug { "Downloaded existing manifests" }

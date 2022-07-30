@@ -1,6 +1,8 @@
 package com.github.reviversmc.themodindex.creator.maintainer
 
 import com.apollographql.apollo3.ApolloClient
+import com.github.reviversmc.themodindex.api.data.ManifestJson
+import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.creatorModule
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.GHBranch
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.githubMaintainerModule
@@ -206,6 +208,23 @@ fun main(args: Array<String>) = runBlocking {
                 }
             }
 
+            val existingManifests = mutableListOf<ManifestJson>().apply {
+                val apiDownloader = koin.get<ApiDownloader>(named("custom")) { parametersOf(manifestRepo) }
+                    val existingGenericIdentifiers =
+                        apiDownloader.downloadIndexJson()?.identifiers?.map { it.substringBeforeLast(":") }
+                            ?: throw IOException("Could not download manifest index from ${apiDownloader.formattedBaseUrl}")
+                    logger.debug { "Downloaded manifest index of repository ${apiDownloader.formattedBaseUrl}" }
+
+                    existingGenericIdentifiers.distinct().forEach {
+                        add(
+                            apiDownloader.downloadManifestJson(it)
+                                ?: throw IOException("Could not download manifest $it")
+                        )
+                        logger.debug { "Downloaded manifest $it" }
+                    }
+                }.toList()
+
+
             val updateExistingManifests =
                 launch {// This can take some time. Let's push this into a separate coroutine, and do other things as well
                     logger.debug { "Starting the update of existing manifests" }
@@ -213,6 +232,7 @@ fun main(args: Array<String>) = runBlocking {
                         parametersOf(
                             manifestRepo,
                             config.curseForgeApiKey,
+                            existingManifests,
                             createGitHubClient,
                             runMode
                         )
@@ -228,6 +248,7 @@ fun main(args: Array<String>) = runBlocking {
                     parametersOf(
                         manifestRepo,
                         config.curseForgeApiKey,
+                        existingManifests,
                         createGitHubClient,
                         runMode
                     )
@@ -237,6 +258,7 @@ fun main(args: Array<String>) = runBlocking {
                     parametersOf(
                         manifestRepo,
                         config.curseForgeApiKey,
+                        existingManifests,
                         createGitHubClient,
                         runMode
                     )

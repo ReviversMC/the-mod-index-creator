@@ -1,5 +1,6 @@
 package com.github.reviversmc.themodindex.creator.maintainer.reviewer
 
+import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
@@ -22,6 +23,7 @@ class CurseForgeManifestReviewer(
     private val creator: Creator,
     private val curseForgeApiCall: CurseForgeApiCall,
     private val curseForgeApiKey: String,
+    private val existingManifests: List<ManifestJson>,
     private val runMode: RunMode,
 ) : NewManifestReviewer {
 
@@ -31,7 +33,7 @@ class CurseForgeManifestReviewer(
         logger.debug { "Obtaining CurseForge info..." }
 
         val existingCurseIds = mutableListOf<Int>().apply {
-            apiDownloader.downloadExistingManifests(logger).buffer(FLOW_BUFFER).collect { existingManifest ->
+           existingManifests.forEach { existingManifest ->
                 existingManifest.curseForgeId?.let { add(it) }
             }
             logger.debug { "Downloaded existing manifests" }
@@ -79,7 +81,7 @@ class CurseForgeManifestReviewer(
     private suspend fun createManifests(inputFlow: Flow<CurseModData>) = flow {
         logger.debug { "Creating CurseForge manifests..." }
         var counter = 0
-        inputFlow.collect { curseForgeMod ->
+        inputFlow.buffer(FLOW_BUFFER).collect { curseForgeMod ->
             logger.debug { "($counter) Creating manifest for CurseForge project ${curseForgeMod.id}" }
 
             val createdManifests = try {
@@ -100,7 +102,7 @@ class CurseForgeManifestReviewer(
     override fun reviewManifests() = flow {
         val createdManifests = createManifests(obtainCurseForgeInfo())
 
-        createdManifests.collect { (thirdPartyApiStatus, latestManifest, originalManifest) ->
+        createdManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiStatus, latestManifest, originalManifest) ->
             if (ThirdPartyApiUsage.CURSEFORGE_USED !in thirdPartyApiStatus) {
                 emit(ManifestWithCreationStatus(ReviewStatus.THIRD_PARTY_API_FAILURE, latestManifest, originalManifest))
                 logger.debug { "Third party api failure for ${originalManifest.genericIdentifier}" }

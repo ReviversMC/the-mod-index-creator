@@ -12,13 +12,14 @@ import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import io.ktor.network.sockets.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
 import java.io.IOException
 
 class IndexExistingManifestReviewer(
-    private val apiDownloader: ApiDownloader, private val creator: Creator, private val runMode: RunMode,
+    private val apiDownloader: ApiDownloader, private val creator: Creator, private val originalManifests: List<ManifestJson>, private val runMode: RunMode,
 ) : ExistingManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -35,7 +36,7 @@ class IndexExistingManifestReviewer(
     override suspend fun createManifests(originalManifests: Flow<ManifestJson>) = flow {
         var counter = 0
 
-        originalManifests.collect { originalManifest ->
+        originalManifests.buffer(FLOW_BUFFER).collect { originalManifest ->
             if (runMode == RunMode.TEST_SHORT) {
                 if (counter >= 20) return@collect // Test mode, only process 20 manifests
             }
@@ -93,8 +94,7 @@ class IndexExistingManifestReviewer(
 
     override fun reviewManifests() = flow {
 
-        val originalManifests = apiDownloader.downloadExistingManifests(logger)
-        val updatedManifests = createManifests(originalManifests.buffer(FLOW_BUFFER))
+        val updatedManifests = createManifests(originalManifests.asFlow())
 
         updatedManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiUsage, latestManifest, originalManifest) ->
 
