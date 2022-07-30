@@ -419,23 +419,23 @@ class ModIndexMaintainerBot(
                                     (latestManifest?.files?.map { versionFile ->
                                         VersionFile(
                                             versionFile.fileName,
-                                            versionFile.mcVersions + (originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.mcVersions
+                                            versionFile.mcVersions + (originalManifest.files.firstOrNull { versionFile.shortSha512Hash == it.shortSha512Hash }?.mcVersions
                                                 ?: emptyList()),
-                                            versionFile.sha512Hash,
-                                            versionFile.downloadUrls + (originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.downloadUrls
+                                            versionFile.shortSha512Hash,
+                                            versionFile.downloadUrls + (originalManifest.files.firstOrNull { versionFile.shortSha512Hash == it.shortSha512Hash }?.downloadUrls
                                                 ?: emptyList()),
-                                            versionFile.curseDownloadAvailable || originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.curseDownloadAvailable == true,
+                                            versionFile.curseDownloadAvailable || originalManifest.files.firstOrNull { versionFile.shortSha512Hash == it.shortSha512Hash }?.curseDownloadAvailable == true,
                                             RelationsToOtherMods(
-                                                (versionFile.relationsToOtherMods.required + (originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.relationsToOtherMods?.required
+                                                (versionFile.relationsToOtherMods.required + (originalManifest.files.firstOrNull { versionFile.shortSha512Hash == it.shortSha512Hash }?.relationsToOtherMods?.required
                                                     ?: emptyList())).distinct(),
-                                                (versionFile.relationsToOtherMods.incompatible + (originalManifest.files.firstOrNull { versionFile.sha512Hash == it.sha512Hash }?.relationsToOtherMods?.incompatible
+                                                (versionFile.relationsToOtherMods.incompatible + (originalManifest.files.firstOrNull { versionFile.shortSha512Hash == it.shortSha512Hash }?.relationsToOtherMods?.incompatible
                                                     ?: emptyList())).distinct()
                                             )
                                         )
                                     } ?: emptyList()) +
                                             // Find all files that were not in the latest manifest, and add them. No configuration required, as there is nothing to compare to
                                             originalManifest.files.filter { versionFile ->
-                                                versionFile.sha512Hash !in (latestManifest?.files?.map { it.sha512Hash }
+                                                versionFile.shortSha512Hash !in (latestManifest?.files?.map { it.shortSha512Hash }
                                                     ?: emptyList())
                                             }
                                 )

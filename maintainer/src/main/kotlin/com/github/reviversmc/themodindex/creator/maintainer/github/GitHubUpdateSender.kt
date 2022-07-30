@@ -191,7 +191,7 @@ class GitHubUpdateSender(
     private fun IndexJson.addToIndex(manifest: ManifestJson): IndexJson =
         copy(identifiers = identifiers.toMutableList().apply {
             manifest.files.forEach {
-                val identifier = "${manifest.genericIdentifier}:${it.sha512Hash}"
+                val identifier = "${manifest.genericIdentifier}:${it.shortSha512Hash}"
                 if (identifier !in this) this.add(identifier)
             }
         }.toList())
@@ -204,6 +204,6 @@ class GitHubUpdateSender(
      */
     private fun IndexJson.removeFromIndex(manifest: ManifestJson): IndexJson =
         copy(identifiers = identifiers.toMutableList().apply {
-            manifest.files.forEach { remove("${manifest.genericIdentifier}:${it.sha512Hash}") }
+            manifest.files.forEach { remove("${manifest.genericIdentifier}:${it.shortSha512Hash}") }
         }.toList())
 }
