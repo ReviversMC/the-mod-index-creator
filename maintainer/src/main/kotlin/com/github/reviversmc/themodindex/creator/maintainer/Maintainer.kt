@@ -224,6 +224,8 @@ fun main(args: Array<String>) = runBlocking {
                     }
                 }.toList()
 
+            logger.info { "Found ${existingManifests.size} existing manifests" }
+
 
             val updateExistingManifests =
                 launch {// This can take some time. Let's push this into a separate coroutine, and do other things as well
