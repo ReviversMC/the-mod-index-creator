@@ -5,6 +5,7 @@ import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
+import com.github.reviversmc.themodindex.creator.maintainer.RunMode
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
@@ -19,7 +20,7 @@ class ModrinthManifestReviewer(
     private val apiDownloader: ApiDownloader,
     private val creator: Creator,
     private val modrinthApiCall: ModrinthApiCall,
-    private val testMode: Boolean,
+    private val runMode: RunMode,
 ) : NewManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -40,7 +41,7 @@ class ModrinthManifestReviewer(
         logger.debug { "Made first search to Modrinth" }
         limitPerSearch = firstSearch.limit
 
-        val totalCount = if (testMode) 20 // Just test with a small number of results
+        val totalCount = if (runMode == RunMode.TEST_SHORT) 20 // Just test with a small number of results
         else firstSearch.totalHits // Otherwise, use the total count from the first search
 
         logger.debug { "Total of $totalCount Modrinth projects found" }
@@ -49,9 +50,9 @@ class ModrinthManifestReviewer(
 
         while (offset < totalCount) {
             val search = try {
-                if (testMode) modrinthApiCall.search(
+                if (runMode == RunMode.TEST_SHORT) modrinthApiCall.search(
                     /*
-                    In test mode, don't go by default search.
+                    In short test mode, don't go by default search.
                     Mods like FAPI have a LOT of versions, and that takes a while to generate manifests for
                      */
                     searchMethod = ModrinthApiCall.SearchMethod.NEWEST.modrinthString,
@@ -112,8 +113,14 @@ class ModrinthManifestReviewer(
                 )
                 logger.debug { "Third party api failure for ${originalManifest.genericIdentifier}" }
             } else {
-                emit(ManifestWithCreationStatus(ReviewStatus.APPROVED_UPDATE, latestManifest, originalManifest))
-                logger.debug { "Creation of ${originalManifest.genericIdentifier} is approved" }
+                val existingManifestInRepo = apiDownloader.downloadManifestJson(originalManifest.genericIdentifier)
+                if (existingManifestInRepo == null) { // Means that this is the first copy
+                    emit(ManifestWithCreationStatus(ReviewStatus.APPROVED_UPDATE, latestManifest, originalManifest))
+                    logger.debug { "Creation of ${originalManifest.genericIdentifier} is approved" }
+                } else {
+                    emit(ManifestWithCreationStatus(ReviewStatus.UPDATE_CONFLICT, latestManifest, existingManifestInRepo))
+                    logger.warn { "Conflict detected: Created ${originalManifest.genericIdentifier} instead of updating an existing version" }
+                }
             }
         }
 

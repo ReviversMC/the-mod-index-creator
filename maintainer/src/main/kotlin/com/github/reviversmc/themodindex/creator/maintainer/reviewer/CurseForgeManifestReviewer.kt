@@ -6,6 +6,7 @@ import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseModData
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
+import com.github.reviversmc.themodindex.creator.maintainer.RunMode
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
@@ -21,7 +22,7 @@ class CurseForgeManifestReviewer(
     private val creator: Creator,
     private val curseForgeApiCall: CurseForgeApiCall,
     private val curseForgeApiKey: String,
-    private val testMode: Boolean,
+    private val runMode: RunMode,
 ) : NewManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -42,7 +43,7 @@ class CurseForgeManifestReviewer(
         logger.debug { "Made first search to CurseForge" }
         val limitPerSearch = firstSearch.pagination.pageSize
 
-        val totalCount = if (testMode) 20 // Just test with a small number of results
+        val totalCount = if (runMode == RunMode.TEST_SHORT) 20 // Just test with a small number of results
         else firstSearch.pagination.totalCount // Otherwise, use the total count from the first search
 
         logger.debug { "Total of $totalCount CurseForge mods found" }
@@ -51,7 +52,8 @@ class CurseForgeManifestReviewer(
 
         while (offset < totalCount) {
             val search = try {
-                if (testMode) curseForgeApiCall.search(curseForgeApiKey, offset, totalCount).execute().body()
+                if (runMode == RunMode.TEST_SHORT) curseForgeApiCall.search(curseForgeApiKey, offset, totalCount)
+                    .execute().body()
                 else curseForgeApiCall.search(curseForgeApiKey, offset).execute().body()
             } catch (_: SocketTimeoutException) {
 
@@ -103,8 +105,14 @@ class CurseForgeManifestReviewer(
                 emit(ManifestWithCreationStatus(ReviewStatus.THIRD_PARTY_API_FAILURE, latestManifest, originalManifest))
                 logger.debug { "Third party api failure for ${originalManifest.genericIdentifier}" }
             } else {
-                emit(ManifestWithCreationStatus(ReviewStatus.APPROVED_UPDATE, latestManifest, originalManifest))
-                logger.debug { "Creation of ${originalManifest.genericIdentifier} is approved" }
+                val existingManifestInRepo = apiDownloader.downloadManifestJson(originalManifest.genericIdentifier)
+                if (existingManifestInRepo == null) { // Means that this is the first copy
+                    emit(ManifestWithCreationStatus(ReviewStatus.APPROVED_UPDATE, latestManifest, originalManifest))
+                    logger.debug { "Creation of ${originalManifest.genericIdentifier} is approved" }
+                } else {
+                    emit(ManifestWithCreationStatus(ReviewStatus.UPDATE_CONFLICT, latestManifest, existingManifestInRepo))
+                    logger.warn { "Conflict detected: Created ${originalManifest.genericIdentifier} instead of updating an existing version" }
+                }
             }
         }
     }
