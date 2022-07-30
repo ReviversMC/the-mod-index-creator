@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
+import retrofit2.HttpException
 import java.io.IOException
 
 class ModrinthManifestReviewer(
@@ -51,6 +52,9 @@ class ModrinthManifestReviewer(
         var offset = 0
 
         while (offset < totalCount) {
+
+            offset += limitPerSearch
+
             val search = try {
                 if (runMode == RunMode.TEST_SHORT) modrinthApiCall.search(
                     /*
@@ -63,11 +67,9 @@ class ModrinthManifestReviewer(
                 else modrinthApiCall.search(limit = limitPerSearch, offset = offset).execute().body()
             } catch (_: SocketTimeoutException) {
                 logger.warn { "Modrinth search timed out" }
-                kotlinx.coroutines.delay(10L * 1000L) // Cooldown so that we don't spam jic the server is down
-                continue // Retry the search
+                continue // Skip the search, we don't want to get stuck waiting on the api
             } ?: throw IOException("No response from Modrinth")
 
-            offset += limitPerSearch
 
             if (search.hits.isEmpty()) break
 
@@ -92,6 +94,12 @@ class ModrinthManifestReviewer(
                 creator.createManifestModrinth(modrinthId)
             } catch (_: SocketTimeoutException) {
                 logger.warn { "($counter) Socket timeout while creating manifest for Modrinth project $modrinthId" }
+                null
+            } catch (ex: HttpException) {
+                logger.warn { "($counter) HTTP exception while creating manifest for Modrinth project $modrinthId: code ${ex.code()}" }
+                null
+            } ?: run {
+                ++counter
                 return@collect
             }
 
@@ -120,7 +128,13 @@ class ModrinthManifestReviewer(
                     emit(ManifestWithCreationStatus(ReviewStatus.APPROVED_UPDATE, latestManifest, originalManifest))
                     logger.debug { "Creation of ${originalManifest.genericIdentifier} is approved" }
                 } else {
-                    emit(ManifestWithCreationStatus(ReviewStatus.UPDATE_CONFLICT, latestManifest, existingManifestInRepo))
+                    emit(
+                        ManifestWithCreationStatus(
+                            ReviewStatus.UPDATE_CONFLICT,
+                            latestManifest,
+                            existingManifestInRepo
+                        )
+                    )
                     logger.warn { "Conflict detected: Created ${originalManifest.genericIdentifier} instead of updating an existing version" }
                 }
             }

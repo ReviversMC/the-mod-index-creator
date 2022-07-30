@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
+import retrofit2.HttpException
 import java.io.IOException
 
 class CurseForgeManifestReviewer(
@@ -33,7 +34,7 @@ class CurseForgeManifestReviewer(
         logger.debug { "Obtaining CurseForge info..." }
 
         val existingCurseIds = mutableListOf<Int>().apply {
-           existingManifests.forEach { existingManifest ->
+            existingManifests.forEach { existingManifest ->
                 existingManifest.curseForgeId?.let { add(it) }
             }
             logger.debug { "Downloaded existing manifests" }
@@ -53,18 +54,19 @@ class CurseForgeManifestReviewer(
         var offset = 0
 
         while (offset < totalCount) {
+
+            offset += limitPerSearch
+
             val search = try {
                 if (runMode == RunMode.TEST_SHORT) curseForgeApiCall.search(curseForgeApiKey, offset, totalCount)
                     .execute().body()
                 else curseForgeApiCall.search(curseForgeApiKey, offset).execute().body()
             } catch (_: SocketTimeoutException) {
-
-                logger.warn { "Timeout while searching CurseForge" }
-                kotlinx.coroutines.delay(10L * 1000L) // Cooldown so that we don't spam jic the server is down
-                continue // Retry the search
+                // The show must go on, skip the search.
+                logger.warn { "CurseForge search timed out" }
+                continue
             } ?: throw IOException("No response from CurseForge")
 
-            offset += limitPerSearch
 
             if (search.data.isEmpty()) break
 
@@ -87,7 +89,13 @@ class CurseForgeManifestReviewer(
             val createdManifests = try {
                 creator.createManifestCurseForge(curseForgeMod)
             } catch (_: SocketTimeoutException) {
-                logger.warn { "($counter) Socket timeout while creating manifest for CurseForge project ${curseForgeMod.id}" }
+                logger.warn { "($counter) Socket timeout while creating manifest for Modrinth project ${curseForgeMod.id}" }
+                null
+            } catch (ex: HttpException) {
+                logger.warn { "($counter) HTTP exception while creating manifest for Modrinth project ${curseForgeMod.id}: code ${ex.code()}" }
+                null
+            } ?: run {
+                ++counter
                 return@collect
             }
 
@@ -112,7 +120,13 @@ class CurseForgeManifestReviewer(
                     emit(ManifestWithCreationStatus(ReviewStatus.APPROVED_UPDATE, latestManifest, originalManifest))
                     logger.debug { "Creation of ${originalManifest.genericIdentifier} is approved" }
                 } else {
-                    emit(ManifestWithCreationStatus(ReviewStatus.UPDATE_CONFLICT, latestManifest, existingManifestInRepo))
+                    emit(
+                        ManifestWithCreationStatus(
+                            ReviewStatus.UPDATE_CONFLICT,
+                            latestManifest,
+                            existingManifestInRepo
+                        )
+                    )
                     logger.warn { "Conflict detected: Created ${originalManifest.genericIdentifier} instead of updating an existing version" }
                 }
             }

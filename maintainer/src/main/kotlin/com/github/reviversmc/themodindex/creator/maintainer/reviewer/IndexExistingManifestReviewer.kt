@@ -16,10 +16,14 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
+import retrofit2.HttpException
 import java.io.IOException
 
 class IndexExistingManifestReviewer(
-    private val apiDownloader: ApiDownloader, private val creator: Creator, private val originalManifests: List<ManifestJson>, private val runMode: RunMode,
+    private val apiDownloader: ApiDownloader,
+    private val creator: Creator,
+    private val originalManifests: List<ManifestJson>,
+    private val runMode: RunMode,
 ) : ExistingManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -52,6 +56,10 @@ class IndexExistingManifestReviewer(
                                 it, originalManifest.curseForgeId
                             )
                         } catch (_: SocketTimeoutException) {
+                            logger.warn { "($counter) Socket timeout while creating manifest for Modrinth project $it" }
+                            null
+                        } catch (ex: HttpException) {
+                            logger.warn { "($counter) HTTP exception while creating manifest for Modrinth project $it: code ${ex.code()}" }
                             null
                         }
                     } ?: originalManifest.curseForgeId?.let {// Else try to create a new one using curseforge id
@@ -60,10 +68,15 @@ class IndexExistingManifestReviewer(
                                 it, originalManifest.modrinthId
                             )
                         } catch (_: SocketTimeoutException) {
+                            logger.warn { "($counter) Socket timeout while creating manifest for CurseForge project $it" }
+                            null
+                        } catch (ex: HttpException) {
+                            logger.warn { "($counter) HTTP exception while creating manifest for CurseForge project $it: code ${ex.code()}" }
                             null
                         }
                     } ?: run {
                         logger.warn { "No modrinth or curseforge id found for manifest ${originalManifest.genericIdentifier}" }
+                        ++counter
                         return@collect
                     }
 
