@@ -13,6 +13,7 @@ import io.fusionauth.jwt.domain.JWT
 import io.fusionauth.jwt.rsa.RSASigner
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
@@ -24,6 +25,8 @@ import java.io.IOException
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.util.*
+
+private typealias GenericIdentifier = String
 
 class GitHubUpdateSender(
     private val apiDownloader: ApiDownloader,
@@ -77,7 +80,7 @@ class GitHubUpdateSender(
         var indexJson = apiDownloader.downloadIndexJson()
             ?: throw IOException("Could not download index.json from ${apiDownloader.formattedBaseUrl}")
 
-        val additions = mutableListOf<FileAddition>()
+        val additions = mutableMapOf<GenericIdentifier, FileAddition>()
         val deletions = mutableListOf<FileDeletion>()
 
         manifestFlow.collect { (reviewStatus, latestManifest, originalManifest) ->
@@ -98,15 +101,34 @@ class GitHubUpdateSender(
                         logger.debug { "To remove ${originalManifest.genericIdentifier}, in favour of ${latestManifest.genericIdentifier}" }
                     }
 
-                    additions.add(
-                        FileAddition(
+                    if (additions.containsKey(latestManifest.genericIdentifier)) {
+                        logger.warn { "Duplicate manifest found for ${latestManifest.genericIdentifier}" }
+                        val conflictManifest = json.decodeFromString<ManifestJson>(
+                            Base64.getDecoder()
+                                .decode(additions[latestManifest.genericIdentifier]!!.contents as String)
+                                .decodeToString()
+                        )
+                        indexJson = indexJson.removeFromIndex(conflictManifest)
+                        additions.remove(latestManifest.genericIdentifier)
+
+                        emit(
+                            ManifestWithCreationStatus(
+                                ReviewStatus.UPDATE_CONFLICT,
+                                latestManifest,
+                                conflictManifest
+                            )
+                        )
+                    } else {
+                        additions[latestManifest.genericIdentifier] = FileAddition(
                             "mods/${latestManifest.genericIdentifier.replaceFirst(':', '/')}.json",
                             json.encodeToString(latestManifest).toBase64WithNewline(),
                         )
-                    )
-                    indexJson = indexJson.addToIndex(latestManifest)
-                    logger.debug { "Added ${latestManifest.genericIdentifier} to update" }
+
+                        indexJson = indexJson.addToIndex(latestManifest)
+                        logger.debug { "Added ${latestManifest.genericIdentifier} to update" }
+                    }
                 }
+
 
                 ReviewStatus.MARKED_FOR_REMOVAL -> {
                     indexJson = indexJson.removeFromIndex(originalManifest)
@@ -137,8 +159,6 @@ class GitHubUpdateSender(
 
         refreshInstallationTokenAndApi()
 
-        additions.add(FileAddition("mods/index.json", json.encodeToString(indexJson).toBase64WithNewline()))
-
         if (!ghBranch.doesRefExist(targetedBranch)) {
             ghBranch.createRef(
                 ghBranch.defaultBranchRef(), targetedBranch
@@ -146,7 +166,10 @@ class GitHubUpdateSender(
         }
 
         ghBranch.commitAndUpdateRef(
-            targetedBranch, "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}", additions, deletions
+            targetedBranch,
+            "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}",
+            additions.values + FileAddition("mods/index.json", json.encodeToString(indexJson).toBase64WithNewline()),
+            deletions
         )
 
         logger.debug { "Pushed manifest updates to branch $targetedBranch." }
