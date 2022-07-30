@@ -39,7 +39,7 @@ class ModIndexCreator(
     private val okHttpClient: OkHttpClient,
 ) : Creator {
 
-    private val indexVersion = "4.2.0"
+    private val indexVersion = "5.0.0"
 
     init {
         // Refresh every 50 minutes, not every hour, to account for delays
@@ -60,13 +60,13 @@ class ModIndexCreator(
      * @author ReviversMC
      * @since 1.0.0
      */
-    private fun createSHA512Hash(input: ByteArray): String {
+    private fun createShortSHA512Hash(input: ByteArray): String {
         var out = BigInteger(
             1, MessageDigest.getInstance("SHA-512").digest(input)
         ).toString(16)
 
         while (out.length < 128) out = "0$out"
-        return out
+        return out.substring(0, 15)
     }
 
     /**
@@ -114,7 +114,7 @@ class ModIndexCreator(
         for (modLoader in CurseForgeApiCall.ModLoaderType.values()) {
             if (modLoader == CurseForgeApiCall.ModLoaderType.ANY) continue
             val loaderFiles = this.getOrDefault(modLoader.name.lowercase(), emptyList()).toMutableList()
-            val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
+            val loaderFileHashes = loaderFiles.map { it.shortSha512Hash.lowercase() }
 
             try {
                 val cfFiles = curseForgeApiCall.files(curseApiKey, curseForgeMod.id, modLoader.curseNumber).execute()
@@ -123,7 +123,7 @@ class ModIndexCreator(
 
                     val fileResponse =
                         okHttpClient.newCall(Request.Builder().url(file.downloadUrl ?: continue).build()).execute()
-                    val fileHash = createSHA512Hash(fileResponse.body?.bytes() ?: continue)
+                    val fileHash = createShortSHA512Hash(fileResponse.body?.bytes() ?: continue)
                     fileResponse.close()
 
                     fun obtainRelation(relationType: RelationType) = file.dependencies.filter {
@@ -206,13 +206,13 @@ class ModIndexCreator(
         )) {
             val response =
                 okHttpClient.newCall(Request.Builder().url(asset).build()).execute()
-            val fileHash = createSHA512Hash(response.body?.bytes() ?: continue)
+            val fileHash = createShortSHA512Hash(response.body?.bytes() ?: continue)
             response.close()
 
             for ((loader, manifestFiles) in this) {
-                if (!manifestFiles.map { it.sha512Hash }.contains(fileHash)) continue
+                if (!manifestFiles.map { it.shortSha512Hash }.contains(fileHash)) continue
                 manifestFiles.forEachIndexed { index, manifestFile ->
-                    if (manifestFile.sha512Hash.equals(fileHash, true)) {
+                    if (manifestFile.shortSha512Hash.equals(fileHash, true)) {
                         this[loader] = manifestFiles.toMutableList().also { files ->
                             files[index] =
                                 manifestFile.copy(downloadUrls = files[index].downloadUrls + asset)
@@ -240,7 +240,7 @@ class ModIndexCreator(
 
             versionResponse.loaders.forEach { loader -> // All files here are guaranteed to work for the loader.
                 val loaderFiles = this.getOrDefault(loader.lowercase(), emptyList()).toMutableList()
-                val loaderFileHashes = loaderFiles.map { it.sha512Hash.lowercase() }
+                val loaderFileHashes = loaderFiles.map { it.shortSha512Hash.lowercase() }
 
                 for (file in versionResponse.files) {
 
@@ -284,16 +284,16 @@ class ModIndexCreator(
                         }
                     }
 
-                    if (loaderFileHashes.contains(file.hashes.sha512)) {
+                    if (loaderFileHashes.contains(file.hashes.sha512.substring(0, 15))) {
                         loaderFileHashes.forEachIndexed { index, existingHash ->
-                            if (existingHash.equals(file.hashes.sha512, true)) loaderFiles[index] =
+                            if (existingHash.equals(file.hashes.sha512.substring(0, 15), true)) loaderFiles[index] =
                                 loaderFiles[index].copy(downloadUrls = loaderFiles[index].downloadUrls + file.url)
                         }
                     } else loaderFiles.add(
                         VersionFile(
                             versionResponse.name,
                             versionResponse.gameVersions.sortedDescending(),
-                            file.hashes.sha512,
+                            file.hashes.sha512.substring(0, 15),
                             listOf(file.url),
                             false, // We don't know if it's available, so assume false
                             RelationsToOtherMods(

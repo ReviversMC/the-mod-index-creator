@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
     api("com.apollographql.apollo3:apollo-runtime:3.3.2")
-    api("com.github.reviversmc:the-mod-index-api:8.0.0")
+    api("com.github.reviversmc:the-mod-index-api:9.0.0")
 }
 
 apollo {

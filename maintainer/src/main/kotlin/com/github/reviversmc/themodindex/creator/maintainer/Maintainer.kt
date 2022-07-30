@@ -39,7 +39,7 @@ import kotlin.system.exitProcess
 
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
 const val FLOW_BUFFER = 5
-const val INDEX_MAJOR = 4
+const val INDEX_MAJOR = 5
 
 private val logger = KotlinLogging.logger {}
 
