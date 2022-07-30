@@ -21,6 +21,8 @@ import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -30,8 +32,7 @@ import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import java.io.File
 import java.io.IOException
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
+import kotlin.concurrent.timer
 import kotlin.system.exitProcess
 
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
@@ -88,6 +89,12 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
     }
 }
 
+enum class RunMode {
+    PROD,
+    TEST_SHORT,
+    TEST_FULL,
+}
+
 fun main(args: Array<String>) = runBlocking {
 
     val koin = startKoin {
@@ -106,41 +113,43 @@ fun main(args: Array<String>) = runBlocking {
         ArgType.Int, shortName = "d", description = "How long to delay between updates"
     ).default(12)
 
-    val sus by commandParser.option(
-        ArgType.Boolean,
-        shortName = "s",
-        description = "Whether to be suspicious of all updates, and push to a separate branch for PR review"
-    ).default(false)
-
-    val testMode by commandParser.option(
-        ArgType.Boolean,
-        shortName = "t",
-        description = "Whether to be in test mode, and push to the maintainer-test branch"
-    ).default(false)
-
+    val runMode by commandParser.option(
+        ArgType.Choice<RunMode>(),
+        shortName = "r",
+        description = "Whether to run in prod mode, or push to separate branches for testing"
+    ).default(RunMode.TEST_FULL)
 
     commandParser.parse(args)
 
     logger.debug { "Config location set to $configLocation" }
     logger.debug { "Cooldown set to $cooldownInHours hours" }
-    logger.debug { "Sus mode: $sus" }
-    logger.debug { "Test mode: $testMode" }
+    logger.debug { "Run mode: ${runMode.name}" }
 
     val config = getOrCreateConfig(koin.get(), configLocation)
 
     val manifestRepo =
-        "https://raw.githubusercontent.com/${config.gitHubRepoOwner}/${config.gitHubRepoName}/${if (testMode) "maintainer-test" else "v$INDEX_MAJOR"}/mods/"
+        "https://raw.githubusercontent.com/${config.gitHubRepoOwner}/${config.gitHubRepoName}/${if (runMode == RunMode.PROD) "v$INDEX_MAJOR" else "maintainer-test"}/mods/"
+    val workingBranch = if (runMode == RunMode.PROD) "v$INDEX_MAJOR" else "maintainer-test"
 
     val updateSender by koin.inject<UpdateSender> {
         parametersOf(
             manifestRepo,
             config.gitHubRepoOwner,
             config.gitHubRepoName,
-            if (testMode) "maintainer-test" else "update",
+            workingBranch,
             config.gitHubAppId,
             config.gitHubPrivateKeyPath
         )
     }
+
+    val ghGraphQLBranch = koin.get<GHBranch> {
+        parametersOf(
+            updateSender.gitHubInstallationToken, config.gitHubRepoOwner, config.gitHubRepoName
+        )
+    }
+
+    if (!ghGraphQLBranch.doesRefExist(workingBranch)) ghGraphQLBranch.createRef("v$INDEX_MAJOR", workingBranch)
+
 
     val createGitHubClient = {
         koin.get<ApolloClient> { parametersOf(updateSender.gitHubInstallationToken) }
@@ -174,6 +183,29 @@ fun main(args: Array<String>) = runBlocking {
             isCurrentlyUpdating = true
             logger.info { "Starting operation loop $operationLoopNum" }
 
+            val manifestsToCommit = mutableListOf<ManifestWithCreationStatus>()
+            val manifestsToCommitMutex = Mutex()
+
+            suspend fun pushChanges(manifestToCommitFlow: Flow<ManifestWithCreationStatus>) {
+                manifestsToCommitMutex.withLock {
+                    val manualReviewNeeded = updateSender.sendManifestUpdate(manifestToCommitFlow)
+                    manualReviewNeeded.buffer(FLOW_BUFFER).collect { maintainerBot.sendConflict(it) }
+                    manifestsToCommit.clear()
+                }
+            }
+
+            val regularUpdates = timer("", true, 60L * 60L * 1000L, 60L * 60L * 1000L) {
+                launch {
+                    pushChanges(manifestsToCommit.asFlow())
+                }
+            }
+
+            suspend fun submitGeneratedManifests(manifestFlow: Flow<ManifestWithCreationStatus>) {
+                manifestFlow.buffer(FLOW_BUFFER).collect {
+                    manifestsToCommitMutex.withLock { manifestsToCommit.add(it) }
+                }
+            }
+
             val updateExistingManifests =
                 launch {// This can take some time. Let's push this into a separate coroutine, and do other things as well
                     logger.debug { "Starting the update of existing manifests" }
@@ -182,12 +214,11 @@ fun main(args: Array<String>) = runBlocking {
                             manifestRepo,
                             config.curseForgeApiKey,
                             createGitHubClient,
-                            testMode
+                            runMode
                         )
                     }
-                    val existingManifests = existingManifestReviewer.reviewManifests()
-                    val manualReviewNeeded = updateSender.sendManifestUpdate(existingManifests)
-                    manualReviewNeeded.collect { maintainerBot.sendConflict(it) }
+
+                    submitGeneratedManifests(existingManifestReviewer.reviewManifests())
                     logger.info { "Updated existing manifests" }
                 }
 
@@ -198,7 +229,7 @@ fun main(args: Array<String>) = runBlocking {
                         manifestRepo,
                         config.curseForgeApiKey,
                         createGitHubClient,
-                        testMode
+                        runMode
                     )
                 }
 
@@ -207,79 +238,35 @@ fun main(args: Array<String>) = runBlocking {
                         manifestRepo,
                         config.curseForgeApiKey,
                         createGitHubClient,
-                        testMode
+                        runMode
                     )
                 }
 
-                val newManifests = mutableMapOf<String, ManifestWithCreationStatus>()
 
-                // Iter through modrinth first because it is smaller (probably?)
-                val modrinthManifests = async {
-                    return@async mutableListOf<ManifestWithCreationStatus>().apply {
-                        modrinthManifestReviewer.reviewManifests().buffer(FLOW_BUFFER)
-                            .collect { add(it) }
-                    }.toList()
+                val curseForgeCreation = launch {
+                    submitGeneratedManifests(curseForgeManifestReviewer.reviewManifests())
+                    logger.info { "Pushed all created CF manifests" }
+                }
+                val modrinthCreation = launch {
+                    submitGeneratedManifests(modrinthManifestReviewer.reviewManifests())
+                    logger.info { "Pushed all created Modrinth manifests" }
                 }
 
-                val curseForgeManifests = async {
-                    return@async mutableListOf<ManifestWithCreationStatus>().apply {
-                        curseForgeManifestReviewer.reviewManifests().buffer(FLOW_BUFFER)
-                            .collect { add(it) }
-                    }.toList()
-                }
-
-                modrinthManifests.await().forEach { newManifests[it.originalManifest.genericIdentifier] = it }
-                curseForgeManifests.await().forEach {
-                    if (it.originalManifest.genericIdentifier !in newManifests) {
-                        newManifests[it.originalManifest.genericIdentifier] = it
-                    } else {
-                        maintainerBot.sendConflict(newManifests[it.originalManifest.genericIdentifier]!!)
-                        maintainerBot.sendConflict(it)
-                    }
-                }
-
-                updateExistingManifests.join() // Wait for the update of existing manifests to finish, as we don't want to send a conflict.
-
-                val manualReviewNeeded = updateSender.sendManifestUpdate(newManifests.values.asFlow())
-                manualReviewNeeded.collect { maintainerBot.sendConflict(it) }
+                curseForgeCreation.join()
+                modrinthCreation.join()
                 logger.info { "Created new manifests" }
             }
 
             updateExistingManifests.join()
             createNewManifests.join()
 
-
-            val ghGraphQLBranch = koin.get<GHBranch> {
-                parametersOf(
-                    updateSender.gitHubInstallationToken, config.gitHubRepoOwner, config.gitHubRepoName
-                )
-            }
-
-            // If in test mode, we'll push to the maintainer-test branch. Don't PR or direct merge.
-            if (!testMode) {
-                if (!sus) {
-                    ghGraphQLBranch.mergeBranchWithoutPR(
-                        "v$INDEX_MAJOR", "update", "Automated manifest update: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}"
-                    )
-                    logger.info { "Merged all update info into branch \"v$INDEX_MAJOR\"" }
-                } else {
-                    ghGraphQLBranch.createPullRequest(
-                        "update",
-                        "v$INDEX_MAJOR",
-                        "Automated manifest update: UTC ${
-                            ZonedDateTime.now(ZoneOffset.UTC).toString().replace(' ', '-').replace(':', '-')
-                        }",
-                        "Manual merger was requested when the maintainer was started. Please merge this PR manually should it meet standards."
-                    )
-
-                    logger.info { "Pushed manifest updates to branch \"update\". Manual PR merger required, as requested by startup flags." }
-                }
-            }
-
-            logger.info { "Finished operation loop $operationLoopNum" }
+            // Stop the scheduled task and push one last time for all changes to go through
+            regularUpdates.cancel()
+            pushChanges(manifestsToCommit.asFlow())
 
             /*
-            Notably, we do NOT wait for manifests sent for manual review to be reviewed before we move on to the next operation loop.
+            By this point, most changes are pushed.
+            However, we do NOT wait for manifests sent for manual review to be reviewed before we move on to the next operation loop.
             The review process could take a long time if no one reviews it,
             and we don't want to stop regular updates for the few manifests that are not reviewed.
 
