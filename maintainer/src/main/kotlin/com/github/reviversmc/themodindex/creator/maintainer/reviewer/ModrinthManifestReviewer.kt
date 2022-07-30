@@ -60,6 +60,7 @@ class ModrinthManifestReviewer(
                 else modrinthApiCall.search(limit = limitPerSearch, offset = offset).execute().body()
             } catch (_: SocketTimeoutException) {
                 logger.warn { "Modrinth search timed out" }
+                kotlinx.coroutines.delay(10L * 1000L) // Cooldown so that we don't spam jic the server is down
                 continue // Retry the search
             } ?: throw IOException("No response from Modrinth")
 

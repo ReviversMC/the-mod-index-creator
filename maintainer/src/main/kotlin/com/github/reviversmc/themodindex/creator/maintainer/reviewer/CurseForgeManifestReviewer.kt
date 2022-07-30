@@ -56,6 +56,7 @@ class CurseForgeManifestReviewer(
             } catch (_: SocketTimeoutException) {
 
                 logger.warn { "Timeout while searching CurseForge" }
+                kotlinx.coroutines.delay(10L * 1000L) // Cooldown so that we don't spam jic the server is down
                 continue // Retry the search
             } ?: throw IOException("No response from CurseForge")
 
