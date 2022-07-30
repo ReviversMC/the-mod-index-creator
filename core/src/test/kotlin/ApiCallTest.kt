@@ -64,14 +64,14 @@ class ApiCallTest : KoinTest {
             CurseFileResponse(
                 3481563,
                 true,
-                "Modget 0.1.0",
+                "0.1.0 for MC 1.16",
                 "https://edge.forgecdn.net/files/3481/563/modget-0.1.0.jar",
                 listOf("Fabric", "1.16.5", "1.16.4"),
                 listOf(
                     CurseFileDependency(400548, RelationType.EMBEDDED_LIBRARY.curseNumber),
                     CurseFileDependency(306612, RelationType.REQUIRED_DEPENDENCY.curseNumber)
                 ).sortedBy { it.relationType }
-            ), curseForgeFiles.data.last()
+            ), curseForgeFiles.data.last().let { it.copy(dependencies = it.dependencies.sortedBy { it.relationType }) }
         )
 
         // We did not specify max files, so we should get all files
@@ -110,7 +110,7 @@ class ApiCallTest : KoinTest {
 
         val modgetVersion001 = modrinthApiCall.versions("2NpFE0R3").execute().body()!!.last()
         assertNotNull(modgetVersion001)
-        assertEquals("Modget 0.0.1", modgetVersion001.name)
+        assertEquals("0.0.1 for MC 1.16", modgetVersion001.name)
         assertEquals(emptyList(), modgetVersion001.dependencies)
         assertEquals(listOf("1.16.5", "1.16.4"), modgetVersion001.gameVersions.sortedDescending())
         assertEquals(listOf("fabric"), modgetVersion001.loaders.map { it.lowercase() })
