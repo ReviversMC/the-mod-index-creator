@@ -6,6 +6,7 @@ import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
+import com.github.reviversmc.themodindex.creator.maintainer.RunMode
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
@@ -17,7 +18,7 @@ import mu.KotlinLogging
 import java.io.IOException
 
 class IndexExistingManifestReviewer(
-    private val apiDownloader: ApiDownloader, private val creator: Creator, private val testMode: Boolean,
+    private val apiDownloader: ApiDownloader, private val creator: Creator, private val runMode: RunMode,
 ) : ExistingManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -35,7 +36,7 @@ class IndexExistingManifestReviewer(
         var counter = 0
 
         originalManifests.collect { originalManifest ->
-            if (testMode) {
+            if (runMode == RunMode.TEST_SHORT) {
                 if (counter >= 20) return@collect // Test mode, only process 20 manifests
             }
 
