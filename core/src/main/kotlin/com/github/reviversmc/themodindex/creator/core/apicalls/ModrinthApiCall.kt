@@ -36,7 +36,7 @@ interface ModrinthApiCall {
     fun projectMembers(@Path("projectId") projectId: String): Call<List<ModrinthTeamResponse>>
 
     /**
-     * Returns projects present in the Modrinth API.
+     * Returns mods (not all types of projects) present in the Modrinth API.
      * Each hit in [ModrinthSearchHit] does not provide as much information as [ModrinthProjectResponse].
      * Use [project] to get more information on a project.
      *
@@ -50,7 +50,7 @@ interface ModrinthApiCall {
      * @since 1.0.0
      */
     @Headers(userAgent)
-    @GET("/v2/search")
+    @GET("/v2/search?facets=[[\"project_type:mod\"]]")
     fun search(
         @Query("query") query: String? = null,
         @Query("index") searchMethod: String? = SearchMethod.DEFAULT.modrinthString,
