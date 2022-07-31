@@ -479,8 +479,7 @@ class ModIndexCreator(
                                 it.substringBefore("/"),
                                 it.substringAfter("/")
                             )?.lowercase()
-                        } ?: modrinthProject?.license?.id?.lowercase()
-                        ?: "UNKNOWN",
+                        } ?: modrinthProject?.license?.id?.lowercase(),
                         modData.id,
                         modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
                         ManifestLinks(
@@ -510,8 +509,7 @@ class ModIndexCreator(
                                         it.substringBefore("/"),
                                         it.substringAfter("/")
                                     )?.lowercase()
-                                } ?: modrinthData.license?.id?.lowercase()
-                                ?: "UNKNOWN",
+                                } ?: modrinthData.license?.id?.lowercase(),
                                 curseForgeMod?.id,
                                 modrinthData.id,
                                 ManifestLinks(
