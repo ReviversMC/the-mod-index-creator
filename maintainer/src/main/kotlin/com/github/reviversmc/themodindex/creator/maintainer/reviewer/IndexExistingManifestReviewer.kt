@@ -11,8 +11,6 @@ import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPending
 import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
 import io.ktor.network.sockets.*
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
@@ -37,12 +35,12 @@ class IndexExistingManifestReviewer(
         return value
     }
 
-    override suspend fun createManifests(originalManifests: Flow<ManifestJson>) = flow {
+    private suspend fun createManifests(originalManifests: List<ManifestJson>) = flow {
         var counter = 0
 
-        originalManifests.buffer(FLOW_BUFFER).collect { originalManifest ->
+        originalManifests.forEach { originalManifest ->
             if (runMode == RunMode.TEST_SHORT) {
-                if (counter >= 20) return@collect // Test mode, only process 20 manifests
+                if (counter >= 20) return@forEach // Test mode, only process 20 manifests
             }
 
             logger.debug { "($counter) Creating manifest for ${originalManifest.genericIdentifier}" }
@@ -77,7 +75,7 @@ class IndexExistingManifestReviewer(
                     } ?: run {
                         logger.warn { "No modrinth or curseforge id found for manifest ${originalManifest.genericIdentifier}" }
                         ++counter
-                        return@collect
+                        return@forEach
                     }
 
             // Get or default the mod loader.
@@ -107,7 +105,7 @@ class IndexExistingManifestReviewer(
 
     override fun reviewManifests() = flow {
 
-        val updatedManifests = createManifests(originalManifests.asFlow())
+        val updatedManifests = createManifests(originalManifests)
 
         updatedManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiUsage, latestManifest, originalManifest) ->
 
