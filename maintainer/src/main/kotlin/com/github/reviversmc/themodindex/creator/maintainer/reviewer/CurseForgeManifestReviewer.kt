@@ -51,11 +51,16 @@ class CurseForgeManifestReviewer(
 
         logger.debug { "Total of $totalCount CurseForge mods found" }
 
-        var offset = 0
+        var offset = limitPerSearch
+        // Use the data from the first search, since we already have it
+        firstSearch.data.forEach {
+            if (it.id !in existingCurseIds) {
+                emit(it) // emit the response, not the id
+                logger.debug { "Found new CurseForge project ${it.id}" }
+            }
+        }
 
         while (offset < totalCount) {
-
-            offset += limitPerSearch
 
             val search = try {
                 if (runMode == RunMode.TEST_SHORT) curseForgeApiCall.search(curseForgeApiKey, offset, totalCount)
@@ -65,6 +70,8 @@ class CurseForgeManifestReviewer(
                 // The show must go on, skip the search.
                 logger.warn { "CurseForge search timed out" }
                 continue
+            } finally {
+                offset += limitPerSearch
             } ?: throw IOException("No response from CurseForge")
 
 

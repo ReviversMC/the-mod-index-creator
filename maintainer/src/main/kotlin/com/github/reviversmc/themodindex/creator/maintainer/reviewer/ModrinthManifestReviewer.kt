@@ -49,11 +49,15 @@ class ModrinthManifestReviewer(
 
         logger.debug { "Total of $totalCount Modrinth projects found" }
 
-        var offset = 0
+        var offset = limitPerSearch
+        firstSearch.hits.forEach { // Use the first search, since we already have the data
+            if (it.id !in existingModrinthIds) {
+                emit(it.id)
+                logger.debug { "Found new Modrinth project ${it.id}" }
+            }
+        }
 
         while (offset < totalCount) {
-
-            offset += limitPerSearch
 
             val search = try {
                 if (runMode == RunMode.TEST_SHORT) modrinthApiCall.search(
@@ -68,7 +72,9 @@ class ModrinthManifestReviewer(
             } catch (_: SocketTimeoutException) {
                 logger.warn { "Modrinth search timed out" }
                 continue // Skip the search, we don't want to get stuck waiting on the api
-            } ?: throw IOException("No response from Modrinth")
+            } finally {
+                offset += limitPerSearch
+            }?: throw IOException("No response from Modrinth")
 
 
             if (search.hits.isEmpty()) break
