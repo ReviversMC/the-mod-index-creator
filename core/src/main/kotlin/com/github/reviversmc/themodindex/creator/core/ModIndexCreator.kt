@@ -478,8 +478,9 @@ class ModIndexCreator(
                                 githubClient,
                                 it.substringBefore("/"),
                                 it.substringAfter("/")
-                            )
-                        } ?: modrinthProject?.license?.id,
+                            )?.lowercase()
+                        } ?: modrinthProject?.license?.id?.lowercase()
+                        ?: "UNKNOWN",
                         modData.id,
                         modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
                         ManifestLinks(
@@ -503,13 +504,14 @@ class ModIndexCreator(
                                 modrinthApiCall.projectMembers(modrinthId).execute().body()
                                     ?.firstOrNull { member -> member.role == "Owner" }?.userResponse?.username
                                     ?: curseForgeMod?.authors?.firstOrNull()?.name ?: "UNKNOWN",
-                                modrinthData.license?.id ?: gitHubUserRepo?.let {
+                                gitHubUserRepo?.let {
                                     GHGraphQLicense.licenseSPDXId(
                                         githubClient,
                                         it.substringBefore("/"),
                                         it.substringAfter("/")
-                                    )
-                                },
+                                    )?.lowercase()
+                                } ?: modrinthData.license?.id?.lowercase()
+                                ?: "UNKNOWN",
                                 curseForgeMod?.id,
                                 modrinthData.id,
                                 ManifestLinks(
