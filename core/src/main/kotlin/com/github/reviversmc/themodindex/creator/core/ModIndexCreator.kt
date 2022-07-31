@@ -41,19 +41,19 @@ class ModIndexCreator(
 
     private val indexVersion = "5.0.0"
 
-    init {
-        // Refresh every 50 minutes, not every hour, to account for delays
-        timer("CreatorGitHubRefresh", true, 0, 1000 * 60 * 50) {
-            githubClient = refreshGitHubClient()
-        }
-    }
-
     /**
      * Gets the [ApolloClient] used to connect to GitHub
      * @author ReviversMC
      * @since 1.0.0
      */
     private var githubClient = refreshGitHubClient()
+
+    init {
+        // Refresh every 50 minutes, not every hour, to account for delays
+        timer("CreatorGitHubRefresh", true, 50L * 60L * 1000L, 50L * 60L * 1000L) {
+            githubClient = refreshGitHubClient()
+        }
+    }
 
     /**
      * Creates a sha512 hash for the given [input] bytes

@@ -1,5 +1,6 @@
 package com.github.reviversmc.themodindex.creator.maintainer.github
 
+import com.apollographql.apollo3.ApolloClient
 import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
@@ -18,6 +19,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
 import org.koin.core.component.inject
 import org.koin.core.parameter.parametersOf
 import java.io.File
@@ -46,7 +48,7 @@ class GitHubUpdateSender(
 
     private val ghBranch by inject<GHBranch> {
         parametersOf(
-            gitHubInstallationToken, repoOwner, repoName
+            {get<ApolloClient> { parametersOf(gitHubInstallationToken) }}, repoOwner, repoName
         )
     }
 
@@ -63,12 +65,12 @@ class GitHubUpdateSender(
         val jwtSigner = RSASigner.newSHA256Signer(File(gitHubPrivateKeyPath).readText())
         val jwt = JWT().setIssuedAt(ZonedDateTime.now(ZoneOffset.UTC).minusMinutes(1))
             .setExpiration(ZonedDateTime.now(ZoneOffset.UTC).plusMinutes(10)).setIssuer(gitHubAppId)
-        val signedJwt = "Bearer ${JWT.getEncoder().encode(jwt, jwtSigner)}"
+        val signedJwt = JWT.getEncoder().encode(jwt, jwtSigner)
         logger.debug { "Signed JWT created." }
 
-        val gitHubInstallationId = gitHubRestApp.installation(signedJwt, repoOwner, repoName).execute().body()?.id
+        val gitHubInstallationId = gitHubRestApp.installation("Bearer $signedJwt", repoOwner, repoName).execute().body()?.id
             ?: throw IOException("Could not get installation of $repoOwner/$repoName.")
-        val installationToken = gitHubRestApp.createAccessToken(signedJwt, gitHubInstallationId).execute().body()?.token
+        val installationToken = gitHubRestApp.createAccessToken("Bearer $signedJwt", gitHubInstallationId).execute().body()?.token
             ?: throw IOException("Could not get installation token of $repoOwner/$repoName")
         logger.debug { "GitHub installation token created" }
 

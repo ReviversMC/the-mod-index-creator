@@ -144,18 +144,18 @@ fun main(args: Array<String>) = runBlocking {
         )
     }
 
+    val createGitHubClient = {
+        koin.get<ApolloClient> { parametersOf(updateSender.gitHubInstallationToken) }
+    }
+
     val ghGraphQLBranch = koin.get<GHBranch> {
         parametersOf(
-            updateSender.gitHubInstallationToken, config.gitHubRepoOwner, config.gitHubRepoName
+            createGitHubClient, config.gitHubRepoOwner, config.gitHubRepoName
         )
     }
 
     if (!ghGraphQLBranch.doesRefExist(workingBranch)) ghGraphQLBranch.createRef("v$INDEX_MAJOR", workingBranch)
 
-
-    val createGitHubClient = {
-        koin.get<ApolloClient> { parametersOf(updateSender.gitHubInstallationToken) }
-    }
 
     // All variables that need to be refreshed (i.e. that use a gh api key) should be in the while loop.
     var operationLoopNum = 0

@@ -6,14 +6,25 @@ import com.apollographql.apollo3.api.Optional
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileAddition
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileDeletion
 import mu.KotlinLogging
+import kotlin.concurrent.timer
 
 class GHGraphQLBranch(
-    private val apolloClient: ApolloClient,
+    private val refreshApolloClient: () -> ApolloClient,
     private val repoOwner: String,
     private val repoName: String,
 ) : GHBranch {
 
     private val logger = KotlinLogging.logger {}
+
+    private var apolloClient = refreshApolloClient()
+
+    init {
+        // Refresh the client every 50 minutes, so that we don't get an use an expired token
+         timer("GHGraphQLBranchRefresh", true, 50L * 60L * 1000L, 50L * 60L * 1000L) {
+            apolloClient = refreshApolloClient()
+            logger.info { "Refreshed apollo client for GH Branch" }
+        }
+    }
 
     override suspend fun defaultBranchRef(): String {
         val query = apolloClient.query(DefaultBranchRefQuery(repoOwner, repoName)).execute()
