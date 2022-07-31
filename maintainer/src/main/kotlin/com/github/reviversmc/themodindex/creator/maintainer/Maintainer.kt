@@ -92,9 +92,7 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
 }
 
 enum class RunMode {
-    PROD,
-    TEST_SHORT,
-    TEST_FULL,
+    PROD, TEST_SHORT, TEST_FULL,
 }
 
 fun main(args: Array<String>) = runBlocking {
@@ -173,9 +171,7 @@ fun main(args: Array<String>) = runBlocking {
     logger.info { "Started Discord Bot" }
     launch {
         for (resolvedConflict in maintainerBot.resolvedConflicts) updateSender.sendManifestUpdate(
-            flowOf(
-                resolvedConflict
-            )
+            listOf(resolvedConflict)
         )
     }
 
@@ -188,9 +184,9 @@ fun main(args: Array<String>) = runBlocking {
             val manifestsToCommit = mutableListOf<ManifestWithCreationStatus>()
             val manifestsToCommitMutex = Mutex()
 
-            suspend fun pushChanges(manifestToCommitFlow: Flow<ManifestWithCreationStatus>) {
+            suspend fun pushChanges() {
                 manifestsToCommitMutex.withLock {
-                    val manualReviewNeeded = updateSender.sendManifestUpdate(manifestToCommitFlow)
+                    val manualReviewNeeded = updateSender.sendManifestUpdate(manifestsToCommit)
                     manualReviewNeeded.buffer(FLOW_BUFFER).collect { maintainerBot.sendConflict(it) }
                     manifestsToCommit.clear()
                 }
@@ -198,7 +194,7 @@ fun main(args: Array<String>) = runBlocking {
 
             val regularUpdates = timer("", true, 60L * 60L * 1000L, 60L * 60L * 1000L) {
                 launch {
-                    pushChanges(manifestsToCommit.asFlow())
+                    pushChanges()
                 }
             }
 
@@ -210,19 +206,18 @@ fun main(args: Array<String>) = runBlocking {
 
             val existingManifests = mutableListOf<ManifestJson>().apply {
                 val apiDownloader = koin.get<ApiDownloader>(named("custom")) { parametersOf(manifestRepo) }
-                    val existingGenericIdentifiers =
-                        apiDownloader.downloadIndexJson()?.identifiers?.map { it.substringBeforeLast(":") }
-                            ?: throw IOException("Could not download manifest index from ${apiDownloader.formattedBaseUrl}")
-                    logger.debug { "Downloaded manifest index of repository ${apiDownloader.formattedBaseUrl}" }
+                val existingGenericIdentifiers =
+                    apiDownloader.downloadIndexJson()?.identifiers?.map { it.substringBeforeLast(":") }
+                        ?: throw IOException("Could not download manifest index from ${apiDownloader.formattedBaseUrl}")
+                logger.debug { "Downloaded manifest index of repository ${apiDownloader.formattedBaseUrl}" }
 
-                    existingGenericIdentifiers.distinct().forEach {
-                        add(
-                            apiDownloader.downloadManifestJson(it)
-                                ?: throw IOException("Could not download manifest $it")
-                        )
-                        logger.debug { "Downloaded manifest $it" }
-                    }
-                }.toList()
+                existingGenericIdentifiers.distinct().forEach {
+                    add(
+                        apiDownloader.downloadManifestJson(it) ?: throw IOException("Could not download manifest $it")
+                    )
+                    logger.debug { "Downloaded manifest $it" }
+                }
+            }.toList()
 
             logger.info { "Found ${existingManifests.size} existing manifests" }
 
@@ -232,11 +227,7 @@ fun main(args: Array<String>) = runBlocking {
                     logger.debug { "Starting the update of existing manifests" }
                     val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
                         parametersOf(
-                            manifestRepo,
-                            config.curseForgeApiKey,
-                            existingManifests,
-                            createGitHubClient,
-                            runMode
+                            manifestRepo, config.curseForgeApiKey, existingManifests, createGitHubClient, runMode
                         )
                     }
 
@@ -248,21 +239,13 @@ fun main(args: Array<String>) = runBlocking {
                 logger.debug { "Starting the creation of new manifests" }
                 val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
                     parametersOf(
-                        manifestRepo,
-                        config.curseForgeApiKey,
-                        existingManifests,
-                        createGitHubClient,
-                        runMode
+                        manifestRepo, config.curseForgeApiKey, existingManifests, createGitHubClient, runMode
                     )
                 }
 
                 val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
                     parametersOf(
-                        manifestRepo,
-                        config.curseForgeApiKey,
-                        existingManifests,
-                        createGitHubClient,
-                        runMode
+                        manifestRepo, config.curseForgeApiKey, existingManifests, createGitHubClient, runMode
                     )
                 }
 
@@ -286,7 +269,7 @@ fun main(args: Array<String>) = runBlocking {
 
             // Stop the scheduled task and push one last time for all changes to go through
             regularUpdates.cancel()
-            pushChanges(manifestsToCommit.asFlow())
+            pushChanges()
 
             /*
             By this point, most changes are pushed.
@@ -306,8 +289,7 @@ fun main(args: Array<String>) = runBlocking {
                 exitProcess(0)
             }
         }
-    } catch (ex: Exception) {
-        /*
+    } catch (ex: Exception) {/*
         Our intent here isn't to do a global catch-all to prevent the maintainer from crashing.
         If the exception is not handled by this point, we probably want the maintainer to crash, instead of pretending that everything is fine.
         Thus, the point of this try catch is to log the exception to Discord, and clean up the maintainer.

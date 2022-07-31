@@ -12,7 +12,6 @@ import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCre
 import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
 import io.fusionauth.jwt.domain.JWT
 import io.fusionauth.jwt.rsa.RSASigner
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -77,7 +76,7 @@ class GitHubUpdateSender(
         return installationToken
     }
 
-    override fun sendManifestUpdate(manifestFlow: Flow<ManifestWithCreationStatus>) = flow {
+    override fun sendManifestUpdate(manifestsToUpdate: List<ManifestWithCreationStatus>) = flow {
         logger.debug { "Preparing to send manifest update..." }
         var indexJson = apiDownloader.downloadIndexJson()
             ?: throw IOException("Could not download index.json from ${apiDownloader.formattedBaseUrl}")
@@ -85,12 +84,12 @@ class GitHubUpdateSender(
         val additions = mutableMapOf<GenericIdentifier, FileAddition>()
         val deletions = mutableListOf<FileDeletion>()
 
-        manifestFlow.collect { (reviewStatus, latestManifest, originalManifest) ->
+        manifestsToUpdate.forEach { (reviewStatus, latestManifest, originalManifest) ->
             when (reviewStatus) {
                 ReviewStatus.APPROVED_GENERIC_IDENTIFIER_CHANGE, ReviewStatus.APPROVED_UPDATE -> {
                     if (latestManifest == null) {
                         logger.error { "Latest manifest is null, but review status is $reviewStatus." }
-                        return@collect
+                        return@forEach
                     }
 
                     if (reviewStatus == ReviewStatus.APPROVED_GENERIC_IDENTIFIER_CHANGE) {
