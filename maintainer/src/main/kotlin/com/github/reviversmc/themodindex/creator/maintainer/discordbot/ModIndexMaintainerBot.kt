@@ -121,6 +121,7 @@ class ModIndexMaintainerBot(
             if (!isCurrentlyUpdating) exit()
             true
         }
+
         "force-exit" -> {
             "Forced exit!".also {
                 deferred.respond { content = it }.apply {
@@ -132,6 +133,7 @@ class ModIndexMaintainerBot(
             exit()
             true
         }
+
         else -> {
             "Unknown command $command!".also {
                 deferred.respond { content = it }.apply {
@@ -161,7 +163,9 @@ class ModIndexMaintainerBot(
         logger.debug { "Registered command \"force-exit\"" }
     }
 
-    private fun String.trimLengthForDiscord() = if (this.length < 2000) this else this.substring(0, 1997) + "..."
+    private fun String.trimLengthForDiscord() = if (this.length < 2000) this else {
+        if (this.startsWith("```")) this.substring(0, 1994) + "...```" else this.substring(0, 1997) + "..."
+    }
 
     override suspend fun exit(exitMessage: String, exitCode: Int) {
         resolvedConflicts.close()
