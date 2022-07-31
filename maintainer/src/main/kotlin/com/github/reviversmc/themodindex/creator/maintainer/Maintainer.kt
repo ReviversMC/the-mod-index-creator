@@ -300,7 +300,7 @@ fun main(args: Array<String>) = runBlocking {
             isCurrentlyUpdating = false
             if (shouldContinueUpdating) {
                 logger.info { "Sleeping for $cooldownInHours hours" }
-                delay(1000L * 60 * 60 * cooldownInHours)
+                delay(cooldownInHours * 60L * 60L * 1000L)
             } else {
                 maintainerBot.exit()
                 exitProcess(0)
