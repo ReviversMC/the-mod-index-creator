@@ -13,9 +13,9 @@ val discordBotModule = module {
     single { (botToken: String) -> runBlocking { Kord(botToken) } }
     single { (botToken: String, guildId: Snowflake, parentTextChannel: TextChannel) ->
         ModIndexMaintainerBot(
+            guildId,
             get(),
             get { parametersOf(botToken) },
-            guildId,
             parentTextChannel
         )
     } bind MaintainerBot::class

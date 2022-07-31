@@ -54,9 +54,9 @@ private typealias ConflictMessageWithInfo = Pair<Message, ManifestWithCreationSt
 private typealias GenericIdentifier = String
 
 class ModIndexMaintainerBot(
+    private val guildId: Snowflake,
     private val json: Json,
     private val kord: Kord,
-    private val guildId: Snowflake,
     private val parentTextChannel: TextChannel,
 ) : MaintainerBot {
 
@@ -290,7 +290,7 @@ class ModIndexMaintainerBot(
         )
 
         val messageContent =
-            """${if (manifestWithCreationStatus.reviewStatus == ReviewStatus.CREATION_CONFLICT) "Creation" else "Update"} conflict for genericIdentifier
+            """${if (manifestWithCreationStatus.reviewStatus == ReviewStatus.CREATION_CONFLICT) "Creation" else "Update"} conflict for $genericIdentifier
             ```diff
             ${unifiedDiff.joinToString("\n")}
             ```
@@ -356,6 +356,7 @@ class ModIndexMaintainerBot(
             }
         val (conflictMessage, manifestWithCreationStatus) = conflictMessageWithInfo
 
+        // What is done with the updates is not concerned with this class. Just send the resolution to [resolvedConflicts]
         when (genericIdentifier) {
             "accept-original:$genericIdentifier" -> {
                 "Accepted original manifest of $genericIdentifier".also {
