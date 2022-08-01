@@ -483,7 +483,7 @@ class ModIndexCreator(
                         modData.id,
                         modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
                         ManifestLinks(
-                            modData.links.issuesUrl ?: modrinthProject?.issuesUrl,
+                            (modData.links.issuesUrl ?: modrinthProject?.issuesUrl)?.ifEmpty { null },
                             modData.links.sourceUrl ?: modrinthProject?.sourceUrl,
                             otherLinks
                         ),
@@ -513,7 +513,7 @@ class ModIndexCreator(
                                 curseForgeMod?.id,
                                 modrinthData.id,
                                 ManifestLinks(
-                                    modrinthData.issuesUrl ?: curseForgeMod?.links?.issuesUrl,
+                                    (modrinthData.issuesUrl ?: curseForgeMod?.links?.issuesUrl)?.ifEmpty { null },
                                     modrinthData.sourceUrl ?: curseForgeMod?.links?.sourceUrl,
                                     otherLinks
                                 ),
