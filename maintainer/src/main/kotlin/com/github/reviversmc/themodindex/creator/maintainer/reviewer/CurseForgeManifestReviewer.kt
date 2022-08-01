@@ -7,6 +7,7 @@ import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
 import com.github.reviversmc.themodindex.creator.core.apicalls.CurseModData
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
+import com.github.reviversmc.themodindex.creator.maintainer.OperationMode
 import com.github.reviversmc.themodindex.creator.maintainer.RunMode
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
@@ -26,6 +27,7 @@ class CurseForgeManifestReviewer(
     private val curseForgeApiKey: String,
     private val existingManifests: List<ManifestJson>,
     private val runMode: RunMode,
+    private val operationModes: List<OperationMode>
 ) : NewManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -115,6 +117,7 @@ class CurseForgeManifestReviewer(
     }
 
     override fun reviewManifests() = flow {
+        if (OperationMode.CREATE !in operationModes) return@flow // Indicated that manifests should not be created
         val createdManifests = createManifests(obtainCurseForgeInfo())
 
         createdManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiStatus, latestManifest, originalManifest) ->

@@ -21,6 +21,7 @@ import dev.kord.core.entity.channel.TextChannel
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
+import kotlinx.cli.multiple
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -92,7 +93,22 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
 }
 
 enum class RunMode {
-    PROD, TEST_SHORT, TEST_FULL,
+    PROD,
+    TEST_SELECTED,
+    TEST_SHORT
+}
+
+@Suppress("unused") // We want all available options
+enum class OperationMode {
+    CREATE { override fun maintainChars() = null },
+    MAINTAIN_ALL { override fun maintainChars() = 'a'..'z' },
+    MAINTAIN_A_TO_H { override fun maintainChars() = 'a'..'h' },
+    MAINTAIN_I_TO_Q { override fun maintainChars() = 'i'..'q' },
+    MAINTAIN_R_TO_Z { override fun maintainChars() = 'r'..'z' },
+    MAINTAIN_A_TO_L { override fun maintainChars() = 'a'..'l' },
+    MAINTAIN_M_TO_Z { override fun maintainChars() = 'm'..'z' },;
+
+    abstract fun maintainChars(): CharRange?
 }
 
 fun main(args: Array<String>) = runBlocking {
@@ -114,16 +130,21 @@ fun main(args: Array<String>) = runBlocking {
     ).default(12)
 
     val runMode by commandParser.option(
-        ArgType.Choice<RunMode>(),
-        shortName = "r",
-        description = "Whether to run in prod mode, or push to separate branches for testing"
-    ).default(RunMode.TEST_FULL)
+        ArgType.Choice<RunMode>(), shortName = "r", description = "Whether to run in prod mode, or push to separate branches for testing"
+    ).default(RunMode.TEST_SELECTED)
+
+    val operationMode by commandParser.option(
+        ArgType.Choice<OperationMode>(),
+        shortName = "o",
+        description = "What kind of operations to run"
+    ).multiple().default(listOf(OperationMode.CREATE, OperationMode.MAINTAIN_ALL))
 
     commandParser.parse(args)
 
     logger.debug { "Config location set to $configLocation" }
     logger.debug { "Cooldown set to $cooldownInHours hours" }
-    logger.debug { "Run mode: ${runMode.name}" }
+    logger.debug { "Run mode: $runMode" }
+    logger.debug { "Operation mode: $operationMode" }
 
     val config = getOrCreateConfig(koin.get(), configLocation)
 
@@ -227,7 +248,7 @@ fun main(args: Array<String>) = runBlocking {
                     logger.debug { "Starting the update of existing manifests" }
                     val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
                         parametersOf(
-                            manifestRepo, config.curseForgeApiKey, existingManifests, createGitHubClient, runMode
+                            manifestRepo, createGitHubClient, config.curseForgeApiKey, existingManifests, runMode, operationMode
                         )
                     }
 
@@ -239,13 +260,13 @@ fun main(args: Array<String>) = runBlocking {
                 logger.debug { "Starting the creation of new manifests" }
                 val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
                     parametersOf(
-                        manifestRepo, config.curseForgeApiKey, existingManifests, createGitHubClient, runMode
+                        manifestRepo, createGitHubClient, config.curseForgeApiKey, existingManifests, runMode, operationMode
                     )
                 }
 
                 val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
                     parametersOf(
-                        manifestRepo, config.curseForgeApiKey, existingManifests, createGitHubClient, runMode
+                        manifestRepo, createGitHubClient, config.curseForgeApiKey, existingManifests, runMode, operationMode
                     )
                 }
 

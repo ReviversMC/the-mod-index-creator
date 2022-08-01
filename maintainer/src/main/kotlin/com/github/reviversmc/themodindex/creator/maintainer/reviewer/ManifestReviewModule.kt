@@ -1,43 +1,53 @@
 package com.github.reviversmc.themodindex.creator.maintainer.reviewer
 
-import com.apollographql.apollo3.ApolloClient
-import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.creator.core.creatorModule
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
-import com.github.reviversmc.themodindex.creator.maintainer.RunMode
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val manifestReviewModule = module {
-    factory { (manifestRepo: String, curseApiKey: String, existingManifests: List<ManifestJson>, refreshGitHubClient: () -> ApolloClient, runMode: RunMode) ->
+    /*
+    Params for all the below are:
+    manifestRepo: String,
+    curseApiKey: String,
+    refreshGitHubClient: () -> ApolloClient,
+    existingManifests: List<ManifestJson>,
+    runMode: RunMode
+    operationModes: List<OperationMode>
+    */
+
+    factory {
         IndexExistingManifestReviewer(
-            get(named("custom")) { parametersOf(manifestRepo) },
-            get { parametersOf(curseApiKey, refreshGitHubClient) },
-            existingManifests,
-            runMode
+            get(named("custom")) { parametersOf(it[0]) },
+            get { parametersOf(it[1], it[2]) },
+            it[3],
+            it[4],
+            it[5]
         )
     } bind ExistingManifestReviewer::class
 
-    factory(named("curseforge")) { (manifestRepo: String, curseApiKey: String, existingManifests: List<ManifestJson>, refreshGitHubClient: () -> ApolloClient, runMode: RunMode) ->
+    factory(named("curseforge")) {
         CurseForgeManifestReviewer(
-            get(named("custom")) { parametersOf(manifestRepo, refreshGitHubClient) },
-            get { parametersOf(curseApiKey, refreshGitHubClient) },
+            get(named("custom")) { parametersOf(it[0]) },
+            get { parametersOf(it[1], it[2]) },
             get(),
-            curseApiKey,
-            existingManifests,
-            runMode
+            it[1],
+            it[3],
+            it[4],
+            it[5]
         )
     } bind NewManifestReviewer::class
 
-    factory(named("modrinth")) { (manifestRepo: String, curseApiKey: String, existingManifests: List<ManifestJson>, refreshGitHubClient: () -> ApolloClient, runMode: RunMode) ->
+    factory(named("modrinth")) {
         ModrinthManifestReviewer(
-            get(named("custom")) { parametersOf(manifestRepo) },
-            get { parametersOf(curseApiKey, refreshGitHubClient) },
-            existingManifests,
+            get(named("custom")) { parametersOf(it[0]) },
+            get { parametersOf(it[1], it[2]) },
+            it[3],
             get(),
-            runMode
+            it[4],
+            it[5]
         )
     } bind NewManifestReviewer::class
 

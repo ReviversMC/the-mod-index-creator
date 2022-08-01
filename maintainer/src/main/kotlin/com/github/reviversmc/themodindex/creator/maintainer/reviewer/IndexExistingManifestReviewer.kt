@@ -6,6 +6,7 @@ import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
+import com.github.reviversmc.themodindex.creator.maintainer.OperationMode
 import com.github.reviversmc.themodindex.creator.maintainer.RunMode
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
@@ -22,9 +23,11 @@ class IndexExistingManifestReviewer(
     private val creator: Creator,
     private val originalManifests: List<ManifestJson>,
     private val runMode: RunMode,
+    operationModes: List<OperationMode>,
 ) : ExistingManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
+    private val checkList: List<Char> = operationModes.mapNotNull { it.maintainChars()?.toList() }.flatten().distinct()
 
     // In format of genericIdentifier to manifestWithApiStatus
     private val bufferedManifests = mutableMapOf<String, ManifestWithApiStatus>()
@@ -42,6 +45,8 @@ class IndexExistingManifestReviewer(
             if (runMode == RunMode.TEST_SHORT) {
                 if (counter >= 20) return@forEach // Test mode, only process 20 manifests
             }
+            // Not our responsibility to create for this manifest
+            if (originalManifest.genericIdentifier.substringAfter(":")[0] !in checkList) return@forEach
 
             logger.debug { "($counter) Creating manifest for ${originalManifest.genericIdentifier}" }
 
@@ -104,7 +109,6 @@ class IndexExistingManifestReviewer(
 
 
     override fun reviewManifests() = flow {
-
         val updatedManifests = createManifests(originalManifests)
 
         updatedManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiUsage, latestManifest, originalManifest) ->

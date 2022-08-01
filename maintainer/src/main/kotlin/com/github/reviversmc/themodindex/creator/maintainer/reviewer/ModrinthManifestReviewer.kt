@@ -6,6 +6,7 @@ import com.github.reviversmc.themodindex.creator.core.Creator
 import com.github.reviversmc.themodindex.creator.core.apicalls.ModrinthApiCall
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
+import com.github.reviversmc.themodindex.creator.maintainer.OperationMode
 import com.github.reviversmc.themodindex.creator.maintainer.RunMode
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
@@ -24,6 +25,7 @@ class ModrinthManifestReviewer(
     private val existingManifests: List<ManifestJson>,
     private val modrinthApiCall: ModrinthApiCall,
     private val runMode: RunMode,
+    private val operationModes: List<OperationMode>,
 ) : NewManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -74,7 +76,7 @@ class ModrinthManifestReviewer(
                 continue // Skip the search, we don't want to get stuck waiting on the api
             } finally {
                 offset += limitPerSearch
-            }?: throw IOException("No response from Modrinth")
+            } ?: throw IOException("No response from Modrinth")
 
 
             if (search.hits.isEmpty()) break
@@ -118,6 +120,7 @@ class ModrinthManifestReviewer(
     }
 
     override fun reviewManifests() = flow {
+        if (OperationMode.CREATE !in operationModes) return@flow // Indicated that manifests should not be created
         val createdManifests = createManifests(obtainModrinthInfo().buffer(FLOW_BUFFER))
 
         createdManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiStatus, latestManifest, originalManifest) ->
