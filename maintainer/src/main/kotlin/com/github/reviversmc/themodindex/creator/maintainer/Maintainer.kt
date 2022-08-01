@@ -100,13 +100,28 @@ enum class RunMode {
 
 @Suppress("unused") // We want all available options
 enum class OperationMode {
-    CREATE { override fun maintainChars() = null },
-    MAINTAIN_ALL { override fun maintainChars() = 'a'..'z' },
-    MAINTAIN_A_TO_H { override fun maintainChars() = 'a'..'h' },
-    MAINTAIN_I_TO_Q { override fun maintainChars() = 'i'..'q' },
-    MAINTAIN_R_TO_Z { override fun maintainChars() = 'r'..'z' },
-    MAINTAIN_A_TO_L { override fun maintainChars() = 'a'..'l' },
-    MAINTAIN_M_TO_Z { override fun maintainChars() = 'm'..'z' },;
+    CREATE {
+        override fun maintainChars() = null
+    },
+    MAINTAIN_ALL {
+        override fun maintainChars() = 'a'..'z'
+    },
+    MAINTAIN_A_TO_H {
+        override fun maintainChars() = 'a'..'h'
+    },
+    MAINTAIN_I_TO_Q {
+        override fun maintainChars() = 'i'..'q'
+    },
+    MAINTAIN_R_TO_Z {
+        override fun maintainChars() = 'r'..'z'
+    },
+    MAINTAIN_A_TO_L {
+        override fun maintainChars() = 'a'..'l'
+    },
+    MAINTAIN_M_TO_Z {
+        override fun maintainChars() = 'm'..'z'
+    },
+    ;
 
     abstract fun maintainChars(): CharRange?
 }
@@ -130,7 +145,9 @@ fun main(args: Array<String>) = runBlocking {
     ).default(12)
 
     val runMode by commandParser.option(
-        ArgType.Choice<RunMode>(), shortName = "r", description = "Whether to run in prod mode, or push to separate branches for testing"
+        ArgType.Choice<RunMode>(),
+        shortName = "r",
+        description = "Whether to run in prod mode, or push to separate branches for testing"
     ).default(RunMode.TEST_SELECTED)
 
     val operationMode by commandParser.option(
@@ -248,7 +265,12 @@ fun main(args: Array<String>) = runBlocking {
                     logger.debug { "Starting the update of existing manifests" }
                     val existingManifestReviewer = koin.get<ExistingManifestReviewer> {
                         parametersOf(
-                            manifestRepo, createGitHubClient, config.curseForgeApiKey, existingManifests, runMode, operationMode
+                            manifestRepo,
+                            config.curseForgeApiKey,
+                            createGitHubClient,
+                            existingManifests,
+                            runMode,
+                            operationMode
                         )
                     }
 
@@ -260,13 +282,23 @@ fun main(args: Array<String>) = runBlocking {
                 logger.debug { "Starting the creation of new manifests" }
                 val curseForgeManifestReviewer = koin.get<NewManifestReviewer>(named("curseforge")) {
                     parametersOf(
-                        manifestRepo, createGitHubClient, config.curseForgeApiKey, existingManifests, runMode, operationMode
+                        manifestRepo,
+                        config.curseForgeApiKey,
+                        createGitHubClient,
+                        existingManifests,
+                        runMode,
+                        operationMode
                     )
                 }
 
                 val modrinthManifestReviewer = koin.get<NewManifestReviewer>(named("modrinth")) {
                     parametersOf(
-                        manifestRepo, createGitHubClient, config.curseForgeApiKey, existingManifests, runMode, operationMode
+                        manifestRepo,
+                        config.curseForgeApiKey,
+                        createGitHubClient,
+                        existingManifests,
+                        runMode,
+                        operationMode
                     )
                 }
 
