@@ -74,7 +74,12 @@ class CurseForgeManifestReviewer(
                 continue
             } finally {
                 offset += limitPerSearch
-            } ?: throw IOException("No response from CurseForge")
+            }
+
+            if (search == null) {
+                logger.warn { "CurseForge search returned null" }
+                continue
+            }
 
 
             if (search.data.isEmpty()) break

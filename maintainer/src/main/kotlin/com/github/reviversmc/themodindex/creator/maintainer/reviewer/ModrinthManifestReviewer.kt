@@ -76,7 +76,12 @@ class ModrinthManifestReviewer(
                 continue // Skip the search, we don't want to get stuck waiting on the api
             } finally {
                 offset += limitPerSearch
-            } ?: throw IOException("No response from Modrinth")
+            }
+
+            if (search == null) {
+                logger.warn { "Modrinth search returned null" }
+                continue
+            }
 
 
             if (search.hits.isEmpty()) break
