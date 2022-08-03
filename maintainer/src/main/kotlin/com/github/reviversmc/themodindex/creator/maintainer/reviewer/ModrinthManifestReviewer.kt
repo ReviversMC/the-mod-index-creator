@@ -59,10 +59,12 @@ class ModrinthManifestReviewer(
             }
         }
 
+        var attempts = 0
+
         while (offset < totalCount) {
 
             val search = try {
-                if (runMode == RunMode.TEST_SHORT) modrinthApiCall.search(
+                (if (runMode == RunMode.TEST_SHORT) modrinthApiCall.search(
                     /*
                     In short test mode, don't go by default search.
                     Mods like FAPI have a LOT of versions, and that takes a while to generate manifests for
@@ -70,12 +72,14 @@ class ModrinthManifestReviewer(
                     searchMethod = ModrinthApiCall.SearchMethod.NEWEST.modrinthString,
                     limit = totalCount
                 ).execute().body()
-                else modrinthApiCall.search(limit = limitPerSearch, offset = offset).execute().body()
+                else modrinthApiCall.search(limit = limitPerSearch, offset = offset).execute().body()).also {
+                    offset += limitPerSearch
+                    attempts = 0
+                }
             } catch (_: SocketTimeoutException) {
                 logger.warn { "Modrinth search timed out" }
-                continue // Skip the search, we don't want to get stuck waiting on the api
-            } finally {
-                offset += limitPerSearch
+                if (attempts++ > 5) offset += limitPerSearch // Skip the search - too many failed attempts
+                continue
             }
 
             if (search == null) {

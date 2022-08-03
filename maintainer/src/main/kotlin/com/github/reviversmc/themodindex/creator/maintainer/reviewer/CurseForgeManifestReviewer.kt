@@ -27,7 +27,7 @@ class CurseForgeManifestReviewer(
     private val curseForgeApiKey: String,
     private val existingManifests: List<ManifestJson>,
     private val runMode: RunMode,
-    private val operationModes: List<OperationMode>
+    private val operationModes: List<OperationMode>,
 ) : NewManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
@@ -62,18 +62,20 @@ class CurseForgeManifestReviewer(
             }
         }
 
+        var attempts = 0
         while (offset < totalCount) {
 
             val search = try {
-                if (runMode == RunMode.TEST_SHORT) curseForgeApiCall.search(curseForgeApiKey, offset, totalCount)
+                (if (runMode == RunMode.TEST_SHORT) curseForgeApiCall.search(curseForgeApiKey, offset, totalCount)
                     .execute().body()
-                else curseForgeApiCall.search(curseForgeApiKey, offset).execute().body()
+                else curseForgeApiCall.search(curseForgeApiKey, offset).execute().body()).also {
+                    offset += limitPerSearch
+                    attempts = 0
+                }
             } catch (_: SocketTimeoutException) {
-                // The show must go on, skip the search.
                 logger.warn { "CurseForge search timed out" }
+                if (attempts++ > 5) offset += limitPerSearch // Skip the search - too many failed attempts
                 continue
-            } finally {
-                offset += limitPerSearch
             }
 
             if (search == null) {
