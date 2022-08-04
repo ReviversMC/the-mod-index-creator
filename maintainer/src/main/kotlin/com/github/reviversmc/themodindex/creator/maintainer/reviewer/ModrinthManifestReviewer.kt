@@ -9,15 +9,13 @@ import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
 import com.github.reviversmc.themodindex.creator.maintainer.OperationMode
 import com.github.reviversmc.themodindex.creator.maintainer.RunMode
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
-import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
-import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
-import io.ktor.network.sockets.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
 import retrofit2.HttpException
 import java.io.IOException
+import java.net.SocketTimeoutException
 
 class ModrinthManifestReviewer(
     private val apiDownloader: ApiDownloader,
@@ -26,7 +24,7 @@ class ModrinthManifestReviewer(
     private val modrinthApiCall: ModrinthApiCall,
     private val runMode: RunMode,
     private val operationModes: List<OperationMode>,
-) : NewManifestReviewer {
+) : NewManifestReviewer() {
 
     private val logger = KotlinLogging.logger {}
 
@@ -132,30 +130,18 @@ class ModrinthManifestReviewer(
         if (OperationMode.CREATE !in operationModes) return@flow // Indicated that manifests should not be created
         val createdManifests = createManifests(obtainModrinthInfo().buffer(FLOW_BUFFER))
 
-        createdManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiStatus, latestManifest, originalManifest) ->
-            if (ThirdPartyApiUsage.MODRINTH_USED !in thirdPartyApiStatus) {
-                emit(
-                    ManifestWithCreationStatus(
-                        ReviewStatus.THIRD_PARTY_API_FAILURE, latestManifest, originalManifest
-                    )
+        // The "original manifest" is still the "latest manifest" as it was just generated
+        createdManifests.buffer(FLOW_BUFFER).collect { (thirdPartyApiStatus, potentiallyNullManifest, latestManifest) ->
+            emit(
+                super.reviewManifest(
+                    logger,
+                    ThirdPartyApiUsage.MODRINTH_USED,
+                    thirdPartyApiStatus,
+                    latestManifest,
+                    apiDownloader.downloadManifestJson(latestManifest.genericIdentifier),
+                    potentiallyNullManifest
                 )
-                logger.debug { "Third party api failure for ${originalManifest.genericIdentifier}" }
-            } else {
-                val existingManifestInRepo = apiDownloader.downloadManifestJson(originalManifest.genericIdentifier)
-                if (existingManifestInRepo == null) { // Means that this is the first copy
-                    emit(ManifestWithCreationStatus(ReviewStatus.APPROVED_UPDATE, latestManifest, originalManifest))
-                    logger.debug { "Creation of ${originalManifest.genericIdentifier} is approved" }
-                } else {
-                    emit(
-                        ManifestWithCreationStatus(
-                            ReviewStatus.UPDATE_CONFLICT,
-                            latestManifest,
-                            existingManifestInRepo
-                        )
-                    )
-                    logger.warn { "Conflict detected: Created ${originalManifest.genericIdentifier} instead of updating an existing version" }
-                }
-            }
+            )
         }
 
     }
