@@ -3,6 +3,7 @@ package com.github.reviversmc.themodindex.creator.maintainer.reviewer
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.Creator
+import com.github.reviversmc.themodindex.creator.core.CreatorLoader
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import com.github.reviversmc.themodindex.creator.maintainer.FLOW_BUFFER
@@ -27,7 +28,28 @@ class IndexExistingManifestReviewer(
 ) : ExistingManifestReviewer {
 
     private val logger = KotlinLogging.logger {}
-    private val checkList: List<Char> = operationModes.mapNotNull { it.maintainChars()?.toList() }.flatten().distinct()
+    private val checkList = operationModes.mapNotNull { it.maintainRegex() }.distinct()
+    private val generationScope = mutableListOf<CreatorLoader>().apply {
+        if (OperationMode.MAINTAIN_ALL in operationModes) {
+            add(CreatorLoader.ANY)
+        } else {
+            if (OperationMode.MAINTAIN_FABRIC in operationModes) {
+                add(CreatorLoader.FABRIC)
+            }
+            if (OperationMode.MAINTAIN_FORGE in operationModes) {
+                add(CreatorLoader.FORGE)
+            }
+            if (OperationMode.MAINTAIN_QUILT in operationModes) {
+                add(CreatorLoader.QUILT)
+            }
+            if (OperationMode.MAINTAIN_MISC in operationModes) {
+                add(CreatorLoader.CAULDRON)
+                add(CreatorLoader.LITELOADER)
+                add(CreatorLoader.MODLOADER)
+                add(CreatorLoader.RIFT)
+            }
+        }
+    }.toList()
 
     // In format of genericIdentifier to manifestWithApiStatus
     private val bufferedManifests = mutableMapOf<String, ManifestWithApiStatus>()
@@ -46,7 +68,14 @@ class IndexExistingManifestReviewer(
                 if (counter >= 20) return@forEach // Test mode, only process 20 manifests
             }
             // Not our responsibility to create for this manifest
-            if (originalManifest.genericIdentifier.substringAfter(":")[0] !in checkList) return@forEach
+            var shouldGenerate = false
+            for (checkRegex in checkList) {
+                if (checkRegex.matches(originalManifest.genericIdentifier)) {
+                    shouldGenerate = true
+                    break
+                }
+            }
+            if (!shouldGenerate) return@forEach
 
             logger.debug { "($counter) Creating manifest for ${originalManifest.genericIdentifier}" }
 
@@ -56,7 +85,7 @@ class IndexExistingManifestReviewer(
                     ?: originalManifest.modrinthId?.let {// Else try to create a new one using modrinth id
                         try {
                             creator.createManifestModrinth(
-                                it, originalManifest.curseForgeId
+                                it, originalManifest.curseForgeId, generationScope
                             )
                         } catch (_: SocketTimeoutException) {
                             logger.warn { "($counter) Socket timeout while creating manifest for Modrinth project $it" }
@@ -68,7 +97,7 @@ class IndexExistingManifestReviewer(
                     } ?: originalManifest.curseForgeId?.let {// Else try to create a new one using curseforge id
                         try {
                             creator.createManifestCurseForge(
-                                it, originalManifest.modrinthId
+                                it, generationScope, originalManifest.modrinthId
                             )
                         } catch (_: SocketTimeoutException) {
                             logger.warn { "($counter) Socket timeout while creating manifest for CurseForge project $it" }

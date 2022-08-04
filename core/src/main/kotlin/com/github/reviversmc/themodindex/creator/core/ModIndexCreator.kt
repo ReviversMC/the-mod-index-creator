@@ -102,7 +102,9 @@ class ModIndexCreator(
      * @since 1.0.0
      */
     private fun downloadCurseForgeFiles(
-        curseForgeMod: CurseModData, existingFiles: ManifestVersionsPerLoader = emptyMap(),
+        creatorLoaders: List<CreatorLoader>,
+        curseForgeMod: CurseModData,
+        existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
         /*
@@ -111,8 +113,9 @@ class ModIndexCreator(
         or https://discord.com/channels/900128427150028811/940227856741597194/971451873074757712 (original source, CF dev server)
         */
 
-        for (modLoader in CurseForgeApiCall.ModLoaderType.values()) {
-            if (modLoader == CurseForgeApiCall.ModLoaderType.ANY) continue
+        for (modLoader in if (CreatorLoader.ANY in creatorLoaders) CreatorLoader.values().toMutableList()
+            .apply { remove(CreatorLoader.ANY) } else creatorLoaders) {
+            if (modLoader.curseNumber == null) continue
             val loaderFiles = this.getOrDefault(modLoader.name.lowercase(), emptyList()).toMutableList()
             val loaderFileHashes = loaderFiles.map { it.shortSha512Hash.lowercase() }
 
@@ -137,16 +140,6 @@ class ModIndexCreator(
                                     ).execute().body()?.data?.isNotEmpty() == true
                                 ) {
                                     "${modLoader.name.lowercase()}:$it"
-
-                                } else if (modLoader == CurseForgeApiCall.ModLoaderType.QUILT && curseForgeApiCall.files(
-                                        curseApiKey,
-                                        curseDependency.modId,
-                                        CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber
-                                    ).execute().body()?.data?.isNotEmpty() == true
-                                ) {
-                                    // Special concession for Quilt, where we will also check for Fabric files
-                                    "${CurseForgeApiCall.ModLoaderType.FABRIC.name.lowercase()}:$it"
-
                                 } else null// If we can't find an appropriate file, don't add the dependency
 
                             }
@@ -162,8 +155,8 @@ class ModIndexCreator(
                         VersionFile(
                             file.displayName, file.gameVersions.sortedDescending().mapNotNull {
                                 try {
-                                    CurseForgeApiCall.ModLoaderType.valueOf(it.uppercase())
-                                    null// Do not add if detected to be loader
+                                    CreatorLoader.valueOf(it.uppercase())
+                                    null// Do not add to game versions if detected to be loader name
                                 } catch (_: IllegalArgumentException) {
                                     it
                                 }
@@ -232,11 +225,24 @@ class ModIndexCreator(
      * @since 1.0.0
      */
     private fun downloadModrinthFiles(
+        creatorLoaders: List<CreatorLoader>,
         modrinthProject: ModrinthProjectResponse,
         existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-        modrinthApiCall.versions(modrinthProject.id).execute().body()?.forEach { versionResponse ->
+        val loadersToQuery = if (creatorLoaders.isEmpty() || creatorLoaders == listOf(CreatorLoader.ANY)) null else
+            creatorLoaders.mapNotNull { it.modrinthCategory }.let { loaders ->
+                if (loaders.isNotEmpty()) {
+                    buildString {
+                        append("[")
+                        loaders.forEach { append("\"$it\",") }
+                        this.delete(this.length - 2, this.length) // Get rid of the last ", "
+                        append("]")
+                    }
+                } else null
+            }
+
+        modrinthApiCall.versions(modrinthProject.id, loadersToQuery).execute().body()?.forEach { versionResponse ->
 
             versionResponse.loaders.forEach { loader -> // All files here are guaranteed to work for the loader.
                 val loaderFiles = this.getOrDefault(loader.lowercase(), emptyList()).toMutableList()
@@ -259,13 +265,6 @@ class ModIndexCreator(
                                             ?.isNotEmpty() == true
                                     ) {
                                         "$loader:$it"
-
-                                    } else if (loader == "quilt" && modrinthApiCall.versions(
-                                            dependencyId, "[\"fabric\"]"
-                                        ).execute().body()?.isNotEmpty() == true
-                                    ) {
-                                        // Special concession for Quilt, where we will also check for Fabric files
-                                        "fabric:$it"
                                     } else null// If we can't find an appropriate file, don't add the dependency
                                 }
                         } + versionIdDependencies.mapNotNull { modrinthDependency ->
@@ -310,40 +309,54 @@ class ModIndexCreator(
 
     override suspend fun createManifestCurseForge(
         curseForgeId: Int,
+        creatorLoaders: List<CreatorLoader>,
         modrinthId: String?,
         preferCurseForgeData: Boolean,
     ) = createManifest(
-        modrinthId, curseForgeApiCall.mod(curseApiKey, curseForgeId).execute().body()?.data, preferCurseForgeData
+        creatorLoaders,
+        modrinthId,
+        curseForgeApiCall.mod(curseApiKey, curseForgeId).execute().body()?.data,
+        preferCurseForgeData
     )
 
     override suspend fun createManifestCurseForge(
         curseForgeMod: CurseModData,
+        creatorLoaders: List<CreatorLoader>,
         modrinthId: String?,
         preferCurseForgeData: Boolean,
-    ) = createManifest(modrinthId, curseForgeMod, preferCurseForgeData)
+    ) = createManifest(creatorLoaders, modrinthId, curseForgeMod, preferCurseForgeData)
 
     override suspend fun createManifestModrinth(
         modrinthId: String,
         curseForgeId: Int?,
+        creatorLoaders: List<CreatorLoader>,
         preferModrinthData: Boolean,
     ) = if (curseForgeId != null) {
         // Invert the preference for [preferModrinthData], as the param in the actual method asks for the opposite
         createManifest(
-            modrinthId, curseForgeApiCall.mod(curseApiKey, curseForgeId).execute().body()?.data, !preferModrinthData
+            creatorLoaders,
+            modrinthId,
+            curseForgeApiCall.mod(curseApiKey, curseForgeId).execute().body()?.data,
+            !preferModrinthData
         )
-    } else createManifest(modrinthId, null, !preferModrinthData)
+    } else createManifest(creatorLoaders, modrinthId, null, !preferModrinthData)
 
 
     override suspend fun createManifestModrinth(
         modrinthId: String,
+        creatorLoaders: List<CreatorLoader>,
         curseForgeMod: CurseModData?,
         preferModrinthData: Boolean,
     ) = createManifest(
-        modrinthId, curseForgeMod, !preferModrinthData /* Invert the preference, as the param asks for the opposite */
+        creatorLoaders,
+        modrinthId,
+        curseForgeMod,
+        !preferModrinthData /* Invert the preference, as the param asks for the opposite */
     )
 
 
     private suspend fun createManifest(
+        creatorLoaders: List<CreatorLoader>,
         modrinthId: String?,
         curseForgeMod: CurseModData?,
         preferCurseOverModrinth: Boolean,
@@ -398,19 +411,19 @@ class ModIndexCreator(
 
 
         val curseAndModrinthFiles = if (preferCurseOverModrinth) {
-            val curseFiles = curseForgeMod?.let { downloadCurseForgeFiles(it) }?.also {
+            val curseFiles = curseForgeMod?.let { downloadCurseForgeFiles(creatorLoaders, it) }?.also {
                 usedThirdPartyApis.add(ThirdPartyApiUsage.CURSEFORGE_USED)
             } ?: emptyMap()
 
-            modrinthProject?.let { downloadModrinthFiles(it, curseFiles) }?.also {
+            modrinthProject?.let { downloadModrinthFiles(creatorLoaders, it, curseFiles) }?.also {
                 usedThirdPartyApis.add(ThirdPartyApiUsage.MODRINTH_USED)
             } ?: curseFiles
         } else {
-            val modrinthFiles = modrinthProject?.let { downloadModrinthFiles(it) }?.also {
+            val modrinthFiles = modrinthProject?.let { downloadModrinthFiles(creatorLoaders, it) }?.also {
                 usedThirdPartyApis.add(ThirdPartyApiUsage.MODRINTH_USED)
             } ?: emptyMap()
 
-            curseForgeMod?.let { downloadCurseForgeFiles(it, modrinthFiles) }?.also {
+            curseForgeMod?.let { downloadCurseForgeFiles(creatorLoaders, it, modrinthFiles) }?.also {
                 usedThirdPartyApis.add(ThirdPartyApiUsage.CURSEFORGE_USED)
             } ?: modrinthFiles
         }

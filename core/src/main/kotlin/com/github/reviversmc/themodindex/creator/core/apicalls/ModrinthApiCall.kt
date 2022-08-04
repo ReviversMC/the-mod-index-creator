@@ -1,5 +1,6 @@
 package com.github.reviversmc.themodindex.creator.core.apicalls
 
+import com.github.reviversmc.themodindex.creator.core.CreatorLoader
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Headers
@@ -72,7 +73,8 @@ interface ModrinthApiCall {
 
     /**
      * Returns all modrinth [ModrinthVersionResponse]s for a project, obtained using its [projectId].
-     * [modLoaders] should be a list in string form, e.g. ["forge", "fabric"], not [forge, fabric]
+     * [modLoaders] should be a list in string form, e.g. ["forge", "fabric"], not [forge, fabric].
+     * A list of options for [modLoaders] can be found at [CreatorLoader].
      * @author ReviversMC
      * @since 1.0.0
      */

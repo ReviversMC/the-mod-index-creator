@@ -1,5 +1,6 @@
 package com.github.reviversmc.themodindex.creator.core.apicalls
 
+import com.github.reviversmc.themodindex.creator.core.CreatorLoader
 import retrofit2.Call
 import retrofit2.http.*
 
@@ -25,7 +26,7 @@ interface CurseForgeApiCall {
     /**
      * Returns the versions ([CurseFilesResponse]) of a CF mod, obtained by its [modId].
      * In order to make a successful api call, A [curseForgeApiKey] is required for authentication.
-     * A [modLoaderType] obtained using [ModLoaderType] can be used to fine tune the search,
+     * A [modLoaderType] obtained using [CreatorLoader] can be used to fine tune the search,
      * and [maxNumberOfResults] con be used to increase/decrease the maximum number of results returned.
      * For stability, it is recommended to leave [maxNumberOfResults] null, for CF to decide a number of results to return that is guaranteed to work.
      * @author ReviversMC
@@ -35,19 +36,10 @@ interface CurseForgeApiCall {
     fun files(
         @Header("x-api-key") curseForgeApiKey: String,
         @Path("modId") modId: Int,
-        @Query("modLoaderType") modLoaderType: Int? = ModLoaderType.ANY.curseNumber,
+        @Query("modLoaderType") modLoaderType: Int? = CreatorLoader.ANY.curseNumber,
         @Query("pageSize") maxNumberOfResults: Int? = null,
     ): Call<CurseFilesResponse>
 
-    /**
-     * A convenience enum to know what mod loader each [curseNumber] is associated with.
-     * @author ReviversMC
-     * @since 1.0.0
-     */
-    @Suppress("unused") // We want all the enum values, so that it can be selected by consumers
-    enum class ModLoaderType(val curseNumber: Int?) {
-        ANY(null), FORGE(1), CAULDRON(2), LITELOADER(3), FABRIC(4), QUILT(5),
-    }
 
     /**
      * Returns a [CurseSearchResponse] for a search query, offset by [index].

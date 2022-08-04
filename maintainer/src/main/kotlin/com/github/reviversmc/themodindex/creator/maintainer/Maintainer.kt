@@ -95,29 +95,26 @@ enum class RunMode {
 @Suppress("unused") // We want all available options
 enum class OperationMode {
     CREATE {
-        override fun maintainChars() = null
+        override fun maintainRegex() = null
     },
     MAINTAIN_ALL {
-        override fun maintainChars() = 'a'..'z'
+        override fun maintainRegex() = Regex("^[a-z0-9\\-_]+:[a-z0-9\\-_]+$")
     },
-    MAINTAIN_A_TO_H {
-        override fun maintainChars() = 'a'..'h'
+    MAINTAIN_FABRIC {
+        override fun maintainRegex() = Regex("^fabric:[a-z0-9\\-_]+$")
     },
-    MAINTAIN_I_TO_Q {
-        override fun maintainChars() = 'i'..'q'
+    MAINTAIN_FORGE {
+        override fun maintainRegex() = Regex("^forge:[a-z0-9\\-_]+$")
     },
-    MAINTAIN_R_TO_Z {
-        override fun maintainChars() = 'r'..'z'
+    MAINTAIN_QUILT {
+        override fun maintainRegex() = Regex("^quilt:[a-z0-9\\-_]+$")
     },
-    MAINTAIN_A_TO_L {
-        override fun maintainChars() = 'a'..'l'
-    },
-    MAINTAIN_M_TO_Z {
-        override fun maintainChars() = 'm'..'z'
-    },
-    ;
+    MAINTAIN_MISC {
+        override fun maintainRegex() =
+            Regex("^(?!.*\bfabric\b)(?!.*\bforge\b)(?!.*\bquilt\b)[a-z0-9\\-_]+:[a-z0-9\\-_]+$")
+    };
 
-    abstract fun maintainChars(): CharRange?
+    abstract fun maintainRegex(): Regex?
 }
 
 fun main(args: Array<String>) = runBlocking {

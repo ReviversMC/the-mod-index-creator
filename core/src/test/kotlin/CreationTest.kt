@@ -1,6 +1,6 @@
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.creator.core.Creator
-import com.github.reviversmc.themodindex.creator.core.apicalls.CurseForgeApiCall
+import com.github.reviversmc.themodindex.creator.core.CreatorLoader
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
 import io.mockk.mockkClass
 import kotlinx.coroutines.runBlocking
@@ -56,11 +56,10 @@ class CreationTest : KoinTest {
     private var isCurseForgeDistribution = true
     private var isTestingForGitHub = false
 
-    @Suppress("KotlinConstantConditions") // We want to use the curse number constants
-    private fun curseConsumerFilesResponse(curseNumber: Int = 0) = when (curseNumber) {
-        CurseForgeApiCall.ModLoaderType.ANY.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseAllFiles.json")
-        CurseForgeApiCall.ModLoaderType.FABRIC.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseFabricFiles.json")
-        CurseForgeApiCall.ModLoaderType.QUILT.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseQuiltFiles.json")
+    private fun curseConsumerFilesResponse(curseNumber: Int?) = when (curseNumber) {
+        CreatorLoader.ANY.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseAllFiles.json")
+        CreatorLoader.FABRIC.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseFabricFiles.json")
+        CreatorLoader.QUILT.curseNumber -> readResource("/apiResponse/tmi-consumer/curseForge/curseQuiltFiles.json")
         else -> readResource("/apiResponse/tmi-consumer/curseForge/curseEmptyFiles.json")
     }
 
@@ -83,8 +82,8 @@ class CreationTest : KoinTest {
                     "/v1/mods/$curseForgeConsumerModId/files" -> MockResponse().setResponseCode(200)
                         .setBody(buildString {
                             curseConsumerFilesResponse( // Get the modLoaderType path param
-                                request.path!!.substringAfter('?').split('&').first { it.startsWith("modLoaderType=") }
-                                    .substringAfter("modLoaderType=").toInt()).split("\n").forEach {
+                                request.path!!.substringAfter('?').split('&').firstOrNull { it.startsWith("modLoaderType=") }
+                                    ?.substringAfter("modLoaderType=")?.toIntOrNull()).split("\n").forEach {
                                 if (it.contains("\"downloadUrl\"")) {
                                     if (isCurseForgeDistribution) append(
                                         it.replace(
@@ -237,13 +236,18 @@ class CreationTest : KoinTest {
         }.let { creator ->
             assertTrue {
                 creator.createManifestCurseForge(
-                    curseForgeConsumerModId, modrinthConsumerProjectId
-                ) == creator.createManifestModrinth(modrinthConsumerProjectId, curseForgeConsumerModId, false)
+                    curseForgeConsumerModId, listOf(CreatorLoader.ANY), modrinthConsumerProjectId
+                ) == creator.createManifestModrinth(
+                    modrinthConsumerProjectId,
+                    curseForgeConsumerModId,
+                    listOf(CreatorLoader.ANY),
+                    false
+                )
             }
 
             assertTrue {
                 creator.createManifestCurseForge(
-                    curseForgeConsumerModId, modrinthConsumerProjectId, false
+                    curseForgeConsumerModId, listOf(CreatorLoader.ANY), modrinthConsumerProjectId, false
                 ) == creator.createManifestModrinth(modrinthConsumerProjectId, curseForgeConsumerModId)
             }
         }
@@ -268,7 +272,7 @@ class CreationTest : KoinTest {
             manifests.forEach { assertManifestEquals("pureModrinth", it) }
         }
 
-        creator.createManifestCurseForge(curseForgeConsumerModId).run curseForgeDisabled@{
+        creator.createManifestCurseForge(curseForgeConsumerModId, listOf(CreatorLoader.ANY)).run curseForgeDisabled@{
             assertEquals(thirdPartyApiUsage, listOf(ThirdPartyApiUsage.CURSEFORGE_USED))
             assertEquals(0, manifests.size)
             assertEquals(
@@ -276,7 +280,7 @@ class CreationTest : KoinTest {
             ) // No manifests should be generated, as all files are disabled.
         }
 
-        creator.createManifestCurseForge(curseForgeConsumerModId, modrinthConsumerProjectId)
+        creator.createManifestCurseForge(curseForgeConsumerModId, listOf(CreatorLoader.ANY), modrinthConsumerProjectId)
             .run curseDisabledPlusModrinth@{
                 assertEquals(
                     listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),
@@ -322,7 +326,7 @@ class CreationTest : KoinTest {
             manifests.forEach { assertManifestEquals("pureCurseForge", it) }
         }
 
-        creator.createManifestCurseForge(curseForgeConsumerModId, modrinthConsumerProjectId)
+        creator.createManifestCurseForge(curseForgeConsumerModId, listOf(CreatorLoader.ANY), modrinthConsumerProjectId)
             .run curseEnabledPlusModrinth@{
                 assertEquals(
                     listOf(ThirdPartyApiUsage.CURSEFORGE_USED, ThirdPartyApiUsage.MODRINTH_USED),

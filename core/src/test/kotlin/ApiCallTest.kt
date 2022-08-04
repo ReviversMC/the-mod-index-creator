@@ -1,3 +1,4 @@
+import com.github.reviversmc.themodindex.creator.core.CreatorLoader
 import com.github.reviversmc.themodindex.creator.core.apicalls.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import org.junit.jupiter.api.Test
@@ -53,7 +54,7 @@ class ApiCallTest : KoinTest {
 
         assertEquals(
             emptyList(), curseForgeApiCall.files(
-                curseApiKey(), 533960, modLoaderType = CurseForgeApiCall.ModLoaderType.CAULDRON.curseNumber
+                curseApiKey(), 533960, modLoaderType = CreatorLoader.CAULDRON.curseNumber
             ).execute().body()!!.data
         )
 
@@ -71,7 +72,7 @@ class ApiCallTest : KoinTest {
                     CurseFileDependency(400548, RelationType.EMBEDDED_LIBRARY.curseNumber),
                     CurseFileDependency(306612, RelationType.REQUIRED_DEPENDENCY.curseNumber)
                 ).sortedBy { it.relationType }
-            ), curseForgeFiles.data.last().let { it.copy(dependencies = it.dependencies.sortedBy { it.relationType }) }
+            ), curseForgeFiles.data.last().let { cfFiles -> cfFiles.copy(dependencies = cfFiles.dependencies.sortedBy { it.relationType }) }
         )
 
         // We did not specify max files, so we should get all files
