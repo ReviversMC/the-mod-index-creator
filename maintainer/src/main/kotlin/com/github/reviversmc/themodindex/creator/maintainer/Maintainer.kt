@@ -8,16 +8,11 @@ import com.github.reviversmc.themodindex.creator.maintainer.apicalls.GHBranch
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.githubMaintainerModule
 import com.github.reviversmc.themodindex.creator.maintainer.data.AppConfig
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
-import com.github.reviversmc.themodindex.creator.maintainer.discordbot.MaintainerBot
-import com.github.reviversmc.themodindex.creator.maintainer.discordbot.discordBotModule
 import com.github.reviversmc.themodindex.creator.maintainer.github.UpdateSender
 import com.github.reviversmc.themodindex.creator.maintainer.github.updateSenderModule
 import com.github.reviversmc.themodindex.creator.maintainer.reviewer.ExistingManifestReviewer
 import com.github.reviversmc.themodindex.creator.maintainer.reviewer.NewManifestReviewer
 import com.github.reviversmc.themodindex.creator.maintainer.reviewer.manifestReviewModule
-import dev.kord.common.entity.Snowflake
-import dev.kord.core.Kord
-import dev.kord.core.entity.channel.TextChannel
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
@@ -38,7 +33,6 @@ import java.io.IOException
 import kotlin.concurrent.timer
 import kotlin.system.exitProcess
 
-const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
 const val FLOW_BUFFER = 5
 const val INDEX_MAJOR = 5
 
@@ -130,7 +124,7 @@ fun main(args: Array<String>) = runBlocking {
 
     val koin = startKoin {
         modules(
-            appModule, creatorModule, discordBotModule, githubMaintainerModule, manifestReviewModule, updateSenderModule
+            appModule, creatorModule, githubMaintainerModule, manifestReviewModule, updateSenderModule
         )
     }.koin
 
@@ -195,23 +189,6 @@ fun main(args: Array<String>) = runBlocking {
 
     // All variables that need to be refreshed (i.e. that use a gh api key) should be in the while loop.
     var operationLoopNum = 0
-    val maintainerBot = withContext(Dispatchers.Default) {
-        val kord = koin.get<Kord> { parametersOf(config.discordBotToken) }
-        val parentChannel = kord.getChannelOf<TextChannel>(Snowflake(config.discordTextChannel))
-        koin.get<MaintainerBot> {
-            parametersOf(
-                config.discordBotToken, Snowflake(config.discordServer), parentChannel
-            )
-        }
-    }
-
-    launch { maintainerBot.start() } // This suspends till the bot is shutdown. Move it to a separate coroutine so that we can still do stuff
-    logger.info { "Started Discord Bot" }
-    launch {
-        for (resolvedConflict in maintainerBot.resolvedConflicts) updateSender.sendManifestUpdate(
-            listOf(resolvedConflict)
-        )
-    }
 
     try {
         while (shouldContinueUpdating) {
@@ -225,7 +202,7 @@ fun main(args: Array<String>) = runBlocking {
             suspend fun pushChanges() {
                 manifestsToCommitMutex.withLock {
                     val manualReviewNeeded = updateSender.sendManifestUpdate(manifestsToCommit)
-                    manualReviewNeeded.buffer(FLOW_BUFFER).collect { maintainerBot.sendConflict(it) }
+                    manualReviewNeeded.buffer(FLOW_BUFFER).collect { updateSender.sendConflict(it) }
                     manifestsToCommit.clear()
                 }
             }
@@ -302,7 +279,6 @@ fun main(args: Array<String>) = runBlocking {
                     )
                 }
 
-
                 val curseForgeCreation = launch {
                     submitGeneratedManifests(curseForgeManifestReviewer.reviewManifests())
                     logger.info { "Pushed all created CF manifests" }
@@ -338,7 +314,6 @@ fun main(args: Array<String>) = runBlocking {
                 logger.info { "Sleeping for $cooldownInHours hours" }
                 delay(cooldownInHours * 60L * 60L * 1000L)
             } else {
-                maintainerBot.exit()
                 exitProcess(0)
             }
         }
@@ -349,7 +324,6 @@ fun main(args: Array<String>) = runBlocking {
          */
 
         logger.error(ex) { "Exception in maintainer loop $operationLoopNum" }
-        maintainerBot.exit(ex.message ?: "An unknown exception occurred!\n $ex", 1)
         exitProcess(1)
     }
 }

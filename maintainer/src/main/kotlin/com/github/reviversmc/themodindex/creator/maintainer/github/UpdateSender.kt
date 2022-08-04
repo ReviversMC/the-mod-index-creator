@@ -17,6 +17,15 @@ interface UpdateSender {
     val gitHubInstallationToken: String
 
     /**
+     * PRs a conflict to the manifest server.
+     * The [manifestToConflict] will be pushed to a separate branch, and pr-ed to the working branch for review
+     * @throws IOException if there is an error communicating with the GitHub API
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    suspend fun sendConflict(manifestToConflict: ManifestWithCreationStatus)
+
+    /**
      * Sends manifests for update to the manifest server.
      * Manifests to update from [manifestsToUpdate] will be reviewed one last time, and prepared for update if they are approved.
      * Should a manifest be marked for manual review, it will be returned as part of this method's [Flow].
@@ -24,7 +33,6 @@ interface UpdateSender {
      * @author ReviversMC
      * @since 1.0.0
      */
-    @Throws(IOException::class)
     fun sendManifestUpdate(manifestsToUpdate: List<ManifestWithCreationStatus>): Flow<ManifestWithCreationStatus>
 
 }

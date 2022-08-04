@@ -47,7 +47,7 @@ class GitHubUpdateSender(
 
     private val ghBranch by inject<GHBranch> {
         parametersOf(
-            {get<ApolloClient> { parametersOf(gitHubInstallationToken) }}, repoOwner, repoName
+            { get<ApolloClient> { parametersOf(gitHubInstallationToken) } }, repoOwner, repoName
         )
     }
 
@@ -67,13 +67,60 @@ class GitHubUpdateSender(
         val signedJwt = JWT.getEncoder().encode(jwt, jwtSigner)
         logger.debug { "Signed JWT created." }
 
-        val gitHubInstallationId = gitHubRestApp.installation("Bearer $signedJwt", repoOwner, repoName).execute().body()?.id
-            ?: throw IOException("Could not get installation of $repoOwner/$repoName.")
-        val installationToken = gitHubRestApp.createAccessToken("Bearer $signedJwt", gitHubInstallationId).execute().body()?.token
-            ?: throw IOException("Could not get installation token of $repoOwner/$repoName")
+        val gitHubInstallationId =
+            gitHubRestApp.installation("Bearer $signedJwt", repoOwner, repoName).execute().body()?.id
+                ?: throw IOException("Could not get installation of $repoOwner/$repoName.")
+        val installationToken =
+            gitHubRestApp.createAccessToken("Bearer $signedJwt", gitHubInstallationId).execute().body()?.token
+                ?: throw IOException("Could not get installation token of $repoOwner/$repoName")
         logger.debug { "GitHub installation token created" }
 
         return installationToken
+    }
+
+    override suspend fun sendConflict(manifestToConflict: ManifestWithCreationStatus) {
+        manifestToConflict.latestManifest?.let { latestManifest ->
+
+            val indexJson = apiDownloader.downloadIndexJson()?.let { indexJson ->
+                indexJson.copy(
+                    identifiers = indexJson.identifiers.toMutableList().apply {
+                        removeIf { it.startsWith(manifestToConflict.originalManifest.genericIdentifier) } // Remove all original hashes
+                        addAll(latestManifest.files.map { it.shortSha512Hash })
+                    }.toList()
+                )
+            }
+
+            val conflictBranchName = "$targetedBranch/conflict-${latestManifest.genericIdentifier}"
+
+            if (!ghBranch.doesRefExist(conflictBranchName)) {
+                ghBranch.createRef(
+                    ghBranch.defaultBranchRef(), targetedBranch
+                )
+            }
+
+            ghBranch.commitAndUpdateRef(
+                targetedBranch,
+                "Detected conflict: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}",
+                listOf(
+                    FileAddition(
+                        "mods/${latestManifest.genericIdentifier.replaceFirst(':', '/')}.json",
+                        json.encodeToString(latestManifest).toBase64WithNewline(),
+                    ),
+                    FileAddition("mods/index.json", json.encodeToString(indexJson).toBase64WithNewline()),
+                )
+            )
+
+            ghBranch.createPullRequest(
+                conflictBranchName,
+                targetedBranch,
+                "Conflict for ${latestManifest.genericIdentifier}",
+                "A conflict was detected for ${latestManifest.genericIdentifier}. Please resolve manually."
+            )
+
+            logger.debug { "PR-ed conflict for $conflictBranchName to branch $targetedBranch." }
+        }
+            ?: logger.warn { "Could not send conflict for ${manifestToConflict.originalManifest.genericIdentifier} as latestManifest was null." }
+
     }
 
     override fun sendManifestUpdate(manifestsToUpdate: List<ManifestWithCreationStatus>) = flow {

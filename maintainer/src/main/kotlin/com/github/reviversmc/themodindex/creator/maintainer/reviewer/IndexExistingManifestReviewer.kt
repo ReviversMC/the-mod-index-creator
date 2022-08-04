@@ -11,12 +11,12 @@ import com.github.reviversmc.themodindex.creator.maintainer.RunMode
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestPendingReview
 import com.github.reviversmc.themodindex.creator.maintainer.data.ReviewStatus
 import com.github.reviversmc.themodindex.creator.maintainer.data.ManifestWithCreationStatus
-import io.ktor.network.sockets.*
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.flow
 import mu.KotlinLogging
 import retrofit2.HttpException
 import java.io.IOException
+import java.net.SocketTimeoutException
 
 class IndexExistingManifestReviewer(
     private val apiDownloader: ApiDownloader,
