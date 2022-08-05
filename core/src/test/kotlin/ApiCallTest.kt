@@ -118,7 +118,7 @@ class ApiCallTest : KoinTest {
         assertEquals(
             ModrinthVersionFile(
                 ModrinthVersionHash("7dc82b00a305d8793a6787897f6c3bcf415e75ed0a257f17c40046320a1f3b686a1195eb3d4a3c36acd9b41308819315c2eb804194e44f5fe7fa303e5afc4fbc"),
-                "https://cdn.modrinth.com/data/2NpFE0R3/versions/0.0.1/modget-0.0.1.jar",
+                "https://cdn.modrinth.com/data/2NpFE0R3/versions/0.0.1/modget-0.0.1.jar", true
             ), modgetVersion001.files.last()
         )
 
