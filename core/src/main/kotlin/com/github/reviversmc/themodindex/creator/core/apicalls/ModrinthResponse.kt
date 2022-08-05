@@ -156,11 +156,12 @@ enum class ModrinthDependencyType(val modrinthString: String) {
  * A file of a Modrinth version. This does NOT contain all the info from the api call.
  * @param hashes The hashes of the file.
  * @param url The url of the file.
+ * @param primary Whether the file is the primary file of the version (e.g. of a classified non-primary file could be a source file). Declaration of primary file is up to author.
  * @author ReviversMC
  * @since 1.0.0
  */
 @kotlinx.serialization.Serializable
-data class ModrinthVersionFile(val hashes: ModrinthVersionHash, val url: String)
+data class ModrinthVersionFile(val hashes: ModrinthVersionHash, val url: String, val primary: Boolean)
 
 /**
  * The hash of a Modrinth version file. This does NOT contain all the info from the api call.

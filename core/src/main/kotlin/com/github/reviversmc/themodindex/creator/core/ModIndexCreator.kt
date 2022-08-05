@@ -249,6 +249,7 @@ class ModIndexCreator(
                 val loaderFileHashes = loaderFiles.map { it.shortSha512Hash.lowercase() }
 
                 for (file in versionResponse.files) {
+                    if (!file.primary) continue
 
                     fun obtainRelation(dependencyType: ModrinthDependencyType): List<String> {
                         val projectIdDependencies =
