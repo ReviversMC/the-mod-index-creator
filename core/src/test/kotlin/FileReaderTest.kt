@@ -1,8 +1,13 @@
-import cc.ekblad.toml.tomlMapper
+import cc.ekblad.toml.TomlMapper
+import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
 import com.github.reviversmc.themodindex.creator.core.filereader.FabricFile
 import com.github.reviversmc.themodindex.creator.core.filereader.ForgeFile
 import kotlinx.serialization.json.Json
-import org.junit.Test
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.RegisterExtension
+import org.koin.test.KoinTest
+import org.koin.test.inject
+import org.koin.test.junit5.KoinTestExtension
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
@@ -10,9 +15,14 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.test.assertEquals
 
-class FileReaderTest {
+class FileReaderTest: KoinTest {
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json by inject<Json>()
+    private val toml by inject<TomlMapper>()
+
+    @JvmField
+    @RegisterExtension
+    val koinTestExtension = KoinTestExtension.create { modules(dependencyModule) }
 
     private fun createZipStream(filePath: String, zippedFileName: String): InputStream {
         val outputStream = ByteArrayOutputStream(1024)
@@ -63,7 +73,6 @@ class FileReaderTest {
 
     @Test
     fun `test forge reader`() {
-        val toml = tomlMapper { }
         val legacyFormat = ForgeFile(
             createZipStream("/metadataFiles/forge/mcmod.info", "mcmod.info"), json, toml
         )
