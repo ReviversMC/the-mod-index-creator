@@ -7,10 +7,10 @@ import kotlinx.serialization.json.Json
 import java.util.zip.ZipInputStream
 
 @Serializable
-data class QuiltModJson(@SerialName("quilt_loader") val quiltLoader: QuiltLoader)
+private data class QuiltModJson(@SerialName("quilt_loader") val quiltLoader: QuiltLoader)
 
 @Serializable
-data class QuiltLoader(val id: String)
+private data class QuiltLoader(val id: String)
 
 // Quilt, at least in its early stages, is able to load Fabric mods. Some Fabric mods are thus also classified as Quilt mods
 class QuiltFile(modJarInBytes: ByteArray, json: Json): ModFile, FabricFile(modJarInBytes.inputStream(), json) {
