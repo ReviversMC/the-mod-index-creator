@@ -1,6 +1,5 @@
 import com.github.reviversmc.themodindex.creator.core.CreatorLoader
 import com.github.reviversmc.themodindex.creator.core.apicalls.*
-import kotlinx.serialization.ExperimentalSerializationApi
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import org.koin.test.KoinTest
@@ -12,7 +11,6 @@ import kotlin.test.*
 
 class ApiCallTest : KoinTest {
 
-    @ExperimentalSerializationApi
     @JvmField
     @RegisterExtension
     val koinTestExtension = KoinTestExtension.create {
