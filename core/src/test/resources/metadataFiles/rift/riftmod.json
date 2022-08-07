@@ -1,0 +1,10 @@
+{
+  "id": "halflogs",
+  "name": "Half logs",
+  "authors": [
+    "Runemoro"
+  ],
+  "listeners": [
+    "org.dimdev.halflogs.HalfLogs"
+  ]
+}

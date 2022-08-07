@@ -3,6 +3,7 @@ import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModul
 import com.github.reviversmc.themodindex.creator.core.filereader.FabricFile
 import com.github.reviversmc.themodindex.creator.core.filereader.ForgeFile
 import com.github.reviversmc.themodindex.creator.core.filereader.QuiltFile
+import com.github.reviversmc.themodindex.creator.core.filereader.RiftFile
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -97,5 +98,14 @@ class FileReaderTest: KoinTest {
         assertEquals("example_mod", currentFormat.modId())
         assertEquals("modid", fabricSafeFormat.modId())
     }
+
+    @Test
+    fun `test rift reader`() {
+        val currentFormat = RiftFile(
+            createZipStream("/metadataFiles/rift/riftmod.json", "riftmod.json"), json
+        )
+        assertEquals("halflogs", currentFormat.modId())
+    }
+
 
 }
