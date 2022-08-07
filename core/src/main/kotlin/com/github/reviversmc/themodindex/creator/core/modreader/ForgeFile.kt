@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.core.filereader
+package com.github.reviversmc.themodindex.creator.core.modreader
 
 import cc.ekblad.toml.TomlMapper
 import cc.ekblad.toml.decode

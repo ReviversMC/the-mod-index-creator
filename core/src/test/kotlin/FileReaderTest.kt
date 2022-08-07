@@ -1,6 +1,6 @@
 import cc.ekblad.toml.TomlMapper
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
-import com.github.reviversmc.themodindex.creator.core.filereader.*
+import com.github.reviversmc.themodindex.creator.core.modreader.*
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension

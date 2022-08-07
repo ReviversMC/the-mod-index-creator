@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.core.filereader
+package com.github.reviversmc.themodindex.creator.core.modreader
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

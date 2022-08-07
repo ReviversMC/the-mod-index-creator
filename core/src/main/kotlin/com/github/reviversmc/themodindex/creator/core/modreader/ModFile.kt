@@ -1,4 +1,4 @@
-package com.github.reviversmc.themodindex.creator.core.filereader
+package com.github.reviversmc.themodindex.creator.core.modreader
 
 /**
  * A reader for a specific mod's file (e.g. mods.toml for Forge, fabric.mod.json for Fabric, etc)
