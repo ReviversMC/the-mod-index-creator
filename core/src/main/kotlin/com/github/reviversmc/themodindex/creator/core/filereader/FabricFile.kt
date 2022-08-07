@@ -9,7 +9,7 @@ import java.util.zip.ZipInputStream
 @Serializable
 data class FabricModJson(val id: String)
 
-class FabricFile(modJar: InputStream, json: Json): ModFile {
+open class FabricFile(modJar: InputStream, json: Json): ModFile {
 
     private var fabricModJson: FabricModJson? = null
 

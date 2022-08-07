@@ -2,6 +2,7 @@ import cc.ekblad.toml.TomlMapper
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
 import com.github.reviversmc.themodindex.creator.core.filereader.FabricFile
 import com.github.reviversmc.themodindex.creator.core.filereader.ForgeFile
+import com.github.reviversmc.themodindex.creator.core.filereader.QuiltFile
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -83,5 +84,18 @@ class FileReaderTest: KoinTest {
         assertEquals("examplemod", currentFormat.modId())
     }
 
+    @Test
+    fun `test quilt reader`() {
+        val currentFormat = QuiltFile(
+            createZipStream("/metadataFiles/quilt/quilt.mod.json", "quilt.mod.json").readBytes(), json
+        )
+
+        val fabricSafeFormat = QuiltFile(
+            createZipStream("/metadataFiles/fabric/fabric.mod.json", "fabric.mod.json").readBytes(), json
+        )
+
+        assertEquals("example_mod", currentFormat.modId())
+        assertEquals("modid", fabricSafeFormat.modId())
+    }
 
 }
