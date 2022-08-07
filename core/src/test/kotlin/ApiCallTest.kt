@@ -36,7 +36,7 @@ class ApiCallTest : KoinTest {
                 this.javaClass.getResourceAsStream("/credentials.properties")
                     ?: return System.getenv("CURSEFORGE_API_KEY") ?: "broken-api-key"
             )
-            return properties.getProperty("api_key") ?: System.getenv("CURSEFORGE_API_KEY") ?: "broken-api-key"
+            return properties.getProperty("curseforge_api_key") ?: System.getenv("CURSEFORGE_API_KEY") ?: "broken-api-key"
         }
 
         val curseForgeMod = curseForgeApiCall.mod(curseApiKey(), 533960).execute().body()!!.data
