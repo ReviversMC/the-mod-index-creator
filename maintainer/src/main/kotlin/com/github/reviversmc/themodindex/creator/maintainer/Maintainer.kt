@@ -216,6 +216,7 @@ fun main(args: Array<String>) = runBlocking {
                 }
             }
 
+            //TODO Download entire repo as zip and read off that instead of making individual requests
             val existingManifests = mutableListOf<ManifestJson>().apply {
                 val apiDownloader = koin.get<ApiDownloader>(named("custom")) { parametersOf(manifestRepo) }
                 val existingGenericIdentifiers =

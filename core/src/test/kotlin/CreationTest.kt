@@ -304,7 +304,6 @@ class CreationTest : KoinTest {
     @Test
     fun `generate manifests without GitHub, Curse enabled`() = runBlocking {
 
-
         val creator = get<Creator> {
             parametersOf(
                 "", "$baseUrl:${curseForgeServer.port}/", "", "$baseUrl:${modrinthServer.port}/"

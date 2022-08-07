@@ -1,4 +1,5 @@
 import cc.ekblad.toml.tomlMapper
+import com.github.reviversmc.themodindex.creator.core.filereader.FabricFile
 import com.github.reviversmc.themodindex.creator.core.filereader.ForgeFile
 import kotlinx.serialization.json.Json
 import org.junit.Test
@@ -50,6 +51,15 @@ class FileReaderTest {
         }
         return outputStream.toByteArray().inputStream()
     }
+
+    @Test
+    fun `test fabric reader`() {
+        val currentFormat = FabricFile(
+            createZipStream("/metadataFiles/fabric/fabric.mod.json", "fabric.mod.json"), json
+        )
+        assertEquals("modid", currentFormat.modId())
+    }
+
 
     @Test
     fun `test forge reader`() {

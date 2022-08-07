@@ -1,5 +1,6 @@
 package com.github.reviversmc.themodindex.creator.core.dependency
 
+import cc.ekblad.toml.tomlMapper
 import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.api.downloader.DefaultApiDownloader
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -24,5 +25,6 @@ val dependencyModule = module {
         }
     }
 
+    factory { tomlMapper {} }
     singleOf(::OkHttpClient)
 }
