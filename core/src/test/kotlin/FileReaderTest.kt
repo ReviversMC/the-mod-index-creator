@@ -1,9 +1,6 @@
 import cc.ekblad.toml.TomlMapper
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
-import com.github.reviversmc.themodindex.creator.core.filereader.FabricFile
-import com.github.reviversmc.themodindex.creator.core.filereader.ForgeFile
-import com.github.reviversmc.themodindex.creator.core.filereader.QuiltFile
-import com.github.reviversmc.themodindex.creator.core.filereader.RiftFile
+import com.github.reviversmc.themodindex.creator.core.filereader.*
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -84,6 +81,15 @@ class FileReaderTest: KoinTest {
         assertEquals("examplemod", legacyFormat.modId())
         assertEquals("examplemod", currentFormat.modId())
     }
+
+    @Test
+    fun `test liteloader reader`() {
+        val currentFormat = LiteloaderFile(
+            createZipStream("/metadataFiles/liteloader/litemod.json", "litemod.json"), json
+        )
+        assertEquals("Example", currentFormat.modId())
+    }
+
 
     @Test
     fun `test quilt reader`() {

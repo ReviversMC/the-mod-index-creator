@@ -1,0 +1,9 @@
+{
+  "name": "Example",
+  "displayName": "An Example Mod",
+  "version": "1.0.0",
+  "author": "Cloudate9",
+  "mcversion": "1.12.r2",
+  "revision": "1",
+  "description": "An example metadata file that can be used for testing"
+}
