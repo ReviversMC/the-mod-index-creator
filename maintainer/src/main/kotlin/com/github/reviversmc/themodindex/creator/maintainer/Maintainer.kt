@@ -50,28 +50,28 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
 
     logger.info { "No config file found at $location. Creating one now." }
 
-    print("Please enter you CurseForge Api Key: \n > ")
+    print("Please enter you CurseForge Api Key: \n> ")
     val apiKey = readlnOrNull() ?: throw IOException("No API key provided")
 
-    print("Please indicate your Discord bot token: \n > ")
+    print("Please indicate your Discord bot token: \n> ")
     val botToken = readlnOrNull() ?: throw IOException("No token provided.")
 
-    print("Please indicate the ID of the Discord server to post to: \n > ")
+    print("Please indicate the ID of the Discord server to post to: \n> ")
     val serverId = readlnOrNull()?.toLongOrNull() ?: throw IOException("Invalid server ID.")
 
-    print("Please indicate the ID of the Discord channel to post to. This should be a text channel, and should not be a thread: \n > ")
+    print("Please indicate the ID of the Discord channel to post to. This should be a text channel, and should not be a thread: \n> ")
     val channelId = readlnOrNull()?.toLongOrNull() ?: throw IOException("Invalid channel ID.")
 
-    print("Please indicate the ID of the GitHub app to use: \n > ")
+    print("Please indicate the ID of the GitHub app to use: \n> ")
     val appId = readlnOrNull() ?: throw IOException("No GitHub App ID provided.")
 
-    print("Please indicate the path of the GitHub app's private key: \n > ")
+    print("Please indicate the path of the GitHub app's private key: \n> ")
     val privateKey = readlnOrNull() ?: throw IOException("No private key provided.")
 
-    print("Please indicate the GitHub owner of the manifest repository: \n > ")
+    print("Please indicate the GitHub owner of the manifest repository: \n> ")
     val owner = readlnOrNull() ?: throw IOException("No owner provided.")
 
-    print("Please indicate name of the GitHub manifest repository: \n > ")
+    print("Please indicate name of the GitHub manifest repository: \n> ")
     val repoName = readlnOrNull() ?: throw IOException("No repository provided.")
 
     return AppConfig(apiKey, botToken, serverId, channelId, appId, privateKey, owner, repoName).also {
