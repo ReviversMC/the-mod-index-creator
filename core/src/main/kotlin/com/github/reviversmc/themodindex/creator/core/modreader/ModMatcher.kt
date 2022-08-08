@@ -17,7 +17,6 @@ class ModMatcher(modJar: InputStream, json: Json, toml: TomlMapper) : ModFile {
                     else -> false
                 }
             }.also {// This also includes null entries!
-                println(it?.name)
                 matchedMod = when (it?.name ?: "") {
                     "fabric.mod.json" -> FabricFile(itemBeingRead.readBytes(), json)
                     "litemod.json" -> LiteloaderFile(itemBeingRead.readBytes(), json)
