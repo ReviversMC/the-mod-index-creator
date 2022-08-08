@@ -3,6 +3,7 @@ package com.github.reviversmc.themodindex.creator.core
 import com.apollographql.apollo3.ApolloClient
 import com.github.reviversmc.themodindex.creator.core.apicalls.apiCallModule
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
+import com.github.reviversmc.themodindex.creator.core.modreader.modReaderModule
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.bind
@@ -19,5 +20,5 @@ val creatorModule = module {
             get()
         )
     } bind Creator::class
-    includes(apiCallModule, dependencyModule)
+    includes(apiCallModule, dependencyModule, modReaderModule)
 }

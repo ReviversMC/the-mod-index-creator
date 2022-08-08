@@ -4,7 +4,6 @@ import com.apollographql.apollo3.ApolloClient
 import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
 import com.github.reviversmc.themodindex.creator.core.creatorModule
-import com.github.reviversmc.themodindex.creator.core.modreader.modReaderModule
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.GHBranch
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.githubMaintainerModule
 import com.github.reviversmc.themodindex.creator.maintainer.data.AppConfig
@@ -113,7 +112,7 @@ fun main(args: Array<String>) = runBlocking {
 
     val koin = startKoin {
         modules(
-            appModule, creatorModule, githubMaintainerModule, manifestReviewModule, modReaderModule, updateSenderModule
+            appModule, creatorModule, githubMaintainerModule, manifestReviewModule, updateSenderModule
         )
     }.koin
 
