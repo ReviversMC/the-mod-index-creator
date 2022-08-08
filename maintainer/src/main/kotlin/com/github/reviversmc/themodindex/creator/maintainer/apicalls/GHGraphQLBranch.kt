@@ -6,6 +6,9 @@ import com.apollographql.apollo3.api.Optional
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileAddition
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileDeletion
 import mu.KotlinLogging
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.InputStream
 import kotlin.concurrent.timer
 
 class GHGraphQLBranch(
@@ -20,7 +23,7 @@ class GHGraphQLBranch(
 
     init {
         // Refresh the client every 50 minutes, so that we don't get an use an expired token
-         timer("GHGraphQLBranchRefresh", true, 50L * 60L * 1000L, 50L * 60L * 1000L) {
+        timer("GHGraphQLBranchRefresh", true, 50L * 60L * 1000L, 50L * 60L * 1000L) {
             apolloClient = refreshApolloClient()
             logger.info { "Refreshed apollo client for GH Branch" }
         }
@@ -49,7 +52,7 @@ class GHGraphQLBranch(
             query.errors!!.forEach { logger.error { it.toString() } }
             throw IllegalStateException("Error while checking if ref exists")
         }
-        
+
         return query.data?.repository?.refs?.edges?.map { it?.node?.name }?.contains(branchName) == true
     }
 
@@ -154,7 +157,30 @@ class GHGraphQLBranch(
         }
     }
 
-    override suspend fun mergeBranchWithoutPR(mergedIntoName: String, mergedFromBranchName: String, commitMessage: String) {
+    override suspend fun downloadBranchTarGZ(branchName: String, okHttpClient: OkHttpClient): InputStream {
+        val query = apolloClient.query(DownloadBranchTarGZQuery(repoOwner, repoName, branchName)).execute()
+        logger.debug { "Executed query to download tar.gz of branch $branchName in $repoOwner/$repoName" }
+
+        if (query.hasErrors()) {
+            logger.error { "Error downloading tar.gz of branch $branchName in $repoOwner/$repoName" }
+            query.errors!!.forEach { logger.error { it.message } }
+            throw IllegalStateException("Error downloading tar.gz of branch $branchName in $repoOwner/$repoName")
+        }
+
+        return okHttpClient.newCall(
+            Request.Builder().url(
+                    query.data?.repository?.ref?.target?.onCommit?.tarballUrl?.toString()
+                        ?: throw IllegalStateException("No tarball url found for $branchName in $repoOwner/$repoName")
+                ).build()
+        ).execute().body?.byteStream()
+            ?: throw IllegalStateException("No tar.gz found for branch $branchName in $repoOwner/$repoName")
+    }
+
+    override suspend fun mergeBranchWithoutPR(
+        mergedIntoName: String,
+        mergedFromBranchName: String,
+        commitMessage: String,
+    ) {
         val query = obtainRepoIdQuery()
 
         val mutation = apolloClient.mutation(

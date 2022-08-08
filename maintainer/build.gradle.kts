@@ -6,7 +6,8 @@ dependencies {
     // Core dependencies
     api(project(":core"))
     api("io.fusionauth:fusionauth-jwt:5.2.0")
-    api("io.github.java-diff-utils:java-diff-utils:4.11")
+    api("io.github.java-diff-utils:java-diff-utils:4.12")
+    api("org.apache.commons:commons-compress:1.21")
     api("org.jetbrains.kotlinx:kotlinx-cli-jvm:0.3.5")
 
     // Loggers

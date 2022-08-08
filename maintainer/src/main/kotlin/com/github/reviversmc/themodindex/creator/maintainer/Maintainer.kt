@@ -1,8 +1,8 @@
 package com.github.reviversmc.themodindex.creator.maintainer
 
 import com.apollographql.apollo3.ApolloClient
+import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
-import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.creatorModule
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.GHBranch
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.githubMaintainerModule
@@ -25,11 +25,13 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.koin.core.context.startKoin
 import org.koin.core.parameter.parametersOf
 import org.koin.core.qualifier.named
 import java.io.File
 import java.io.IOException
+import java.util.zip.GZIPInputStream
 import kotlin.concurrent.timer
 import kotlin.system.exitProcess
 
@@ -78,9 +80,7 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
 }
 
 enum class RunMode {
-    PROD,
-    TEST_SELECTED,
-    TEST_SHORT
+    PROD, TEST_SELECTED, TEST_SHORT
 }
 
 @Suppress("unused") // We want all available options
@@ -133,9 +133,7 @@ fun main(args: Array<String>) = runBlocking {
     ).default(RunMode.TEST_SELECTED)
 
     val operationMode by commandParser.option(
-        ArgType.Choice<OperationMode>(),
-        shortName = "o",
-        description = "What kind of operations to run"
+        ArgType.Choice<OperationMode>(), shortName = "o", description = "What kind of operations to run"
     ).multiple().default(listOf(OperationMode.CREATE, OperationMode.MAINTAIN_ALL))
 
     commandParser.parse(args)
@@ -207,19 +205,44 @@ fun main(args: Array<String>) = runBlocking {
                 }
             }
 
-            //TODO Download entire repo as zip and read off that instead of making individual requests
+            // Download entire repo as .tar.gz (don't use zip cause every file is compressed!) and read off that instead of making individual requests
             val existingManifests = mutableListOf<ManifestJson>().apply {
-                val apiDownloader = koin.get<ApiDownloader>(named("custom")) { parametersOf(manifestRepo) }
-                val existingGenericIdentifiers =
-                    apiDownloader.downloadIndexJson()?.identifiers?.map { it.substringBeforeLast(":") }
-                        ?: throw IOException("Could not download manifest index from ${apiDownloader.formattedBaseUrl}")
-                logger.debug { "Downloaded manifest index of repository ${apiDownloader.formattedBaseUrl}" }
+                val tarGZ = ghGraphQLBranch.downloadBranchTarGZ(workingBranch, koin.get())
+                GZIPInputStream(tarGZ).use { tarGZInput ->
+                    TarArchiveInputStream(tarGZInput).use { tarInput ->
+                        generateSequence { tarInput.nextTarEntry }.also { entries ->
 
-                existingGenericIdentifiers.distinct().forEach {
-                    add(
-                        apiDownloader.downloadManifestJson(it) ?: throw IOException("Could not download manifest $it")
-                    )
-                    logger.debug { "Downloaded manifest $it" }
+                            // Stored in map so that we can iterate/find from this as many times as we want (sequences are not reusable)
+                            val entryWithStream =
+                                entries.associate { it.name to if (it.isFile) tarInput.readBytes() else null }
+
+                            val baseName =
+                                entryWithStream.keys.first { it.substringAfter("/") == "" }.substringBefore("/")
+                            logger.debug { "Base name for manifests is: $baseName" }
+
+                            val indexJson = entryWithStream["$baseName/mods/index.json"]?.let {
+                                koin.get<Json>().decodeFromString<IndexJson>(it.decodeToString())
+                            } ?: throw IOException("Could not find manifest index from $manifestRepo")
+                            logger.debug { "Retrieved manifest index of repository $manifestRepo" }
+
+                            indexJson.identifiers.map { it.substringBeforeLast(":") }.distinct()
+                                .forEach { genericIdentifier ->
+                                    val manifestJson =
+                                        entryWithStream["$baseName/mods/${genericIdentifier.substringBefore(":")}/${
+                                            genericIdentifier.substringAfter(
+                                                ":"
+                                            )
+                                        }.json"]?.let {
+                                            koin.get<Json>().decodeFromString<ManifestJson>(
+                                                it.decodeToString()
+                                            )
+                                        }
+                                            ?: throw IOException("Could not find manifest for $genericIdentifier from $manifestRepo")
+                                    logger.debug { "Retrieved manifest for $genericIdentifier from $manifestRepo" }
+                                    add(manifestJson)
+                                }
+                        }
+                    }
                 }
             }.toList()
 

@@ -1,0 +1,11 @@
+query DownloadBranchTarGZ($repoOwner: String!, $repoName: String!, $refName: String!) {
+  repository(owner: $repoOwner, name: $repoName) {
+    ref(qualifiedName: $refName) {
+      target {
+        ... on Commit {
+          tarballUrl
+        }
+      }
+    }
+  }
+}

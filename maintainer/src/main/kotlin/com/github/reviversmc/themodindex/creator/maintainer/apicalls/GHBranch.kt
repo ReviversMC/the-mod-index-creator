@@ -2,6 +2,8 @@ package com.github.reviversmc.themodindex.creator.maintainer.apicalls
 
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileAddition
 import com.github.reviversmc.themodindex.creator.maintainer.apicalls.type.FileDeletion
+import okhttp3.OkHttpClient
+import java.io.InputStream
 
 /**
  * Contains GH actions that can be done involving a branch (or ref) of a repository
@@ -53,6 +55,14 @@ interface GHBranch {
      * @since 1.0.0
      */
     suspend fun createPullRequest(prFromBranch: String, prToBranch: String, prTitle: String, prMessage: String?)
+
+    /**
+     * Downloads branch [branchName] in the form of a .tar.gz file using [okHttpClient], returned in an [InputStream].
+     * This throws an [IllegalStateException] if something unexpected happens.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    suspend fun downloadBranchTarGZ(branchName: String, okHttpClient: OkHttpClient): InputStream
 
     /**
      * Merge branch [mergedFromBranchName] into branch [mergedIntoName] with message [commitMessage], without a PR.
