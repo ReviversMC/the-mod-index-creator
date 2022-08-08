@@ -53,15 +53,6 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
     print("Please enter you CurseForge Api Key: \n> ")
     val apiKey = readlnOrNull() ?: throw IOException("No API key provided")
 
-    print("Please indicate your Discord bot token: \n> ")
-    val botToken = readlnOrNull() ?: throw IOException("No token provided.")
-
-    print("Please indicate the ID of the Discord server to post to: \n> ")
-    val serverId = readlnOrNull()?.toLongOrNull() ?: throw IOException("Invalid server ID.")
-
-    print("Please indicate the ID of the Discord channel to post to. This should be a text channel, and should not be a thread: \n> ")
-    val channelId = readlnOrNull()?.toLongOrNull() ?: throw IOException("Invalid channel ID.")
-
     print("Please indicate the ID of the GitHub app to use: \n> ")
     val appId = readlnOrNull() ?: throw IOException("No GitHub App ID provided.")
 
@@ -74,7 +65,7 @@ private fun getOrCreateConfig(json: Json, location: String, exitIfCreate: Boolea
     print("Please indicate name of the GitHub manifest repository: \n> ")
     val repoName = readlnOrNull() ?: throw IOException("No repository provided.")
 
-    return AppConfig(apiKey, botToken, serverId, channelId, appId, privateKey, owner, repoName).also {
+    return AppConfig(apiKey, appId, privateKey, owner, repoName).also {
         configFile.parentFile.mkdirs()
         configFile.writeText(json.encodeToString(it))
         logger.info { "Config file created at ${configFile.absolutePath}." }
