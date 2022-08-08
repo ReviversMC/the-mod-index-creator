@@ -3,24 +3,12 @@ package com.github.reviversmc.themodindex.creator.core.modreader
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import java.io.InputStream
-import java.util.zip.ZipInputStream
 
 @Serializable
 private data class RiftModJson(val id: String)
 
-class RiftFile(modJar: InputStream, json: Json): ModFile {
+internal class RiftFile(modJarInBytes: ByteArray, json: Json): ModFile {
 
-    private var riftModJson: RiftModJson? = null
-
-    init {
-        ZipInputStream(modJar).use { itemBeingRead ->
-            generateSequence { itemBeingRead.nextEntry }.forEach {
-                if (it.name == "riftmod.json")
-                    riftModJson = json.decodeFromString(itemBeingRead.readBytes().decodeToString())
-            }
-        }
-    }
-
-    override fun modId() = riftModJson?.id
+    private var riftModJson: RiftModJson = json.decodeFromString(modJarInBytes.decodeToString())
+    override fun modId() = riftModJson.id
 }

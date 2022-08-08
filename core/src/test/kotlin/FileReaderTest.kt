@@ -1,11 +1,11 @@
-import cc.ekblad.toml.TomlMapper
 import com.github.reviversmc.themodindex.creator.core.dependency.dependencyModule
-import com.github.reviversmc.themodindex.creator.core.modreader.*
-import kotlinx.serialization.json.Json
+import com.github.reviversmc.themodindex.creator.core.modreader.ModFile
+import com.github.reviversmc.themodindex.creator.core.modreader.modReaderModule
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
+import org.koin.core.parameter.parametersOf
 import org.koin.test.KoinTest
-import org.koin.test.inject
+import org.koin.test.get
 import org.koin.test.junit5.KoinTestExtension
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -14,14 +14,11 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.test.assertEquals
 
-class FileReaderTest: KoinTest {
-
-    private val json by inject<Json>()
-    private val toml by inject<TomlMapper>()
+class FileReaderTest : KoinTest {
 
     @JvmField
     @RegisterExtension
-    val koinTestExtension = KoinTestExtension.create { modules(dependencyModule) }
+    val koinTestExtension = KoinTestExtension.create { modules(dependencyModule, modReaderModule) }
 
     private fun createZipStream(filePath: String, zippedFileName: String): InputStream {
         val outputStream = ByteArrayOutputStream(1024)
@@ -63,43 +60,46 @@ class FileReaderTest: KoinTest {
 
     @Test
     fun `test fabric reader`() {
-        val currentFormat = FabricFile(
-            createZipStream("/metadataFiles/fabric/fabric.mod.json", "fabric.mod.json"), json
-        )
+        val currentFormat = get<ModFile> {
+            parametersOf(createZipStream("/metadataFiles/fabric/fabric.mod.json", "fabric.mod.json"))
+        }
         assertEquals("modid", currentFormat.modId())
     }
 
+    @Test
+    fun `test legacy forge reader`() {
+        val legacyFormat = get<ModFile> {
+            parametersOf(createZipStream("/metadataFiles/forge/mcmod.info", "mcmod.info"))
+        }
+        assertEquals("examplemod", legacyFormat.modId())
+    }
 
     @Test
     fun `test forge reader`() {
-        val legacyFormat = ForgeFile(
-            createZipStream("/metadataFiles/forge/mcmod.info", "mcmod.info"), json, toml
-        )
-        val currentFormat = ForgeFile(
-            createZipStream("metadataFiles/forge/mods.toml", "META-INF/mods.toml"), json, toml
-        )
-        assertEquals("examplemod", legacyFormat.modId())
+        val currentFormat = get<ModFile> {
+            parametersOf(createZipStream("/metadataFiles/forge/mods.toml", "META-INF/mods.toml"))
+        }
         assertEquals("examplemod", currentFormat.modId())
     }
 
     @Test
     fun `test liteloader reader`() {
-        val currentFormat = LiteloaderFile(
-            createZipStream("/metadataFiles/liteloader/litemod.json", "litemod.json"), json
-        )
+        val currentFormat = get<ModFile> {
+            parametersOf(createZipStream("/metadataFiles/liteloader/litemod.json", "litemod.json"))
+        }
         assertEquals("Example", currentFormat.modId())
     }
 
 
     @Test
     fun `test quilt reader`() {
-        val currentFormat = QuiltFile(
-            createZipStream("/metadataFiles/quilt/quilt.mod.json", "quilt.mod.json").readBytes(), json
-        )
+        val currentFormat = get<ModFile> {
+            parametersOf(createZipStream("/metadataFiles/quilt/quilt.mod.json", "quilt.mod.json"))
+        }
 
-        val fabricSafeFormat = QuiltFile(
-            createZipStream("/metadataFiles/fabric/fabric.mod.json", "fabric.mod.json").readBytes(), json
-        )
+        val fabricSafeFormat = get<ModFile> {
+            parametersOf(createZipStream("/metadataFiles/fabric/fabric.mod.json", "fabric.mod.json"))
+        }
 
         assertEquals("example_mod", currentFormat.modId())
         assertEquals("modid", fabricSafeFormat.modId())
@@ -107,9 +107,9 @@ class FileReaderTest: KoinTest {
 
     @Test
     fun `test rift reader`() {
-        val currentFormat = RiftFile(
-            createZipStream("/metadataFiles/rift/riftmod.json", "riftmod.json"), json
-        )
+        val currentFormat = get<ModFile> {
+            parametersOf(createZipStream("/metadataFiles/rift/riftmod.json", "riftmod.json"))
+        }
         assertEquals("halflogs", currentFormat.modId())
     }
 
