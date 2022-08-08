@@ -21,7 +21,7 @@ val manifestReviewModule = module {
     factory {
         IndexExistingManifestReviewer(
             get(named("custom")) { parametersOf(it[0]) },
-            get { parametersOf(it[1], it[2]) },
+            get { parametersOf(it[0], it[1], it[2]) },
             it[3],
             it[4],
             it[5]
@@ -31,7 +31,7 @@ val manifestReviewModule = module {
     factory(named("curseforge")) {
         CurseForgeManifestReviewer(
             get(named("custom")) { parametersOf(it[0]) },
-            get { parametersOf(it[1], it[2]) },
+            get { parametersOf(it[0], it[1], it[2]) },
             get(),
             it[1],
             it[3],
@@ -43,7 +43,7 @@ val manifestReviewModule = module {
     factory(named("modrinth")) {
         ModrinthManifestReviewer(
             get(named("custom")) { parametersOf(it[0]) },
-            get { parametersOf(it[1], it[2]) },
+            get { parametersOf(it[0], it[1], it[2]) },
             it[3],
             get(),
             it[4],
