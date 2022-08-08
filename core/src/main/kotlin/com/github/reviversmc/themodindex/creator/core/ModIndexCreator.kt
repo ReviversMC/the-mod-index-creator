@@ -9,8 +9,12 @@ import com.github.reviversmc.themodindex.api.downloader.ApiDownloader
 import com.github.reviversmc.themodindex.creator.core.apicalls.*
 import com.github.reviversmc.themodindex.creator.core.data.ManifestWithApiStatus
 import com.github.reviversmc.themodindex.creator.core.data.ThirdPartyApiUsage
+import com.github.reviversmc.themodindex.creator.core.modreader.ModFile
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
+import org.koin.core.parameter.parametersOf
 import java.math.BigInteger
 import java.net.SocketTimeoutException
 import java.security.MessageDigest
@@ -37,7 +41,7 @@ class ModIndexCreator(
     private val refreshGitHubClient: () -> ApolloClient,
     private val modrinthApiCall: ModrinthApiCall,
     private val okHttpClient: OkHttpClient,
-) : Creator {
+) : Creator, KoinComponent {
 
     private val indexVersion = "5.0.0"
 
@@ -95,6 +99,26 @@ class ModIndexCreator(
 
     // TODO Possibly fix file generation ranking snapshots above minecraft versions for all download/creation methods
 
+    private fun curseForgeGenericIdentifier(modId: Int, modLoader: String): String? {
+        val creatorLoader = try {
+            CreatorLoader.valueOf(modLoader.uppercase())
+        } catch (_: IllegalArgumentException) {
+            return null
+        }
+
+        curseForgeApiCall.files(curseApiKey, modId, creatorLoader.curseNumber).execute()
+            .body()?.data?.firstOrNull()?.downloadUrl?.let { downloadUrl ->
+
+                okHttpClient.newCall(Request.Builder().url(downloadUrl).build())
+                    .execute().body?.byteStream()?.let { modStream ->
+
+                        get<ModFile> { parametersOf(modStream) }.modId()?.let {
+                            return "${modLoader.lowercase()}:${it.formatRightGenericIdentifier()}"
+                        }
+                    }
+            } ?: return null
+    }
+
     /**
      * Creates a [ManifestVersionsPerLoader] for the CurseForge mod, which is found using its [curseForgeMod].
      * The results can be merged with any [existingFiles] that have already been generated.
@@ -131,19 +155,7 @@ class ModIndexCreator(
 
                     fun obtainRelation(relationType: RelationType) = file.dependencies.filter {
                         relationType.curseNumber == it.relationType
-                    }.mapNotNull { curseDependency ->
-                        curseForgeApiCall.mod(curseApiKey, curseDependency.modId).execute()
-                            .body()?.data?.slug?.formatRightGenericIdentifier()?.let {
-
-                                if (curseForgeApiCall.files(
-                                        curseApiKey, curseDependency.modId, modLoader.curseNumber
-                                    ).execute().body()?.data?.isNotEmpty() == true
-                                ) {
-                                    "${modLoader.name.lowercase()}:$it"
-                                } else null// If we can't find an appropriate file, don't add the dependency
-
-                            }
-                    }
+                    }.mapNotNull { curseForgeGenericIdentifier(it.modId, modLoader.name) }
 
 
                     if (loaderFileHashes.contains(fileHash)) {
@@ -193,12 +205,9 @@ class ModIndexCreator(
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
         for (asset in GHGraphQLReleases.obtainAllAssets(
-            githubClient,
-            gitHubRepo.substringBefore("/"),
-            gitHubRepo.substringAfter("/")
+            githubClient, gitHubRepo.substringBefore("/"), gitHubRepo.substringAfter("/")
         )) {
-            val response =
-                okHttpClient.newCall(Request.Builder().url(asset).build()).execute()
+            val response = okHttpClient.newCall(Request.Builder().url(asset).build()).execute()
             val fileHash = createShortSHA512Hash(response.body?.bytes() ?: continue)
             response.close()
 
@@ -207,8 +216,7 @@ class ModIndexCreator(
                 manifestFiles.forEachIndexed { index, manifestFile ->
                     if (manifestFile.shortSha512Hash.equals(fileHash, true)) {
                         this[loader] = manifestFiles.toMutableList().also { files ->
-                            files[index] =
-                                manifestFile.copy(downloadUrls = files[index].downloadUrls + asset)
+                            files[index] = manifestFile.copy(downloadUrls = files[index].downloadUrls + asset)
                         }.toList().sortedByDescending { it.mcVersions.firstOrNull() }
                         return@forEachIndexed // There shouldn't be two files of the same hash, so we can safely leave the loop.
                     }
@@ -216,6 +224,27 @@ class ModIndexCreator(
             }
         }
     }.toMap()
+
+    private fun modrinthGenericIdentifier(modId: String, modLoader: String): String? {
+        val creatorLoader = try {
+            CreatorLoader.valueOf(modLoader.uppercase())
+        } catch (_: IllegalArgumentException) {
+            return null
+        }
+        modrinthApiCall.versions(modId, "[\"${creatorLoader.modrinthCategory}\"]").execute().body()
+            ?.firstOrNull()?.files?.firstOrNull { it.primary }?.url?.let { url ->
+
+                okHttpClient.newCall(Request.Builder().url(url).build())
+                    .execute().body?.byteStream()?.let { modStream ->
+
+                        get<ModFile> { parametersOf(modStream) }
+                            .modId()?.let {
+                                return "${modLoader.lowercase()}:${it.formatRightGenericIdentifier()}"
+                            }
+                    }
+            }
+            ?: return null
+    }
 
 
     /**
@@ -230,17 +259,18 @@ class ModIndexCreator(
         existingFiles: ManifestVersionsPerLoader = emptyMap(),
     ): ManifestVersionsPerLoader = existingFiles.toMutableMap().apply {
 
-        val loadersToQuery = if (creatorLoaders.isEmpty() || creatorLoaders == listOf(CreatorLoader.ANY)) null else
-            creatorLoaders.mapNotNull { it.modrinthCategory }.let { loaders ->
-                if (loaders.isNotEmpty()) {
-                    buildString {
-                        append("[")
-                        loaders.forEach { append("\"$it\",") }
-                        this.delete(this.length - 2, this.length) // Get rid of the last ", "
-                        append("]")
-                    }
-                } else null
-            }
+        val loadersToQuery =
+            if (creatorLoaders.isEmpty() || creatorLoaders == listOf(CreatorLoader.ANY)) null else creatorLoaders.mapNotNull { it.modrinthCategory }
+                .let { loaders ->
+                    if (loaders.isNotEmpty()) {
+                        buildString {
+                            append("[")
+                            loaders.forEach { append("\"$it\",") }
+                            this.delete(this.length - 2, this.length) // Get rid of the last ", "
+                            append("]")
+                        }
+                    } else null
+                }
 
         modrinthApiCall.versions(modrinthProject.id, loadersToQuery).execute().body()?.forEach { versionResponse ->
 
@@ -254,34 +284,16 @@ class ModIndexCreator(
                     fun obtainRelation(dependencyType: ModrinthDependencyType): List<String> {
                         val projectIdDependencies =
                             versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId != null }
-                                .mapNotNull { it.projectId }
+                                .mapNotNull { it.projectId } +
 
-                        val versionIdDependencies =
-                            versionResponse.dependencies.filter { dependencyType.modrinthString == it.dependencyType && it.projectId == null && it.versionId != null }
+                                    versionResponse.dependencies
+                                        // Version id is null, it'll be automatically excluded anyway
+                                        .mapNotNull { if (dependencyType.modrinthString == it.dependencyType && it.projectId == null) it.versionId else null }
+                                        .mapNotNull { versionId ->
+                                            modrinthApiCall.version(versionId).execute().body()?.projectId
+                                        }
 
-                        return projectIdDependencies.mapNotNull { dependencyId ->
-                            modrinthApiCall.project(dependencyId).execute().body()?.slug?.formatRightGenericIdentifier()
-                                ?.let {
-                                    if (modrinthApiCall.versions(dependencyId, "[\"$loader\"]").execute().body()
-                                            ?.isNotEmpty() == true
-                                    ) {
-                                        "$loader:$it"
-                                    } else null// If we can't find an appropriate file, don't add the dependency
-                                }
-                        } + versionIdDependencies.mapNotNull { modrinthDependency ->
-                            modrinthDependency.versionId?.let { versionId ->
-                                modrinthApiCall.version(versionId).execute().body()?.let { version ->
-                                    if (loader in version.loaders) {
-                                        modrinthApiCall.project(version.projectId).execute()
-                                            .body()?.slug?.formatRightGenericIdentifier()?.let { "$loader:$it" }
-
-                                    } else if (loader == "quilt" && "fabric" in version.loaders) {
-                                        modrinthApiCall.project(version.projectId).execute()
-                                            .body()?.slug?.formatRightGenericIdentifier()?.let { "fabric:$it" }
-                                    } else null
-                                }
-                            }
-                        }
+                        return projectIdDependencies.mapNotNull { modrinthGenericIdentifier(it, loader) }
                     }
 
                     if (loaderFileHashes.contains(file.hashes.sha512.substring(0, 15))) {
@@ -484,14 +496,14 @@ class ModIndexCreator(
             suspend fun curseForgeToManifest() = curseForgeMod?.let { modData ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
                     add(ManifestJson(indexVersion,
+                        curseForgeGenericIdentifier(curseForgeMod.id, modLoader) ?:
+                        modrinthProject?.id?.let { modrinthGenericIdentifier(it, modLoader) } ?:
                         "${modLoader}:${modData.slug.formatRightGenericIdentifier()}",
                         modData.name,
                         modData.authors.firstOrNull()?.name ?: "UNKNOWN",
                         gitHubUserRepo?.let {
                             GHGraphQLicense.licenseSPDXId(
-                                githubClient,
-                                it.substringBefore("/"),
-                                it.substringAfter("/")
+                                githubClient, it.substringBefore("/"), it.substringAfter("/")
                             )?.lowercase()
                         } ?: modrinthProject?.license?.id?.lowercase(),
                         modData.id,
@@ -507,35 +519,33 @@ class ModIndexCreator(
                 return true
             } ?: false
 
-            suspend fun modrinthToManifest() =
-                modrinthProject?.let { modrinthData ->
-                    combinedFiles.forEach { (modLoader, manifestFiles) ->
-                        add(
-                            ManifestJson(indexVersion,
-                                "$modLoader:${modrinthData.slug.formatRightGenericIdentifier()}",
-                                modrinthData.title,
-                                modrinthApiCall.projectMembers(modrinthId).execute().body()
-                                    ?.firstOrNull { member -> member.role == "Owner" }?.userResponse?.username
-                                    ?: curseForgeMod?.authors?.firstOrNull()?.name ?: "UNKNOWN",
-                                gitHubUserRepo?.let {
-                                    GHGraphQLicense.licenseSPDXId(
-                                        githubClient,
-                                        it.substringBefore("/"),
-                                        it.substringAfter("/")
-                                    )?.lowercase()
-                                } ?: modrinthData.license?.id?.lowercase(),
-                                curseForgeMod?.id,
-                                modrinthData.id,
-                                ManifestLinks(
-                                    (modrinthData.issuesUrl ?: curseForgeMod?.links?.issuesUrl)?.ifEmpty { null },
-                                    modrinthData.sourceUrl ?: curseForgeMod?.links?.sourceUrl,
-                                    otherLinks
-                                ),
-                                manifestFiles.sortedByDescending { it.mcVersions.firstOrNull() })
-                        )
-                    }
-                    return true
-                } ?: false
+            suspend fun modrinthToManifest() = modrinthProject?.let { modrinthData ->
+                combinedFiles.forEach { (modLoader, manifestFiles) ->
+                    add(ManifestJson(indexVersion,
+                        modrinthGenericIdentifier(modrinthData.id, modLoader) ?:
+                        curseForgeMod?.id?.let { curseForgeGenericIdentifier(it, modLoader) } ?:
+                        "$modLoader:${modrinthData.slug.formatRightGenericIdentifier()}",
+                        modrinthData.title,
+                        modrinthApiCall.projectMembers(modrinthId).execute().body()
+                            ?.firstOrNull { member -> member.role == "Owner" }?.userResponse?.username
+                            ?: curseForgeMod?.authors?.firstOrNull()?.name ?: "UNKNOWN",
+                        gitHubUserRepo?.let {
+                            GHGraphQLicense.licenseSPDXId(
+                                githubClient, it.substringBefore("/"), it.substringAfter("/")
+                            )?.lowercase()
+                        } ?: modrinthData.license?.id?.lowercase(),
+                        curseForgeMod?.id,
+                        modrinthData.id,
+                        ManifestLinks(
+                            (modrinthData.issuesUrl ?: curseForgeMod?.links?.issuesUrl)?.ifEmpty { null },
+                            modrinthData.sourceUrl ?: curseForgeMod?.links?.sourceUrl,
+                            otherLinks
+                        ),
+                        manifestFiles.sortedByDescending { it.mcVersions.firstOrNull() })
+                    )
+                }
+                return true
+            } ?: false
 
             if (preferCurseOverModrinth) {
                 if (!curseForgeToManifest()) modrinthToManifest()
