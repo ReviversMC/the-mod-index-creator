@@ -9,7 +9,7 @@ repositories {
 dependencies {
     api("cc.ekblad:4koma:1.1.0")
     api("com.apollographql.apollo3:apollo-runtime:3.4.0")
-    api("com.github.reviversmc:the-mod-index-api:9.0.0")
+    api("com.github.reviversmc:the-mod-index-api:9.1.1")
 }
 
 apollo {

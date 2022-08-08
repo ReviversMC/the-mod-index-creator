@@ -16,8 +16,8 @@ import org.koin.dsl.module
 @OptIn(ExperimentalSerializationApi::class)
 val dependencyModule = module {
     factory { (get() as Json).asConverterFactory("application/json".toMediaType()) }
-    factory { DefaultApiDownloader(get(), json = get()) } bind ApiDownloader::class
-    factory(named("custom")) { (customRepo: String) -> DefaultApiDownloader(get(), customRepo, get()) } bind ApiDownloader::class
+    factory { DefaultApiDownloader(okHttpClient = get(), json = get()) } bind ApiDownloader::class
+    factory(named("custom")) { (customRepo: String) -> DefaultApiDownloader(customRepo, get(), get()) } bind ApiDownloader::class
     factory {
         Json {
             ignoreUnknownKeys = true
