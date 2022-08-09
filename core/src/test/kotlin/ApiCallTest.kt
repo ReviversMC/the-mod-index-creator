@@ -36,7 +36,8 @@ class ApiCallTest : KoinTest {
                 this.javaClass.getResourceAsStream("/credentials.properties")
                     ?: return System.getenv("CURSEFORGE_API_KEY") ?: "broken-api-key"
             )
-            return properties.getProperty("curseforge_api_key") ?: System.getenv("CURSEFORGE_API_KEY") ?: "broken-api-key"
+            return properties.getProperty("curseforge_api_key") ?: System.getenv("CURSEFORGE_API_KEY")
+            ?: "broken-api-key"
         }
 
         val curseForgeMod = curseForgeApiCall.mod(curseApiKey(), 533960).execute().body()!!.data
@@ -59,19 +60,17 @@ class ApiCallTest : KoinTest {
         val curseForgeFiles = curseForgeApiCall.files(curseApiKey(), 533960).execute().body()
         assertNotNull(curseForgeFiles)
 
-        assertEquals(
-            CurseFileResponse(
-                3481563,
-                true,
-                "0.1.0 for MC 1.16",
-                "https://edge.forgecdn.net/files/3481/563/modget-0.1.0.jar",
-                listOf("Fabric", "1.16.5", "1.16.4"),
-                listOf(
-                    CurseFileDependency(400548, RelationType.EMBEDDED_LIBRARY.curseNumber),
-                    CurseFileDependency(306612, RelationType.REQUIRED_DEPENDENCY.curseNumber)
-                ).sortedBy { it.relationType }
-            ), curseForgeFiles.data.last().let { cfFiles -> cfFiles.copy(dependencies = cfFiles.dependencies.sortedBy { it.relationType }) }
-        )
+        assertEquals(CurseFileResponse(3481563,
+            true,
+            "0.1.0 for MC 1.16",
+            "https://edge.forgecdn.net/files/3481/563/modget-0.1.0.jar",
+            listOf("Fabric", "1.16.5", "1.16.4"),
+            listOf(
+                CurseFileDependency(400548, RelationType.EMBEDDED_LIBRARY.curseNumber),
+                CurseFileDependency(306612, RelationType.REQUIRED_DEPENDENCY.curseNumber)
+            ).sortedBy { it.relationType }),
+            curseForgeFiles.data.last()
+                .let { cfFiles -> cfFiles.copy(dependencies = cfFiles.dependencies.sortedBy { it.relationType }) })
 
         // We did not specify max files, so we should get all files
         assertTrue { curseForgeFiles.pagination.resultCount == curseForgeFiles.pagination.totalCount }
@@ -116,7 +115,8 @@ class ApiCallTest : KoinTest {
         assertEquals(
             ModrinthVersionFile(
                 ModrinthVersionHash("7dc82b00a305d8793a6787897f6c3bcf415e75ed0a257f17c40046320a1f3b686a1195eb3d4a3c36acd9b41308819315c2eb804194e44f5fe7fa303e5afc4fbc"),
-                "https://cdn.modrinth.com/data/2NpFE0R3/versions/0.0.1/modget-0.0.1.jar", true
+                "https://cdn.modrinth.com/data/2NpFE0R3/versions/0.0.1/modget-0.0.1.jar",
+                true
             ), modgetVersion001.files.last()
         )
 
