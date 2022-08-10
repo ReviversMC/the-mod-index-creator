@@ -30,8 +30,8 @@
     "files": [
       {
         "hashes": {
-          "sha1": "1baa61488670437b4f8d6126499d6636b6907e06",
-          "sha512": "1e46cfa4fce0a24d0f3b848006853576d5ca51d1def5313ae730a46a694126f5b9d5a31fdb723fd5fd70e4c5f7fadac6c5193725a831841e7370ba80224cd62f"
+          "sha1": "acf1acecc93be99b0d13739a7be78bfd935b23c6",
+          "sha512": "35b4f26ea9dbd45bc98e58f3ee0c6e39fb8a7cb557fe0e42ebd53e5cf3e549c9cb39fb5b2992997dc179c6fa793d38336ef2cbe032d3b356c9cb4bb1beac8532"
         },
         "url": "http://localhost:{port}/files/tmic-1.1.0.jar",
         "filename": "version-1.1.0.jar",
@@ -61,8 +61,8 @@
     "files": [
       {
         "hashes": {
-          "sha1": "8ff68aedc0ccbdc19ae88b7389c53c8829f81799",
-          "sha512": "7d46946221b2a17d30dd818c0078f51864be1c98618f94dae1c884b6bb8e34b9ccbc9ae72f789733639c3998d5ee6762597c4ba238179921cb37e0f6d5c7249e"
+          "sha1": "69342c5c39e5ae5f0077aecc32c0f81811fb8193",
+          "sha512": "3a928aa2cc3bf291a4657d1b51e0e087dfb1dea060c89d20776b8943d24e712ea65778fe608ddaee0a191bc6680483ad12be1f357389a2380f660db246be5844"
         },
         "url": "http://localhost:{port}/files/tmic-1.0.0.jar",
         "filename": "version-1.0.0.jar",
@@ -92,8 +92,8 @@
     "files": [
       {
         "hashes": {
-          "sha1": "1e05fd25e876a7f49c037199588a4ccf1963ac4b",
-          "sha512": "9b9379f285d5259b0ddf6823796f9ffa342e127a4fd062c4be1ebb0991e7769d2336d9f590e910dd5ff60bf0294a4b2157ba2e8aa779daf7360e9d0dcb2443bd"
+          "sha1": "104e002bd64f9308400d112fddc7a592ccd042a7",
+          "sha512": "6d79fe47dcbc2828b78dc2312ea9c9d8babca410f89e7ab7eb3deef11a2cefa3ca1f80511ff7fecb77eb149e2b0ac38a5406716bc3f46fb510bdd8268e3558e0"
         },
         "url": "http://localhost:{port}/files/tmic-0.9.0.jar",
         "filename": "version-0.9.0.jar",

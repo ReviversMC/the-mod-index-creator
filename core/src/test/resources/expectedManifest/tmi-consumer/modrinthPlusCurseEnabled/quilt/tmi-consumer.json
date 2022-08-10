@@ -1,5 +1,5 @@
 {
-  "indexVersion": "5.2.0",
+  "indexVersion": "5.0.0",
   "genericIdentifier": "quilt:tmi-consumer",
   "fancyName": "TMI Consumer",
   "author": "Cloudate9",
@@ -30,7 +30,7 @@
       "mcVersions": [
         "1.18.2"
       ],
-"shortSha512Hash": "1e46cfa4fce0a24",
+"shortSha512Hash": "35b4f26ea9dbd45",
       "downloadUrls": [
         "http://localhost:{port}/files/tmic-1.1.0.jar"
       ],
@@ -49,7 +49,7 @@
       "mcVersions": [
         "1.18.2"
       ],
-      "shortSha512Hash": "7d46946221b2a17",
+      "shortSha512Hash": "3a928aa2cc3bf29",
       "downloadUrls": [
         "http://localhost:{port}/files/tmic-1.0.0.jar"
       ],

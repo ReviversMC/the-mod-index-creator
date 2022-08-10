@@ -18,8 +18,8 @@
   "files": [
     {
       "hashes": {
-        "sha1": "1baa61488670437b4f8d6126499d6636b6907e06",
-        "sha512": "1e46cfa4fce0a24d0f3b848006853576d5ca51d1def5313ae730a46a694126f5b9d5a31fdb723fd5fd70e4c5f7fadac6c5193725a831841e7370ba80224cd62f"
+        "sha1": "acf1acecc93be99b0d13739a7be78bfd935b23c6",
+        "sha512": "35b4f26ea9dbd45bc98e58f3ee0c6e39fb8a7cb557fe0e42ebd53e5cf3e549c9cb39fb5b2992997dc179c6fa793d38336ef2cbe032d3b356c9cb4bb1beac8532"
       },
       "url": "http://localhost:{port}/files/tmic-1.1.0.jar",
       "filename": "version-1.1.0.jar",
