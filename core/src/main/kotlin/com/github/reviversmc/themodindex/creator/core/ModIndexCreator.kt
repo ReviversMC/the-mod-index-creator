@@ -43,7 +43,7 @@ class ModIndexCreator(
     private val okHttpClient: OkHttpClient,
 ) : Creator, KoinComponent {
 
-    private val indexVersion = "5.0.0"
+    private val indexVersion = "5.2.0"
 
     /**
      * Gets the [ApolloClient] used to connect to GitHub
@@ -112,9 +112,12 @@ class ModIndexCreator(
                 okHttpClient.newCall(Request.Builder().url(downloadUrl).build())
                     .execute().body?.byteStream()?.let { modStream ->
 
-                        get<ModFile> { parametersOf(modStream) }.modId()?.let {
-                            return "${modLoader.lowercase()}:${it.formatRightGenericIdentifier()}"
-                        }
+                        val modIdentifier = get<ModFile> { parametersOf(modStream) }.modId() ?: curseForgeApiCall.mod(
+                            curseApiKey,
+                            modId
+                        ).execute().body()?.data?.slug
+                        return modIdentifier?.let { "${modLoader.lowercase()}:${it.formatRightGenericIdentifier()}" }
+
                     }
             } ?: return null
     }
@@ -237,10 +240,12 @@ class ModIndexCreator(
                 okHttpClient.newCall(Request.Builder().url(url).build())
                     .execute().body?.byteStream()?.let { modStream ->
 
-                        get<ModFile> { parametersOf(modStream) }
-                            .modId()?.let {
-                                return "${modLoader.lowercase()}:${it.formatRightGenericIdentifier()}"
-                            }
+                        val modIdentifier =
+                            get<ModFile> { parametersOf(modStream) }.modId() ?: modrinthApiCall.project(modId).execute()
+                                .body()?.slug
+
+                        return modIdentifier?.let { "${modLoader.lowercase()}:${it.formatRightGenericIdentifier()}" }
+
                     }
             }
             ?: return null
@@ -495,25 +500,26 @@ class ModIndexCreator(
 
             suspend fun curseForgeToManifest() = curseForgeMod?.let { modData ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
-                    add(ManifestJson(indexVersion,
-                        curseForgeGenericIdentifier(curseForgeMod.id, modLoader) ?:
-                        modrinthProject?.id?.let { modrinthGenericIdentifier(it, modLoader) } ?:
-                        "${modLoader}:${modData.slug.formatRightGenericIdentifier()}",
-                        modData.name,
-                        modData.authors.firstOrNull()?.name ?: "UNKNOWN",
-                        gitHubUserRepo?.let {
-                            GHGraphQLicense.licenseSPDXId(
-                                githubClient, it.substringBefore("/"), it.substringAfter("/")
-                            )?.lowercase()
-                        } ?: modrinthProject?.license?.id?.lowercase(),
-                        modData.id,
-                        modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
-                        ManifestLinks(
-                            (modData.links.issuesUrl ?: modrinthProject?.issuesUrl)?.ifEmpty { null },
-                            modData.links.sourceUrl ?: modrinthProject?.sourceUrl,
-                            otherLinks
-                        ),
-                        manifestFiles.sortedByDescending { it.mcVersions.firstOrNull() })
+                    add(
+                        ManifestJson(indexVersion,
+                            curseForgeGenericIdentifier(curseForgeMod.id, modLoader)
+                                ?: modrinthProject?.id?.let { modrinthGenericIdentifier(it, modLoader) }
+                                ?: "${modLoader}:${modData.slug.formatRightGenericIdentifier()}",
+                            modData.name,
+                            modData.authors.firstOrNull()?.name ?: "UNKNOWN",
+                            gitHubUserRepo?.let {
+                                GHGraphQLicense.licenseSPDXId(
+                                    githubClient, it.substringBefore("/"), it.substringAfter("/")
+                                )?.lowercase()
+                            } ?: modrinthProject?.license?.id?.lowercase(),
+                            modData.id,
+                            modrinthProject?.id, // Modrinth id is known to be null, else it would have exited the func.
+                            ManifestLinks(
+                                (modData.links.issuesUrl ?: modrinthProject?.issuesUrl)?.ifEmpty { null },
+                                modData.links.sourceUrl ?: modrinthProject?.sourceUrl,
+                                otherLinks
+                            ),
+                            manifestFiles.sortedByDescending { it.mcVersions.firstOrNull() })
                     )
                 }
                 return true
@@ -521,27 +527,28 @@ class ModIndexCreator(
 
             suspend fun modrinthToManifest() = modrinthProject?.let { modrinthData ->
                 combinedFiles.forEach { (modLoader, manifestFiles) ->
-                    add(ManifestJson(indexVersion,
-                        modrinthGenericIdentifier(modrinthData.id, modLoader) ?:
-                        curseForgeMod?.id?.let { curseForgeGenericIdentifier(it, modLoader) } ?:
-                        "$modLoader:${modrinthData.slug.formatRightGenericIdentifier()}",
-                        modrinthData.title,
-                        modrinthApiCall.projectMembers(modrinthId).execute().body()
-                            ?.firstOrNull { member -> member.role == "Owner" }?.userResponse?.username
-                            ?: curseForgeMod?.authors?.firstOrNull()?.name ?: "UNKNOWN",
-                        gitHubUserRepo?.let {
-                            GHGraphQLicense.licenseSPDXId(
-                                githubClient, it.substringBefore("/"), it.substringAfter("/")
-                            )?.lowercase()
-                        } ?: modrinthData.license?.id?.lowercase(),
-                        curseForgeMod?.id,
-                        modrinthData.id,
-                        ManifestLinks(
-                            (modrinthData.issuesUrl ?: curseForgeMod?.links?.issuesUrl)?.ifEmpty { null },
-                            modrinthData.sourceUrl ?: curseForgeMod?.links?.sourceUrl,
-                            otherLinks
-                        ),
-                        manifestFiles.sortedByDescending { it.mcVersions.firstOrNull() })
+                    add(
+                        ManifestJson(indexVersion,
+                            modrinthGenericIdentifier(modrinthData.id, modLoader)
+                                ?: curseForgeMod?.id?.let { curseForgeGenericIdentifier(it, modLoader) }
+                                ?: "$modLoader:${modrinthData.slug.formatRightGenericIdentifier()}",
+                            modrinthData.title,
+                            modrinthApiCall.projectMembers(modrinthId).execute().body()
+                                ?.firstOrNull { member -> member.role == "Owner" }?.userResponse?.username
+                                ?: curseForgeMod?.authors?.firstOrNull()?.name ?: "UNKNOWN",
+                            gitHubUserRepo?.let {
+                                GHGraphQLicense.licenseSPDXId(
+                                    githubClient, it.substringBefore("/"), it.substringAfter("/")
+                                )?.lowercase()
+                            } ?: modrinthData.license?.id?.lowercase(),
+                            curseForgeMod?.id,
+                            modrinthData.id,
+                            ManifestLinks(
+                                (modrinthData.issuesUrl ?: curseForgeMod?.links?.issuesUrl)?.ifEmpty { null },
+                                modrinthData.sourceUrl ?: curseForgeMod?.links?.sourceUrl,
+                                otherLinks
+                            ),
+                            manifestFiles.sortedByDescending { it.mcVersions.firstOrNull() })
                     )
                 }
                 return true
