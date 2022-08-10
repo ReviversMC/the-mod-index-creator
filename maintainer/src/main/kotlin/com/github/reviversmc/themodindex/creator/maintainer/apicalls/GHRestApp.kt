@@ -23,4 +23,13 @@ interface GHRestApp {
         @Header("Authorization") jwt: String,
         @Path("installation_id") installationId: Long,
     ): Call<AccessTokenResponse>
+
+    @Headers("Accept: application/vnd.github+json")
+    @GET("/repos/{owner}/{repo}/git/ref/heads/{branch}")
+    fun latestShaFromBranch(
+        @Header("Authorization") jwt: String?,
+        @Path("owner") repoOwner: String,
+        @Path("repo") repoName: String,
+        @Path("branch") branch: String,
+    ): Call<RefBranchResponse>
 }

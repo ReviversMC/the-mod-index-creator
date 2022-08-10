@@ -192,7 +192,7 @@ class IndexExistingManifestReviewer(
                         genericIdentifier = originalManifest.genericIdentifier, fancyName = originalManifest.fancyName
                     ) == originalManifest -> {
                         // Ensure that the new generic identifier isn't already taken
-                        if (latestManifest.genericIdentifier !in (apiDownloader.getOrDownloadIndexJson()?.identifiers
+                        if (latestManifest.genericIdentifier !in (apiDownloader.downloadIndexJson()?.identifiers
                                 ?: throw IOException("Could not download manifest index"))
                         ) {
                             emit(

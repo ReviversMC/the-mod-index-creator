@@ -78,10 +78,25 @@ class GitHubUpdateSender(
         return installationToken
     }
 
+    /**
+     * Uses the GitHub api to get the latest commit sha, and manually obtain the latest index.json from the raw of the latest commit.
+     * Doing this enures that the index.json we use is the latest, and not a cached version.
+     * This does mean that we will use up some api calls, so use wisely.
+     * @author ReviversMC
+     * @since 1.0.0
+     */
+    private fun ApiDownloader.downloadIndexJson(downloadLatestButNoCache: Boolean): IndexJson? {
+        if (!downloadLatestButNoCache) return this.downloadIndexJson()
+        return gitHubRestApp.latestShaFromBranch(gitHubInstallationToken, repoOwner, repoName, targetedBranch).execute()
+            .body()?.refObject?.sha?.let {
+                get<ApiDownloader> { parametersOf("https://raw.githubusercontent.com/$repoName/$repoOwner/$targetedBranch/mods") }.downloadIndexJson()
+            }
+    }
+
     override suspend fun sendConflict(manifestToConflict: ManifestWithCreationStatus) {
         manifestToConflict.latestManifest?.let { latestManifest ->
 
-            val indexJson = apiDownloader.downloadIndexJson()?.let { indexJson ->
+            val indexJson = apiDownloader.downloadIndexJson(true)?.let { indexJson ->
                 indexJson.copy(
                     identifiers = indexJson.identifiers.toMutableList().apply {
                         removeIf { it.startsWith(manifestToConflict.originalManifest.genericIdentifier) } // Remove all original hashes
@@ -99,9 +114,7 @@ class GitHubUpdateSender(
             }
 
             ghBranch.commitAndUpdateRef(
-                targetedBranch,
-                "Detected conflict: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}",
-                listOf(
+                targetedBranch, "Detected conflict: UTC ${ZonedDateTime.now(ZoneOffset.UTC)}", listOf(
                     FileAddition(
                         "mods/${latestManifest.genericIdentifier.replaceFirst(':', '/')}.json",
                         json.encodeToString(latestManifest).toBase64WithNewline(),
@@ -125,7 +138,7 @@ class GitHubUpdateSender(
 
     override fun sendManifestUpdate(manifestsToUpdate: List<ManifestWithCreationStatus>) = flow {
         logger.debug { "Preparing to send manifest update..." }
-        var indexJson = apiDownloader.downloadIndexJson()
+        var indexJson = apiDownloader.downloadIndexJson(true)
             ?: throw IOException("Could not download index.json from ${apiDownloader.formattedBaseUrl}")
 
         val additions = mutableMapOf<GenericIdentifier, FileAddition>()
@@ -152,8 +165,7 @@ class GitHubUpdateSender(
                     if (additions.containsKey(latestManifest.genericIdentifier)) {
                         logger.warn { "Duplicate manifest found for ${latestManifest.genericIdentifier}" }
                         val conflictManifest = json.decodeFromString<ManifestJson>(
-                            Base64.getDecoder()
-                                .decode(additions[latestManifest.genericIdentifier]!!.contents as String)
+                            Base64.getDecoder().decode(additions[latestManifest.genericIdentifier]!!.contents as String)
                                 .decodeToString()
                         )
                         indexJson = indexJson.removeFromIndex(conflictManifest)
@@ -161,9 +173,7 @@ class GitHubUpdateSender(
 
                         emit(
                             ManifestWithCreationStatus(
-                                ReviewStatus.UPDATE_CONFLICT,
-                                latestManifest,
-                                conflictManifest
+                                ReviewStatus.UPDATE_CONFLICT, latestManifest, conflictManifest
                             )
                         )
                     } else {
@@ -199,7 +209,7 @@ class GitHubUpdateSender(
             }
         }
 
-        if (apiDownloader.downloadIndexJson() == indexJson) {
+        if (apiDownloader.downloadIndexJson(true) == indexJson) {
             logger.debug { "No changes to index.json, no push to repository required." }
             return@flow
         }
