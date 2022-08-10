@@ -17,7 +17,7 @@ abstract class NewManifestReviewer {
      * Reviews newly generated [ManifestJson]s against the original [ManifestJson]s that are already in use,
      * and returns a [ManifestWithCreationStatus] of the corresponding manifests.
      * @throws IOException if an error occurs while obtaining manifests to review.
-     * @author ReviversMc
+     * @author ReviversMC
      * @since 1.0.0
      */
     abstract fun reviewManifests(): Flow<ManifestWithCreationStatus>
@@ -26,7 +26,7 @@ abstract class NewManifestReviewer {
      * Review a single generated [latestManifest] against an [existingManifestInRepo], if available, and runs a merger strategy on the two manifests.
      * Returns a [ManifestWithCreationStatus] that is either approved, merged, or rejected.
      * @throws IOException if an error occurs while obtaining the existing manifest in the repo.
-     * @author ReviversMc
+     * @author ReviversMC
      * @since 1.0.0
      */
     protected fun reviewManifest(

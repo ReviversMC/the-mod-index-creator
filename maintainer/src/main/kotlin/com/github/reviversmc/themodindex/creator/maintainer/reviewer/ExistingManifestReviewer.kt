@@ -11,7 +11,7 @@ interface ExistingManifestReviewer {
      * Reviews newly generated [ManifestJson]s against the original [ManifestJson]s that are already in use,
      * and returns a [ManifestWithCreationStatus] of the corresponding manifests.
      * @throws IOException if an error occurs while obtaining manifests to review.
-     * @author ReviversMc
+     * @author ReviversMC
      * @since 1.0.0
      */
     fun reviewManifests(): Flow<ManifestWithCreationStatus>
