@@ -382,7 +382,7 @@ class ModIndexCreator(
 
         if (apiDownloader.getOrDownloadIndexJson()?.indexVersion != indexVersion) {
             throw IllegalArgumentException(
-                "Attempted index version to target: $indexVersion,\nbut found: ${apiDownloader.getOrDownloadIndexJson()?.indexVersion ?: "UNKNOWN"}"
+                "Attempted index version to target: $indexVersion,\nbut found: ${apiDownloader.getOrDownloadIndexJson()?.indexVersion ?: "UNKNOWN"} at ${apiDownloader.formattedBaseUrl}"
             )
         }
 
